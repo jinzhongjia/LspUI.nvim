@@ -23,7 +23,7 @@ local Commands = {
 		args = {},
 	},
 	rename = {
-		run = nil,
+		run = modules.rename.run,
 		args = {},
 	},
 	diagnostic = {
