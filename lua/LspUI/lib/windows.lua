@@ -26,7 +26,7 @@ M.Min_size_from_content = function(contents)
 end
 
 M.Create_window = function(contents_wrap)
-	local contents = util.Remove_empty_line(contents_wrap.contents) or {}
+	local contents = contents_wrap.contents or {}
 	local filetype = contents_wrap.filetype or nil
 	local enter = contents_wrap.enter or false
 
@@ -58,6 +58,8 @@ M.Create_window = function(contents_wrap)
 		width = contents_wrap.width,
 		height = contents_wrap.height,
 		zindex = contents_wrap.zindex,
+		title = contents_wrap.title or "",
+		title_pos = contents_wrap.title_pos or "right",
 	}
 
 	local win_id = api.nvim_open_win(new_buffer, enter, opt)
@@ -74,6 +76,16 @@ M.Move_cursor = function(winid, line, col)
 		-- Open folds under the cursor
 		vim.cmd("normal! zv")
 	end)
+end
+
+-- useless
+M.Resize_window = function(win_id, size)
+	if size.height then
+		api.nvim_win_set_height(win_id or 0, size.height)
+	end
+	if size.width then
+		api.nvim_win_set_width(win_id or 0, size.width)
+	end
 end
 
 return M

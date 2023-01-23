@@ -15,7 +15,7 @@ local Commands = {
 		args = {},
 	},
 	hover = {
-		run = nil,
+		run = modules.hover.run,
 		args = {},
 	},
 	reference = {

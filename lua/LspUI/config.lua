@@ -17,6 +17,10 @@ local M = {
 			quit = "q",
 		},
 	},
+	hover = {
+		enable = true,
+		command_enable = true,
+	},
 }
 
 M.version = function()
