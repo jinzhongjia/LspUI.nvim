@@ -63,6 +63,7 @@ M.Create_window = function(contents_wrap)
 	}
 
 	local win_id = api.nvim_open_win(new_buffer, enter, opt)
+	api.nvim_win_set_option(win_id, "winhighlight", "Normal:Normal")
 
 	return new_buffer, win_id
 end

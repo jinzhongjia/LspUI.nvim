@@ -3,7 +3,7 @@ local version = "0.0.1"
 local M = {
 	lightbulb = {
 		enable = false,
-		command_enable = true,
+		command_enable = false,
 		icon = "💡",
 	},
 	code_action = {
@@ -17,12 +17,22 @@ local M = {
 			quit = "q",
 		},
 	},
+
 	hover = {
 		enable = true,
 		command_enable = true,
+
+		rename = {
+			enable = true,
+			command_enable = true,
+			auto_select = true, -- whether select all automatically
+			keybind = {
+				change = "<CR>",
+				quit = "<ESC>",
+			},
+		},
 	},
 }
-
 M.version = function()
 	return version
 end
