@@ -13,8 +13,7 @@ M.Request = function(handle)
 		local res = {}
 		for _, response in pairs(responses) do
 			if response and response.result and response.result.contents then
-				-- table.insert(res, response.result.contents)
-				res = response.result.contents
+				table.insert(res, response.result.contents)
 			end
 		end
 		handle(res)
