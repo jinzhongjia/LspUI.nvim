@@ -39,7 +39,7 @@ end
 M.Tb_remove_value = function(tb, val)
 	for key, value in pairs(tb) do
 		if value == val then
-			table.remove(tb, key)
+			tb[key] = nil
 			return
 		end
 	end
