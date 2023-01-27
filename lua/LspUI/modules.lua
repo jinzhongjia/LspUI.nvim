@@ -3,5 +3,6 @@ local M = {
 	code_action = require("LspUI.code_action"),
 	hover = require("LspUI.hover"),
 	rename = require("LspUI.rename"),
+	diagnostic = require("LspUI.diagnostic"),
 }
 return M

@@ -27,7 +27,7 @@ local Commands = {
 		args = {},
 	},
 	diagnostic = {
-		run = nil,
+		run = modules.diagnostic.run,
 		args = {
 			"next",
 			"prev",

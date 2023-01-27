@@ -11,10 +11,6 @@ M.MAX_WIDTH = api.nvim_get_option("columns")
 
 M.MAX_HEIGHT = api.nvim_get_option("lines")
 
-M.New_windows = function()
-	local windows = {}
-end
-
 -- get the min width and height of contents
 M.Min_size_from_content = function(contents)
 	local width, height = 0, 0
@@ -70,6 +66,8 @@ end
 
 -- move cursor and save position in jumplist
 M.Move_cursor = function(winid, line, col)
+    api.nvim_win_set_cursor(0, { line, col })
+	
 	vim.api.nvim_win_call(winid, function()
 		-- Save position in the window's jumplist
 		vim.cmd("normal! m'")
@@ -87,6 +85,11 @@ M.Resize_window = function(win_id, size)
 	if size.width then
 		api.nvim_win_set_width(win_id or 0, size.width)
 	end
+end
+
+M.Get_max_float_width = function()
+	local max_width = math.floor(M.MAX_WIDTH * 0.7)
+	return max_width
 end
 
 return M

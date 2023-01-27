@@ -35,6 +35,16 @@ local M = {
 			quit = "<ESC>",
 		},
 	},
+	diagnostic = {
+		enable = true,
+		command_enable = true,
+		icons = {
+			Error = " ",
+			Warn = " ",
+			Info = " ",
+			Hint = " ",
+		},
+	},
 }
 
 M.version = function()
