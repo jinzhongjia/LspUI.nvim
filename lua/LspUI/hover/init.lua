@@ -35,7 +35,7 @@ M.run = function()
 			api.nvim_set_current_win(hover_win_id)
 		else
 			if vim.tbl_isempty(content_list) then
-				lib.Info("No hover document!")
+				lib.log.Info("No hover document!")
 				return
 			end
 			local res = content_list[1]
