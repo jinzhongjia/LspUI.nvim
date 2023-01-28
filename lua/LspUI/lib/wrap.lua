@@ -51,4 +51,14 @@ M.Make_truncate_line = function(contents)
 	return truncate_line
 end
 
+M.Judge_blank_line = function(line)
+	-- if vim.tbl_isempty(line) then
+	-- 	return true
+	-- end
+	if string.gsub(line, " ", "") == "" then
+		return true
+	end
+	return false
+end
+
 return M

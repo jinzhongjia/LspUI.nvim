@@ -44,9 +44,14 @@ M.run = function()
 			local current_buffer = api.nvim_get_current_buf()
 			local new_buffer = api.nvim_create_buf(false, true)
 
-			local width, height = util.Handle_content(new_buffer, res)
+			local width, height, content = util.Handle_content(new_buffer, res)
+
+			content = lib.wrap.Wrap(content, width)
+
+			width, height = lib.windows.Min_size_from_content(content)
 
 			local content_wrap = {
+				contents = content,
 				buffer = new_buffer,
 				height = height,
 				width = width,
@@ -54,8 +59,9 @@ M.run = function()
 				modify = false,
 				title = tostring(content_id) .. "/" .. tostring(#content_list),
 			}
-            _, hover_win_id = lib.windows.Create_window(content_wrap)
-			
+
+			_, hover_win_id = lib.windows.Create_window(content_wrap)
+
 			api.nvim_win_set_option(hover_win_id, "conceallevel", 2)
 			api.nvim_win_set_option(hover_win_id, "concealcursor", "n")
 			api.nvim_win_set_option(hover_win_id, "wrap", false)
