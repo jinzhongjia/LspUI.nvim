@@ -5,6 +5,8 @@ local M = {}
 
 local modules = require("LspUI.modules")
 
+local initialized = false
+
 local function init()
 	command.init()
 	for _, module in pairs(modules) do
@@ -13,9 +15,13 @@ local function init()
 end
 
 M.setup = function(opt)
+	if initialized then
+		return
+	end
 	opt = opt or {}
 	lib.util.Merge_config(config, opt)
 	init()
+	initialized = true
 end
 
 return M

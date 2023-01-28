@@ -61,7 +61,9 @@ local function run(key, arg)
 	if key == nil then
 		call()
 	else
-		pcall(Commands[key].run, arg)
+		if Commands[key] then
+			pcall(Commands[key].run, arg)
+		end
 	end
 end
 
