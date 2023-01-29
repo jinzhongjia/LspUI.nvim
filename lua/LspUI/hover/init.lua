@@ -12,7 +12,7 @@ local util = require("LspUI.hover.util")
 local hover_win_id = -1
 
 M.init = function()
-	if not config.hover.enable then
+	if not config.option.hover.enable then
 		return
 	end
 
@@ -22,7 +22,7 @@ M.init = function()
 end
 
 M.run = function()
-	if not config.hover.enable then
+	if not config.option.hover.enable then
 		return
 	end
 
@@ -71,7 +71,7 @@ M.run = function()
 			-- Here is keybind
 			--
 			-- next hover document render
-			api.nvim_buf_set_keymap(new_buffer, "n", config.hover.keybind.next, "", {
+			api.nvim_buf_set_keymap(new_buffer, "n", config.option.hover.keybind.next, "", {
 				callback = function()
 					if #content_list == 1 then
 						return
@@ -87,7 +87,7 @@ M.run = function()
 				desc = lib.util.Command_des("go to next hover"),
 			})
 			-- prev hover document render
-			api.nvim_buf_set_keymap(new_buffer, "n", config.hover.keybind.prev, "", {
+			api.nvim_buf_set_keymap(new_buffer, "n", config.option.hover.keybind.prev, "", {
 				callback = function()
 					if #content_list == 1 then
 						return
@@ -102,7 +102,7 @@ M.run = function()
 				desc = lib.util.Command_des("go to prev hover"),
 			})
 			-- quit
-			api.nvim_buf_set_keymap(new_buffer, "n", config.hover.keybind.quit, "", {
+			api.nvim_buf_set_keymap(new_buffer, "n", config.option.hover.keybind.quit, "", {
 				callback = function()
 					api.nvim_win_close(hover_win_id, true)
 				end,

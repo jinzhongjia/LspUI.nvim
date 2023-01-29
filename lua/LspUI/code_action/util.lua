@@ -27,7 +27,7 @@ end
 
 M.Keybinding = function(buffer, win_id, actions, ctx)
 	-- bind the func to next
-	api.nvim_buf_set_keymap(buffer, "n", config.code_action.keybind.next, "", {
+	api.nvim_buf_set_keymap(buffer, "n", config.option.code_action.keybind.next, "", {
 		callback = function()
 			local _, lnum, _, _ = unpack(vim.fn.getpos("."))
 			lnum = lnum + 1
@@ -40,7 +40,7 @@ M.Keybinding = function(buffer, win_id, actions, ctx)
 		desc = lib.util.Command_des("go to next action"),
 	})
 	-- bind the func to prev
-	api.nvim_buf_set_keymap(buffer, "n", config.code_action.keybind.prev, "", {
+	api.nvim_buf_set_keymap(buffer, "n", config.option.code_action.keybind.prev, "", {
 		callback = function()
 			local _, lnum, _, _ = unpack(vim.fn.getpos("."))
 			lnum = lnum - 1
@@ -53,7 +53,7 @@ M.Keybinding = function(buffer, win_id, actions, ctx)
 		desc = lib.util.Command_des("go to next action"),
 	})
 	-- bind the func to quit
-	api.nvim_buf_set_keymap(buffer, "n", config.code_action.keybind.quit, "", {
+	api.nvim_buf_set_keymap(buffer, "n", config.option.code_action.keybind.quit, "", {
 		callback = function()
 			-- the buffer will be deleted automatically when windows closed
 			api.nvim_win_close(win_id, true)
@@ -61,7 +61,7 @@ M.Keybinding = function(buffer, win_id, actions, ctx)
 		desc = lib.util.Command_des("quit from code_action"),
 	})
 	-- bind the func to exec
-	api.nvim_buf_set_keymap(buffer, "n", config.code_action.keybind.exec, "", {
+	api.nvim_buf_set_keymap(buffer, "n", config.option.code_action.keybind.exec, "", {
 		callback = function()
 			-- the buffer will be deleted automatically when windows closed
 			M.Exec_action(actions, ctx)

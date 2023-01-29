@@ -11,7 +11,7 @@ local util = require("LspUI.code_action.util")
 local method = "textDocument/codeAction"
 
 M.init = function()
-	if not config.code_action.enable then
+	if not config.option.code_action.enable then
 		return
 	end
 
@@ -21,7 +21,7 @@ M.init = function()
 end
 
 M.run = function()
-	if not config.code_action.enable then
+	if not config.option.code_action.enable then
 		return
 	end
 	if not lib.lsp.Check_lsp_active() then

@@ -6,19 +6,19 @@ A modern and useful UI plugin that wraps lsp operations.
 
 ## 🛎️Features Supported
 
--   Code Action(menu and lighthulb)
--   Rename
--   Hover Document
--   Diagnostic
--   Peek Definition
+- Code Action(menu and lighthulb)
+- Rename
+- Hover Document
+- Diagnostic
+- Peek Definition
 
-## 🪡Recommand
+## 🪡Recommend
 
 For other features of lsp, such as `Defination`, `References`, `implementations`, you use this plugin [DNLHC/glance.nvim](https://github.com/DNLHC/glance.nvim), it is very good for above
 
 ## 🛠️Install
 
-**Neovim(stable)**, but recommand you use **Neovim(nightly)**, now stable not support `title_pos`
+**Neovim(stable)**, but recommend you use **Neovim(nightly)**, now stable not support `title_pos`
 
 ### Lazy.nvim
 
@@ -49,76 +49,76 @@ use {
 ```lua
 -- Default config
 require("LspUI").setup({
-	lightbulb = {
-		enable = false, -- close by default
-		command_enable = false, -- close by default, this switch does not have to be turned on, this command has no effect
-		icon = "💡",
-	},
-	code_action = {
-		enable = true,
-		command_enable = true,
-		icon = "💡",
-		keybind = {
-			exec = "<CR>",
-			prev = "k",
-			next = "j",
-			quit = "q",
-		},
-	},
-	hover = {
-		enable = true,
-		command_enable = true,
-		keybind = {
-			prev = "p",
-			next = "n",
-			quit = "q",
-		},
-	},
-	rename = {
-		enable = true,
-		command_enable = true,
-		auto_select = true, -- whether select all automatically
-		keybind = {
-			change = "<CR>",
-			quit = "<ESC>",
-		},
-	},
-	diagnostic = {
-		enable = true,
-		command_enable = true,
-		icons = {
-			Error = " ",
-			Warn = " ",
-			Info = " ",
-			Hint = " ",
-		},
-	},
-	peek_definition = {
-		enable = false, -- close by default
-		command_enable = true,
-		keybind = {
-			edit = "op",
-			vsplit = "ov",
-			split = "os",
-			quit = "q",
-		},
-	},
+    lightbulb = {
+        enable = false, -- close by default
+        command_enable = false, -- close by default, this switch does not have to be turned on, this command has no effect
+        icon = "💡",
+    },
+    code_action = {
+        enable = true,
+        command_enable = true,
+        icon = "💡",
+        keybind = {
+            exec = "<CR>",
+            prev = "k",
+            next = "j",
+            quit = "q",
+        },
+    },
+    hover = {
+        enable = true,
+        command_enable = true,
+        keybind = {
+            prev = "p",
+            next = "n",
+            quit = "q",
+        },
+    },
+    rename = {
+        enable = true,
+        command_enable = true,
+        auto_select = true, -- whether select all automatically
+        keybind = {
+            change = "<CR>",
+            quit = "<ESC>",
+        },
+    },
+    diagnostic = {
+        enable = true,
+        command_enable = true,
+        icons = {
+            Error = " ",
+            Warn = " ",
+            Info = " ",
+            Hint = " ",
+        },
+    },
+    peek_definition = {
+        enable = false, -- close by default
+        command_enable = true,
+        keybind = {
+            edit = "op",
+            vsplit = "ov",
+            split = "os",
+            quit = "q",
+        },
+    },
 })
 ```
 
 ## 🎁Command
 
--   `LspUI hover`
--   `LspUI rename`
--   `LspUI code_action`
--   `LspUI diagnostic next`
--   `LspUI diagnostic prev`
--   `LspUI peek_definition`
+- `LspUI hover`
+- `LspUI rename`
+- `LspUI code_action`
+- `LspUI diagnostic next`
+- `LspUI diagnostic prev`
+- `LspUI peek_definition`
 
 ## 🧭Design ideas
 
--   Highly controllable functions
--   Least invasive
+- Highly controllable functions
+- Least invasive
 
 ## 📸Screenshot
 
@@ -146,5 +146,5 @@ require("LspUI").setup({
 
 ## 📔Todo
 
--   Define(`Defination` and `Type Definitions`)
--   Finder(`References` and `implementations`)
+- Define(`Defination` and `Type Definitions`)
+- Finder(`References` and `implementations`)

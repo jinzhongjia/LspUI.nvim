@@ -7,7 +7,7 @@ local M = {}
 
 M.action_render = function(actions)
 	local contents = {}
-	local title = config.code_action.icon .. "CodeActions:"
+	local title = config.option.code_action.icon .. "CodeActions:"
 	table.insert(contents, title)
 
 	for index, client_with_actions in pairs(actions) do
@@ -25,7 +25,7 @@ M.action_render = function(actions)
 	table.insert(contents, 2, truncate_line)
 	local content_wrap = {
 		contents = contents,
-		filetype = "lspui_code_action",
+		filetype = "Lspui_code_action",
 		enter = true,
 		modify = false,
 	}

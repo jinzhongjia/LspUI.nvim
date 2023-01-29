@@ -46,10 +46,10 @@ local function keys()
 	local res = {}
 	local command_list = vim.tbl_keys(Commands)
 	for _, key in pairs(command_list) do
-		if not lib.util.Tb_has_key(config, key) then
+		if not lib.util.Tb_has_key(config.option, key) then
 			goto continue
 		end
-		if config[key].enable and lib.util.Tb_has_key(config[key], "command_enable") and config[key].command_enable then
+		if config.option[key].enable and lib.util.Tb_has_key(config.option[key], "command_enable") and config.option[key].command_enable then
 			table.insert(res, key)
 		end
 		::continue::

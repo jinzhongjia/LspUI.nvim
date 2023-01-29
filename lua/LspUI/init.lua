@@ -19,7 +19,7 @@ M.setup = function(opt)
 		return
 	end
 	opt = opt or {}
-	lib.util.Merge_config(config, opt)
+	lib.util.Merge_config(opt)
 	init()
 	initialized = true
 end

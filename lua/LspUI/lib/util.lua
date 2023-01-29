@@ -10,21 +10,8 @@ local key_bind_opt = { nowait = true, noremap = true, silent = true }
 local move_keys = { "h", "ge", "e", "0", "$", "l", "w", "b", "<Bs>", "j", "k", "<Left>", "<Right>", "<Up>", "<Down>" }
 local other_keys = { "x", "y", "v", "o", "O", "q" }
 
-M.Merge_config = function(param1, param2)
-	vim.validate({
-		param1 = { param1, "table" },
-		param2 = { param2, "table" },
-	})
-	for key, value in pairs(param2) do
-		if param1[key] ~= nil then
-			if type(param1[key]) == "table" then
-				M.Merge_config(param1[key], value)
-			end
-			param1[key] = value
-		else
-			log.Warn("the config key " .. key .. "not exist")
-		end
-	end
+M.Merge_config = function(param)
+    config.option = vim.tbl_deep_extend("force", config.option, param)
 end
 
 M.Tb_has_key = function(tb, val)

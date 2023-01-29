@@ -9,7 +9,7 @@ local render = require("LspUI.diagnostic.render")
 local util = require("LspUI.diagnostic.util")
 
 M.init = function()
-	if not config.diagnostic.enable then
+	if not config.option.diagnostic.enable then
 		return
 	end
 end
@@ -23,7 +23,7 @@ local function switch_arg(arg)
 end
 
 M.run = function(arg)
-	if not config.diagnostic.enable then
+	if not config.option.diagnostic.enable then
 		return
 	end
 	if not lib.lsp.Check_lsp_active() then

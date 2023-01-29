@@ -14,7 +14,7 @@ M.virtual_render = function(diagnostic)
 	local severity = util.severity(diagnostic.severity)
 
 	-- create the header of contents
-	local header_left = config.diagnostic.icons[severity] .. severity
+	local header_left = config.option.diagnostic.icons[severity] .. severity
 
 	table.insert(highlight_arr, {
 		line = 0,

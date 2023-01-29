@@ -1,6 +1,8 @@
 local version = "0.0.1"
 
-local M = {
+local M = {}
+
+M.option = {
 	lightbulb = {
 		enable = false,
 		command_enable = false,

@@ -10,7 +10,7 @@ local util = require("LspUI.peek_definition.util")
 local render = require("LspUI.peek_definition.render")
 
 M.init = function()
-	if not config.peek_definition.enable then
+	if not config.option.peek_definition.enable then
 		return
 	end
 	if not lib.lsp.Check_lsp_active() then
@@ -19,7 +19,7 @@ M.init = function()
 end
 
 M.run = function()
-	if not config.peek_definition.enable then
+	if not config.option.peek_definition.enable then
 		return
 	end
 	if not lib.lsp.Check_lsp_active() then

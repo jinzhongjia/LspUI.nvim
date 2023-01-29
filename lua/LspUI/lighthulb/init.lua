@@ -14,11 +14,11 @@ local request = require("LspUI.lighthulb.request")
 	with use vim.schedule
 ]]
 
-fn.sign_define(store.SIGN_NAME, { text = config.lightbulb.icon })
+fn.sign_define(store.SIGN_NAME, { text = config.option.lightbulb.icon })
 
 -- The function is useless but remains
 M.run = function()
-	if not config.lightbulb.enable then
+	if not config.option.lightbulb.enable then
 		return
 	end
 	if not lib.lsp.Check_lsp_active() then
@@ -27,7 +27,7 @@ M.run = function()
 end
 
 M.init = function()
-	if not config.lightbulb.enable then
+	if not config.option.lightbulb.enable then
 		return
 	end
 	local lightbulb_group = api.nvim_create_augroup("LspuiLightBulb", { clear = true })

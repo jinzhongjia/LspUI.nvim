@@ -7,13 +7,13 @@ local M = {}
 local util = require("LspUI.rename.util")
 
 M.init = function()
-	if not config.rename.enable then
+	if not config.option.rename.enable then
 		return
 	end
 end
 
 M.run = function()
-	if not config.rename.enable then
+	if not config.option.rename.enable then
 		return
 	end
 	if not lib.lsp.Check_lsp_active() then
@@ -37,7 +37,7 @@ M.run = function()
 
 	local content_wrap = {
 		contents = { cword },
-		filetype = "lspui_rename",
+		filetype = "Lspui_rename",
 		enter = true,
 		modify = true,
 		height = 1,
@@ -46,13 +46,13 @@ M.run = function()
 
 	local new_buffer, win_id = lib.windows.Create_window(content_wrap)
 
-	if config.rename.auto_select then
+	if config.option.rename.auto_select then
 		vim.cmd([[normal! V]])
 		util.Feedkeys("<C-g>", "n")
 	end
 
 	-- keybind
-	vim.keymap.set({ "n", "v", "i" }, config.rename.keybind.change, function()
+	vim.keymap.set({ "n", "v", "i" }, config.option.rename.keybind.change, function()
 		local new_name = vim.trim(api.nvim_get_current_line())
 		util.Close_window(win_id)
 		if cword ~= new_name then
@@ -60,7 +60,7 @@ M.run = function()
 		end
 	end, { buffer = new_buffer })
 
-	vim.keymap.set({ "n" }, config.rename.keybind.quit, function()
+	vim.keymap.set({ "n" }, config.option.rename.keybind.quit, function()
 		util.Close_window(win_id)
 	end, { buffer = new_buffer })
 
