@@ -64,6 +64,15 @@ M.init = function()
 				desc = lib.util.Command_des("Lightbulb update when CursorHold"),
 			})
 
+			-- clean render when WinLeave
+			api.nvim_create_autocmd({ "WinLeave" }, {
+				group = group_id,
+				buffer = current_buf,
+				callback = vim.schedule_wrap(function()
+					pcall(render.clean_render, current_buf)
+				end),
+				desc = lib.util.Command_des("Lightbulb clean render when WinLeave"),
+			})
 			-- Called when the buffer changes
 			-- api.nvim_buf_attach(current_buf, false, {
 			-- 	on_lines = function(_, _, _, start_line, _, end_line, _)

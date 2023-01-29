@@ -10,6 +10,7 @@ A modern and useful UI plugin that wraps lsp operations.
 -   Rename
 -   Hover Document
 -   Diagnostic
+-   Peek Definition
 
 ## 🪡Recommand
 
@@ -49,8 +50,8 @@ use {
 -- Default config
 require("LspUI").setup({
 	lightbulb = {
-		enable = false,
-		command_enable = false,
+		enable = false, -- close by default
+		command_enable = false, -- close by default, this switch does not have to be turned on, this command has no effect
 		icon = "💡",
 	},
 	code_action = {
@@ -67,7 +68,6 @@ require("LspUI").setup({
 	hover = {
 		enable = true,
 		command_enable = true,
-        -- when you have not-one document, this will jump next document
 		keybind = {
 			prev = "p",
 			next = "n",
@@ -93,16 +93,27 @@ require("LspUI").setup({
 			Hint = " ",
 		},
 	},
+	peek_definition = {
+		enable = false, -- close by default
+		command_enable = true,
+		keybind = {
+			edit = "op",
+			vsplit = "ov",
+			split = "os",
+			quit = "q",
+		},
+	},
 })
 ```
 
 ## 🎁Command
 
-- `LspUI hover`
-- `LspUI rename`
-- `LspUI code_action`
-- `LspUI diagnostic next`
-- `LspUI diagnostic prev`
+-   `LspUI hover`
+-   `LspUI rename`
+-   `LspUI code_action`
+-   `LspUI diagnostic next`
+-   `LspUI diagnostic prev`
+-   `LspUI peek_definition`
 
 ## 🧭Design ideas
 
@@ -117,7 +128,6 @@ require("LspUI").setup({
 
 ![code_action_lightbulb](https://github.com/jinzhongjia/LspUI.nvim/blob/main/.img/lightbulb.png)
 
-
 **Rename**:
 
 ![rename](https://github.com/jinzhongjia/LspUI.nvim/blob/main/.img/rename.png?raw=true)
@@ -129,6 +139,10 @@ require("LspUI").setup({
 **Diagnostic**:
 
 ![diagnostic](https://github.com/jinzhongjia/LspUI.nvim/blob/main/.img/diagnostic.png)
+
+**Peek Definition**:
+
+![peek_definition](https://github.com/jinzhongjia/LspUI.nvim/blob/main/.img/peek_definition.png)
 
 ## 📔Todo
 
