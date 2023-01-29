@@ -15,7 +15,7 @@ For other features of lsp, such as `Defination`, `References`, `implementations`
 
 ## 🛠️Install
 
-**Neovim(nightly)**, now stable not support `title_pos`, it will console a error
+**Neovim(stable)**, but recommand you use **Neovim(nightly)**, now stable not support `title_pos`
 
 ### Lazy.nvim
 

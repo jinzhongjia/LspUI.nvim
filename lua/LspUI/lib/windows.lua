@@ -54,9 +54,13 @@ M.Create_window = function(contents_wrap)
 		width = contents_wrap.width,
 		height = contents_wrap.height,
 		zindex = contents_wrap.zindex,
-		title = contents_wrap.title or "",
-		title_pos = contents_wrap.title_pos or "right",
 	}
+
+	-- TODO: when stable is 0.9, remove this!!!
+	if fn.has("nvim-0.9") == 1 then
+		opt.title = contents_wrap.title or ""
+		opt.title_pos = contents_wrap.title_pos or "right"
+	end
 
 	local win_id = api.nvim_open_win(new_buffer, enter, opt)
 	api.nvim_win_set_option(win_id, "winhighlight", "Normal:Normal")
@@ -66,8 +70,8 @@ end
 
 -- move cursor and save position in jumplist
 M.Move_cursor = function(winid, line, col)
-    api.nvim_win_set_cursor(0, { line, col })
-	
+	api.nvim_win_set_cursor(0, { line, col })
+
 	vim.api.nvim_win_call(winid, function()
 		-- Save position in the window's jumplist
 		vim.cmd("normal! m'")
