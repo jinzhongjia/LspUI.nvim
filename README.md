@@ -2,6 +2,8 @@
 
 A modern and useful UI plugin that wraps lsp operations.
 
+> As neovim is the host system, its plugins should be kept as minimally intrusive as possible
+
 ## 🛎️Features Supported
 
 -   Code Action(menu and lighthulb)
