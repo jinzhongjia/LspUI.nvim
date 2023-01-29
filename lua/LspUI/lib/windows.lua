@@ -96,4 +96,9 @@ M.Get_max_float_width = function()
 	return max_width
 end
 
+M.Get_max_float_height = function()
+	local max_height = math.floor(M.MAX_HEIGHT * 0.7)
+	return max_height
+end
+
 return M
