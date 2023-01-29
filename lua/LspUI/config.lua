@@ -45,6 +45,16 @@ local M = {
 			Hint = " ",
 		},
 	},
+	peek_definition = {
+		enable = false,
+		command_enable = true,
+		keybind = {
+			edit = "op",
+			vsplit = "ov",
+			split = "os",
+			quit = "q",
+		},
+	},
 }
 
 M.version = function()

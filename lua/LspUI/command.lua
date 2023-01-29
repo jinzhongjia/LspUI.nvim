@@ -37,6 +37,10 @@ local Commands = {
 		run = modules.lighthub.run,
 		args = {},
 	},
+	peek_definition = {
+		run = modules.peek_definition.run,
+		args = {},
+	},
 }
 local function keys()
 	local res = {}

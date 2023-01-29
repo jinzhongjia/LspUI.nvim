@@ -4,5 +4,6 @@ local M = {
 	hover = require("LspUI.hover"),
 	rename = require("LspUI.rename"),
 	diagnostic = require("LspUI.diagnostic"),
+	peek_definition = require("LspUI.peek_definition"),
 }
 return M
