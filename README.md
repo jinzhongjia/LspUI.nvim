@@ -148,3 +148,7 @@ require("LspUI").setup({
 
 - Define(`Defination` and `Type Definitions`)
 - Finder(`References` and `implementations`)
+
+## 🔮Thanks
+
+- [lspsaga.nvim](https://github.com/glepnir/lspsaga.nvim) - inspiration

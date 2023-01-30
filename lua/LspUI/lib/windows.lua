@@ -45,7 +45,7 @@ M.Create_window = function(contents_wrap)
 
 	local opt = {
 		anchor = "NW",
-		border = "single",
+		border = "rounded",
 		focusable = true,
 		relative = "cursor",
 		col = 0,
