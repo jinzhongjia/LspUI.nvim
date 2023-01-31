@@ -35,7 +35,7 @@ M.virtual_render = function(diagnostic)
 		return string.len(s) ~= 0
 	end, vim.split(diagnostic.message, "\n"))
 
-	local body_right = diagnostic.source .. "(" .. diagnostic.code .. ")"
+	local body_right = diagnostic.source .. "(" .. tostring(diagnostic.code) .. ")"
 
 	local max_width = lib.windows.Get_max_float_width()
 
@@ -107,7 +107,7 @@ M.display = function(diagnostic)
 		filetype = "Lspui-diagnostic",
 		modify = false,
 		enter = false,
-		title = "1/1",
+		title = "",
 		title_pos = "right",
 	})
 
