@@ -25,7 +25,7 @@ For other features of lsp, such as `Defination`, `References`, `implementations`
 ```lua
 {
     "jinzhongjia/LspUI.nvim",
-    event="Verylazy",
+    event="VeryLazy",
     config=function()
         require("LspUI").setup()
     end
