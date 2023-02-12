@@ -1,15 +1,13 @@
 local lib = require("LspUI.lib")
 local config = require("LspUI.config")
-local command = require("LspUI.command")
-local M = {}
 
-local modules = require("LspUI.modules")
+local M = {}
 
 local initialized = false
 
 local function init()
-	command.init()
-	for _, module in pairs(modules) do
+	require("LspUI.command").init()
+	for _, module in pairs(require("LspUI.modules")) do
 		module.init()
 	end
 end
