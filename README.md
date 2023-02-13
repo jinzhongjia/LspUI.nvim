@@ -4,6 +4,16 @@ A modern and useful UI plugin that wraps lsp operations.
 
 > As neovim is the host system, its plugins should be kept as minimally intrusive as possible
 
+## FAQ
+
+**Why I make this plugin?**
+
+In the past, I was a loyal user of `lspsaga`! But sometimes `lspsaga` has *breakchange* which will affect my work, I just want a stable plugin, So I made this plugin with reference to the ui of lspsaga.
+
+I only refer to its UI design, and the code logic is written by myself (part of the processing method refers to the official lsp library)!
+
+If you criticize me because I refer `lspsaga`'s UI design, you win.
+
 ## 🛎️Features Supported
 
 - Code Action(menu and lighthulb)
