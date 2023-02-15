@@ -49,7 +49,11 @@ local function keys()
 		if not lib.util.Tb_has_key(config.option, key) then
 			goto continue
 		end
-		if config.option[key].enable and lib.util.Tb_has_key(config.option[key], "command_enable") and config.option[key].command_enable then
+		if
+			config.option[key].enable
+			and lib.util.Tb_has_key(config.option[key], "command_enable")
+			and config.option[key].command_enable
+		then
 			table.insert(res, key)
 		end
 		::continue::
@@ -67,6 +71,8 @@ local function run(key, arg)
 	else
 		if Commands[key] then
 			pcall(Commands[key].run, arg)
+    else
+      lib.log.Warn("Your input command not exists!")
 		end
 	end
 end

@@ -14,8 +14,6 @@ local request = require("LspUI.lighthulb.request")
 	with use vim.schedule
 ]]
 
-fn.sign_define(store.SIGN_NAME, { text = config.option.lightbulb.icon })
-
 -- The function is useless but remains
 M.run = function()
 	if not config.option.lightbulb.enable then
@@ -30,6 +28,9 @@ M.init = function()
 	if not config.option.lightbulb.enable then
 		return
 	end
+	-- register sign
+	fn.sign_define(store.SIGN_NAME, { text = config.option.lightbulb.icon })
+
 	local lightbulb_group = api.nvim_create_augroup("LspuiLightBulb", { clear = true })
 
 	-- This autocmd will delete when nvim is closed.
