@@ -32,6 +32,7 @@ M.init = function()
 	end
 	local lightbulb_group = api.nvim_create_augroup("LspuiLightBulb", { clear = true })
 
+	-- This autocmd will delete when nvim is closed.
 	api.nvim_create_autocmd("LspAttach", {
 		group = lightbulb_group,
 		callback = vim.schedule_wrap(function()
@@ -55,8 +56,8 @@ M.init = function()
 				buffer = current_buf,
 				callback = vim.schedule_wrap(function()
 					request.request(current_buf, function(result)
-						render.clean_render(current_buf)
-						if result then
+						local status = pcall(render.clean_render, current_buf)
+						if status and result then
 							render.render(current_buf)
 						end
 					end)
@@ -94,7 +95,7 @@ M.init = function()
 				group = group_id,
 				buffer = current_buf,
 				callback = vim.schedule_wrap(function()
-					render.clean_render(current_buf)
+					pcall(render.clean_render, current_buf)
 				end),
 				desc = lib.util.Command_des("Lightbulb update when InsertEnter"),
 			})
