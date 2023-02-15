@@ -2,6 +2,7 @@ local lib = require("LspUI.lib")
 local config = require("LspUI.config")
 local command = require("LspUI.command")
 local modules = require("LspUI.modules")
+local api = require("LspUI.api")
 
 local M = {}
 
@@ -23,5 +24,7 @@ M.setup = function(opt)
 	init()
 	initialized = true
 end
+
+M.api = api.api
 
 return M

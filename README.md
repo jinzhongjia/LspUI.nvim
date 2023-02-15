@@ -8,7 +8,7 @@ A modern and useful UI plugin that wraps lsp operations.
 
 **Why I make this plugin?**
 
-In the past, I was a loyal user of `lspsaga`! But sometimes `lspsaga` has *breakchange* which will affect my work, I just want a stable plugin, So I made this plugin with reference to the ui of lspsaga.
+In the past, I was a loyal user of `lspsaga`! But sometimes `lspsaga` has _breakchange_ which will affect my work, I just want a stable plugin, So I made this plugin with reference to the ui of lspsaga.
 
 I only refer to its UI design, and the code logic is written by myself (part of the processing method refers to the official lsp library)!
 
@@ -55,6 +55,13 @@ use {
 ```
 
 ## 💾Config
+
+If you want to use lua api to bind key, you can use the follow way.
+
+```lua
+local api = require("LspUI").api
+-- more api info you can read api.lua in source code
+```
 
 ```lua
 -- Default config
