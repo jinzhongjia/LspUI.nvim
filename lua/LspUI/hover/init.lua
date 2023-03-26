@@ -39,6 +39,16 @@ M.run = function()
 				return
 			end
 			local res = content_list[1]
+
+      -- why add this judgement ?
+      -- because some language server's document implmement is not perfect, for example "zls"
+      -- such as some empty hover document will return a table like { { } },
+      -- this is clearly a mistake
+			if vim.tbl_isempty(res) then
+				lib.log.Info("No hover document!")
+				return
+			end
+
 			local content_id = 1
 
 			local current_buffer = api.nvim_get_current_buf()
