@@ -52,11 +52,14 @@ M.Create_window = function(contents_wrap)
 		row = 1,
 		style = "minimal",
 		width = contents_wrap.width,
-		height = contents_wrap.height,
+		-- TODO: here we should define a variable in config, so that we can custom
+		height = contents_wrap.height > math.floor(M.MAX_HEIGHT * 0.8) and math.floor(M.MAX_HEIGHT * 0.8)
+			or contents_wrap.height,
 		zindex = contents_wrap.zindex,
 	}
 
 	-- TODO: when stable is 0.9, remove this!!!
+  -- remain this!!!
 	if fn.has("nvim-0.9") == 1 then
 		opt.title = contents_wrap.title or ""
 		opt.title_pos = contents_wrap.title_pos or "right"
