@@ -7,7 +7,7 @@ local M = {}
 
 M.action_render = function(actions)
 	local contents = {}
-	local title = config.option.code_action.icon .. "CodeActions:"
+	local title = config.option.code_action.icon .. " CodeActions:"
 	table.insert(contents, title)
 
 	for index, client_with_actions in pairs(actions) do

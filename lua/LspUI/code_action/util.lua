@@ -64,11 +64,24 @@ M.Keybinding = function(buffer, win_id, actions, ctx)
 	api.nvim_buf_set_keymap(buffer, "n", config.option.code_action.keybind.exec, "", {
 		callback = function()
 			-- the buffer will be deleted automatically when windows closed
-			M.Exec_action(actions, ctx)
+			local action_num = tonumber(fn.expand("<cword>"))
+			local action_tuple = actions[action_num]
+			M.Exec_action(action_tuple, ctx)
 			api.nvim_win_close(win_id, true)
 		end,
 		desc = lib.util.Command_des("exec code action"),
 	})
+	-- bind number keys to exec
+
+	for index, action_tuple in pairs(actions) do
+		api.nvim_buf_set_keymap(buffer, "n", tostring(index), "", {
+			callback = function()
+				M.Exec_action(action_tuple, ctx)
+				api.nvim_win_close(win_id, true)
+			end,
+			desc = lib.util.Command_des("exec code action by number keys"),
+		})
+	end
 end
 
 local function apply_action(action, client, ctx)
@@ -96,9 +109,7 @@ local function apply_action(action, client, ctx)
 	end
 end
 
-M.Exec_action = function(actions, ctx)
-	local action_num = tonumber(fn.expand("<cword>"))
-	local action_tuple = actions[action_num]
+M.Exec_action = function(action_tuple, ctx)
 	local action = action_tuple.action
 	local client = lsp.get_client_by_id(action_tuple.id)
 	if
