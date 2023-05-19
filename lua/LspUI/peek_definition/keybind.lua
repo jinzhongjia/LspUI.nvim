@@ -11,7 +11,7 @@ M.keybind = function(buffer, win_id,filename,start_line,start_char_pos)
 		vim.keymap.set("n", key, function()
 			if action ~= "quit" then
 				api.nvim_win_close(win_id, true)
-				vim.cmd(action .. filename)
+				vim.cmd(action .. " " .. filename)
 				local new_win_id = api.nvim_get_current_win()
 				api.nvim_win_set_cursor(new_win_id, { start_line + 1, start_char_pos })
 			else
