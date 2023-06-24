@@ -40,10 +40,21 @@ M.run = function()
 			end
 			local res = content_list[1]
 
-      -- why add this judgement ?
-      -- because some language server's document implmement is not perfect, for example "zls"
-      -- such as some empty hover document will return a table like { { } },
-      -- this is clearly a mistake
+
+      --- why add this judgement?
+      --- because some language server implmenment is not perface, such as py-lsp will return empty
+      --- string on some variable keyword
+			if type(res) == "string" then
+				if string.len(res) > 0 then
+					lib.log.Info(res)
+				end
+				return
+			end
+
+			-- why add this judgement ?
+			-- because some language server's document implmement is not perfect, for example "zls"
+			-- such as some empty hover document will return a table like { { } },
+			-- this is clearly a mistake
 			if vim.tbl_isempty(res) then
 				lib.log.Info("No hover document!")
 				return
