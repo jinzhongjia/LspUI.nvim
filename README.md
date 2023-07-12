@@ -28,8 +28,6 @@ For other features of lsp, such as `Defination`, `References`, `implementations`
 
 ## 🛠️Install
 
-**Neovim(stable)**, but recommend you use **Neovim(nightly)**, now stable not support `title_pos`
-
 ### Lazy.nvim
 
 ```lua
