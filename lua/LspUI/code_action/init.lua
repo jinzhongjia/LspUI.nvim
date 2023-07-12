@@ -51,9 +51,7 @@ M.run = function()
 		params = lsp.util.make_range_params()
 	end
 	local current_buffer = api.nvim_get_current_buf()
-	local diagnostics = vim.diagnostic.get(current_buffer, {
-		lnum = fn.line(".") - 1,
-	})
+	local diagnostics = lsp.diagnostic.get_line_diagnostics(current_buffer)
 	params.context = { diagnostics = diagnostics }
 	local ctx = { bufnr = current_buffer, method = method, params = params }
 	lsp.buf_request_all(current_buffer, method, params, function(results)
