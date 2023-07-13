@@ -129,4 +129,26 @@ M.Exec_action = function(action_tuple, ctx)
 	end
 end
 
+M.diagnostic_vim_to_lsp = function(diagnostics)
+	return vim.tbl_map(function(diagnostic)
+		return vim.tbl_extend("keep", {
+			range = {
+				start = {
+					line = diagnostic.lnum,
+					character = diagnostic.col,
+				},
+				["end"] = {
+					line = diagnostic.end_lnum,
+					character = diagnostic.end_col,
+				},
+			},
+			severity = type(diagnostic.severity) == "string" and vim.diagnostic.severity[diagnostic.severity]
+				or diagnostic.severity,
+			message = diagnostic.message,
+			source = diagnostic.source,
+			code = diagnostic.code,
+		}, diagnostic.user_data and (diagnostic.user_data.lsp or {}) or {})
+	end, diagnostics)
+end
+
 return M
