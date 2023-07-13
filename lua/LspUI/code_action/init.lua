@@ -51,10 +51,13 @@ M.run = function()
 		params = lsp.util.make_range_params()
 	end
 	local current_buffer = api.nvim_get_current_buf()
-	local diagnostics = lsp.diagnostic.get_line_diagnostics(current_buffer)
+  local diagnostics = vim.diagnostic.get(current_buffer, {
+ 	  lnum = vim.api.nvim_win_get_cursor(0)[1] - 1
+  })
 	params.context = { diagnostics = diagnostics }
 	local ctx = { bufnr = current_buffer, method = method, params = params }
 	lsp.buf_request_all(current_buffer, method, params, function(results)
+    print(vim.inspect(results))
 		local actions = {}
 		for client_id, result in pairs(results) do
 			for _, action in pairs(result.result or {}) do
