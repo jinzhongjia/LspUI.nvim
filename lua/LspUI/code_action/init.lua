@@ -57,7 +57,6 @@ M.run = function()
 	params.context = { diagnostics = diagnostics }
 	local ctx = { bufnr = current_buffer, method = method, params = params }
 	lsp.buf_request_all(current_buffer, method, params, function(results)
-    print(vim.inspect(results))
 		local actions = {}
 		for client_id, result in pairs(results) do
 			for _, action in pairs(result.result or {}) do
