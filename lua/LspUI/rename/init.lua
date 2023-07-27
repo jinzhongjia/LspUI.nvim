@@ -71,7 +71,7 @@ M.run = function()
 		callback = function(arg)
 			util.Close_window(win_id)
 		end,
-		desc = lib.Command_des("Rename auto close windows when WinLeave"),
+		desc = lib.util.Command_des("Rename auto close windows when WinLeave"),
 	})
 end
 
