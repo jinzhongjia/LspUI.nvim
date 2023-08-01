@@ -15,10 +15,10 @@ M.request = function(func)
 		for _, res in pairs(results) do
 			if res and res.result then
 				result = res.result
-        break
+				break
 			end
 		end
-    func(result)
+		func(result)
 	end)
 end
 

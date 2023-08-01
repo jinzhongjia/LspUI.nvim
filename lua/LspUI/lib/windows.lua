@@ -59,7 +59,7 @@ M.Create_window = function(contents_wrap)
 	}
 
 	-- TODO: when stable is 0.9, remove this!!!
-  -- remain this!!!
+	-- remain this!!!
 	if fn.has("nvim-0.9") == 1 then
 		opt.title = contents_wrap.title or ""
 		opt.title_pos = contents_wrap.title_pos or "right"

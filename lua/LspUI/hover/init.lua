@@ -40,10 +40,9 @@ M.run = function()
 			end
 			local res = content_list[1]
 
-
-      --- why add this judgement?
-      --- because some language server implmenment is not perface, such as py-lsp will return empty
-      --- string on some variable keyword
+			--- why add this judgement?
+			--- because some language server implmenment is not perface, such as py-lsp will return empty
+			--- string on some variable keyword
 			if type(res) == "string" then
 				if string.len(res) > 0 then
 					lib.log.Info(res)

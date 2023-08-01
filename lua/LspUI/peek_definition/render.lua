@@ -36,8 +36,8 @@ M.render = function(uri, range)
 		width = max_width,
 		height = max_height,
 		modify = true,
-        enter = true,
-		title=filename,
+		enter = true,
+		title = filename,
 	}
 
 	local _, win_id = lib.windows.Create_window(content_wrap)

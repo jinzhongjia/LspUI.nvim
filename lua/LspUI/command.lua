@@ -71,8 +71,8 @@ local function run(key, arg)
 	else
 		if Commands[key] then
 			pcall(Commands[key].run, arg)
-    else
-      lib.log.Warn("Your input command not exists!")
+		else
+			lib.log.Warn("Your input command not exists!")
 		end
 	end
 end

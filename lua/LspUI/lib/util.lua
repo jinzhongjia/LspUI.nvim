@@ -11,7 +11,7 @@ local move_keys = { "h", "ge", "e", "0", "$", "l", "w", "b", "<Bs>", "j", "k", "
 local other_keys = { "x", "y", "v", "o", "O", "q" }
 
 M.Merge_config = function(param)
-    config.option = vim.tbl_deep_extend("force", config.option, param)
+	config.option = vim.tbl_deep_extend("force", config.option, param)
 end
 
 M.Tb_has_key = function(tb, val)

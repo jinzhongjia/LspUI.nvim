@@ -5,7 +5,7 @@ local config = require("LspUI.config")
 
 local M = {}
 
-M.keybind = function(buffer, win_id,filename,start_line,start_char_pos)
+M.keybind = function(buffer, win_id, filename, start_line, start_char_pos)
 	local keymap = config.option.peek_definition.keybind
 	for action, key in pairs(keymap) do
 		vim.keymap.set("n", key, function()

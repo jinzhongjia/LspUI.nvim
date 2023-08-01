@@ -14,11 +14,11 @@ M.Handle_content = function(new_buffer, content)
 		max_width = lib.windows.Get_max_float_width(),
 		width = lib.windows.Get_max_float_width(),
 	}
-	
+
 	contents = lsp.util.stylize_markdown(new_buffer, contents, opt)
 
 	local width, height = lib.windows.Min_size_from_content(contents)
-	
+
 	local max_float_width = lib.windows.Get_max_float_width()
 	if width > max_float_width then
 		width = max_float_width
