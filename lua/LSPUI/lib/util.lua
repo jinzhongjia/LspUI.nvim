@@ -21,10 +21,10 @@ end
 -- generate command description
 --- @param desc string
 M.command_desc = function(desc)
-    return "[LspUI]: " .. desc
+	return "[LspUI]: " .. desc
 end
 
-M.version =function ()
+M.version = function()
 	return version
 end
 
