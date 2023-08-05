@@ -16,7 +16,7 @@ end
 
 -- create a windows config,
 -- here use similar c processing logic
---- @param buffer_id integer buffer's id, if nil, it will be current buffer
+--- @param buffer_id integer|nil buffer's id, if nil, it will be current buffer
 --- @return table window_wrap a windows wrap config for other function to use
 M.new_window = function(buffer_id)
 	local window_wrap = {
