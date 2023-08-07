@@ -10,8 +10,16 @@ local default_rename_config = {
 	},
 }
 
+local default_lighthulb_config = {
+	enable = true,
+  -- whether cache code action, if do, code action will use lighthulb's cache
+	is_cached = true,
+	icon = "💡",
+}
+
 local default_config = {
 	rename = default_rename_config,
+	lighthulb = default_lighthulb_config,
 }
 
 -- Prevent plugins from being initialized multiple times
