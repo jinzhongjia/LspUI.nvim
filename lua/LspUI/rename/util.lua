@@ -56,7 +56,7 @@ M.do_rename = function(id, clients, buffer, position_param)
 	if not client then
 		return
 	end
-  -- TODO: client.supports_method is not listed by document
+	-- TODO: client.supports_method is not listed by document
 	if client.supports_method(prepare_rename_feature) then
 		M.prepare_rename(
 			client,
