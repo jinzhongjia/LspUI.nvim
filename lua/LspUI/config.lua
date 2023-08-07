@@ -12,7 +12,7 @@ local default_rename_config = {
 
 local default_lighthulb_config = {
 	enable = true,
-  -- whether cache code action, if do, code action will use lighthulb's cache
+	-- whether cache code action, if do, code action will use lighthulb's cache
 	is_cached = true,
 	icon = "💡",
 }
