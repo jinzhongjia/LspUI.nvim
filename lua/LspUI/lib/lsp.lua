@@ -25,4 +25,29 @@ M.is_lsp_active = function(is_notify)
 	return true
 end
 
+M.diagnostic_vim_to_lsp = function(diagnostics)
+	---@diagnostic disable-next-line:no-unknown
+	return vim.tbl_map(function(diagnostic)
+		---@cast diagnostic Diagnostic
+		return vim.tbl_extend("keep", {
+			-- "keep" the below fields over any duplicate fields in diagnostic.user_data.lsp
+			range = {
+				start = {
+					line = diagnostic.lnum,
+					character = diagnostic.col,
+				},
+				["end"] = {
+					line = diagnostic.end_lnum,
+					character = diagnostic.end_col,
+				},
+			},
+			severity = type(diagnostic.severity) == "string" and vim.diagnostic.severity[diagnostic.severity]
+				or diagnostic.severity,
+			message = diagnostic.message,
+			source = diagnostic.source,
+			code = diagnostic.code,
+		}, diagnostic.user_data and (diagnostic.user_data.lsp or {}) or {})
+	end, diagnostics)
+end
+
 return M
