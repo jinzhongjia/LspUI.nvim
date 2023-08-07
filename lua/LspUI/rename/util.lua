@@ -9,9 +9,11 @@ local lib_util = require("LspUI.lib.util")
 local M = {}
 
 -- get all valid clients of rename
+--- @param buffer_id integer
 --- @return table|nil clients array or nil
-M.get_clients = function()
-	local clients = lsp.get_clients({ method = rename_feature })
+M.get_clients = function(buffer_id)
+	-- note: we need get lsp clients attached to current buffer
+	local clients = lsp.get_clients({ bufnr = buffer_id, method = rename_feature })
 	return #clients == 0 and nil or clients
 end
 
@@ -54,6 +56,7 @@ M.do_rename = function(id, clients, buffer, position_param)
 	if not client then
 		return
 	end
+  -- TODO: client.supports_method is not listed by document
 	if client.supports_method(prepare_rename_feature) then
 		M.prepare_rename(
 			client,

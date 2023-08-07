@@ -13,7 +13,6 @@ local is_initialized = false
 -- init for the rename
 M.init = function()
 	if not config.options.rename.enable then
-		lib_notify.Info("rename is not enabled!")
 		return
 	end
 
@@ -32,17 +31,18 @@ end
 -- run of rename
 M.run = function()
 	if not config.options.rename.enable then
+		lib_notify.Info("rename is not enabled!")
 		return
 	end
 
-	local clients = util.get_clients()
+	local current_buffer = api.nvim_get_current_buf()
+	local clients = util.get_clients(current_buffer)
 	if clients == nil then
 		-- if no valid client, step into here
 		return
 	end
 
 	local current_win = api.nvim_get_current_win()
-	local current_buffer = api.nvim_get_current_buf()
 
 	local old_name = fn.expand("<cword>")
 
@@ -61,7 +61,7 @@ M.run = function()
 
 	local new_window_wrap = windows.new_window(new_buffer)
 
-	windows.set_width_window(new_window_wrap, 20)
+	windows.set_width_window(new_window_wrap, fn.strcharlen(old_name) + 3)
 	windows.set_height_window(new_window_wrap, 1)
 	windows.set_enter_window(new_window_wrap, true)
 	windows.set_anchor_window(new_window_wrap, "NW")
