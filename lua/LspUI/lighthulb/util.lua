@@ -37,7 +37,7 @@ M.register_sign = function()
 	fn.sign_define(global.lighthulb.sign_name, config.options.lighthulb.icon)
 end
 
--- this function will request all lsp clients 
+-- this function will request all lsp clients
 --- @param buffer_id integer buffer's id
 --- @param callback function callback is a function, has a param boolean
 M.request = function(buffer_id, callback)
