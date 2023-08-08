@@ -31,6 +31,18 @@ M.command_desc = function(desc)
 	return "[LspUI]: " .. desc
 end
 
+-- execute once
+--- @param callback function
+M.exec_once = function(callback)
+	local is_exec = false
+	return function(...)
+		if not is_exec then
+			callback(...)
+			is_exec = true
+		end
+	end
+end
+
 M.version = function()
 	return version
 end
