@@ -34,7 +34,7 @@ end
 -- register the sign
 -- note: this func only can be called once!
 M.register_sign = function()
-	fn.sign_define(global.lighthulb.sign_name, config.options.lighthulb.icon)
+	fn.sign_define(global.lighthulb.sign_name, { text = config.options.lighthulb.icon })
 end
 
 -- this function will request all lsp clients
