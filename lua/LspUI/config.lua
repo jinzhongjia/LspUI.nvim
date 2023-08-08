@@ -17,9 +17,23 @@ local default_lighthulb_config = {
 	icon = "💡",
 }
 
+local default_code_action_config = {
+	enable = true,
+	command_enable = true,
+	icon = "💡",
+	key_binding = {
+		exec = "<cr>",
+		prev = "k",
+		next = "j",
+		quit = "q",
+	},
+}
+
+-- default config
 local default_config = {
 	rename = default_rename_config,
 	lighthulb = default_lighthulb_config,
+	code_action = default_code_action_config,
 }
 
 -- Prevent plugins from being initialized multiple times
@@ -42,5 +56,7 @@ M.setup = function(config)
 	M.options = vim.tbl_deep_extend("force", default_config, config)
 	is_already_init = true
 end
+
+--TODO: Should add api to ensure that the configuration can be modified in real time
 
 return M
