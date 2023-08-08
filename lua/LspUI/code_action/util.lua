@@ -72,7 +72,7 @@ M.get_action_tuples = function(clients, params, buffer_id, callback)
 			tmp_number = tmp_number + 1
 
 			for _, action in pairs(result or {}) do
-        -- add a detectto prevent action.title is blank
+				-- add a detectto prevent action.title is blank
 				if action.title ~= "" then
 					table.insert(action_tuples, { action = action, client = client })
 				end
