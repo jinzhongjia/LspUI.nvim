@@ -61,8 +61,8 @@ M.run = function()
 
 	local new_window_wrap = lib_windows.new_window(new_buffer)
 
-  -- For aesthetics, the minimum width is 8
-	local width = fn.strcharlen(old_name) + 3 > 8 and fn.strcharlen(old_name) + 3 or 8 
+	-- For aesthetics, the minimum width is 8
+	local width = fn.strcharlen(old_name) + 3 > 8 and fn.strcharlen(old_name) + 3 or 8
 
 	lib_windows.set_width_window(new_window_wrap, width)
 	lib_windows.set_height_window(new_window_wrap, 1)
