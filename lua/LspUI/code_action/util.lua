@@ -102,10 +102,9 @@ M.render = function(action_tuples)
 	end
 
 	local height = #contents
-
-	if height == 1 then
-		return
-	end
+  if height == 0 then
+    return
+  end
 
 	local new_buffer = api.nvim_create_buf(false, true)
 
@@ -116,7 +115,7 @@ M.render = function(action_tuples)
 
 	local new_window_wrap = lib_windows.new_window(new_buffer)
 
-	lib_windows.set_width_window(new_window_wrap, max_width)
+	lib_windows.set_width_window(new_window_wrap, max_width + 1)
 	lib_windows.set_height_window(new_window_wrap, height)
 	lib_windows.set_enter_window(new_window_wrap, true)
 	lib_windows.set_anchor_window(new_window_wrap, "NW")
