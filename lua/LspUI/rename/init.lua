@@ -2,7 +2,7 @@ local api, fn, lsp = vim.api, vim.fn, vim.lsp
 local config = require("LspUI.config")
 local lib_notify = require("LspUI.lib.notify")
 local util = require("LspUI.rename.util")
-local windows = require("LspUI.lib.windows")
+local lib_windows = require("LspUI.lib.windows")
 local command = require("LspUI.command")
 
 local M = {}
@@ -59,20 +59,24 @@ M.run = function()
 	api.nvim_buf_set_option(new_buffer, "modifiable", true)
 	api.nvim_buf_set_option(new_buffer, "bufhidden", "wipe")
 
-	local new_window_wrap = windows.new_window(new_buffer)
+	local new_window_wrap = lib_windows.new_window(new_buffer)
 
-	windows.set_width_window(new_window_wrap, fn.strcharlen(old_name) + 3)
-	windows.set_height_window(new_window_wrap, 1)
-	windows.set_enter_window(new_window_wrap, true)
-	windows.set_anchor_window(new_window_wrap, "NW")
-	windows.set_border_window(new_window_wrap, "rounded")
-	windows.set_focusable_window(new_window_wrap, true)
-	windows.set_relative_window(new_window_wrap, "cursor")
-	windows.set_col_window(new_window_wrap, 1)
-	windows.set_row_window(new_window_wrap, 1)
-	windows.set_style_window(new_window_wrap, "minimal")
+  -- For aesthetics, the minimum width is 8
+	local width = fn.strcharlen(old_name) + 3 > 8 and fn.strcharlen(old_name) + 3 or 8 
 
-	local window_id = windows.display_window(new_window_wrap)
+	lib_windows.set_width_window(new_window_wrap, width)
+	lib_windows.set_height_window(new_window_wrap, 1)
+	lib_windows.set_enter_window(new_window_wrap, true)
+	lib_windows.set_anchor_window(new_window_wrap, "NW")
+	lib_windows.set_border_window(new_window_wrap, "rounded")
+	lib_windows.set_focusable_window(new_window_wrap, true)
+	lib_windows.set_relative_window(new_window_wrap, "cursor")
+	lib_windows.set_col_window(new_window_wrap, 1)
+	lib_windows.set_row_window(new_window_wrap, 1)
+	lib_windows.set_style_window(new_window_wrap, "minimal")
+	lib_windows.set_right_title_window(new_window_wrap, "rename")
+
+	local window_id = lib_windows.display_window(new_window_wrap)
 
 	api.nvim_win_set_option(window_id, "winhighlight", "Normal:Normal")
 
