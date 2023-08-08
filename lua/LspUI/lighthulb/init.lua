@@ -4,7 +4,7 @@ local lib_util = require("LspUI.lib.util")
 local command = require("LspUI.command")
 local config = require("LspUI.config")
 local util = require("LspUI.lighthulb.util")
-local lib_debug=require("LspUI.lib.debug")
+local lib_debug = require("LspUI.lib.debug")
 
 local M = {}
 
@@ -40,10 +40,10 @@ M.init = function()
 				buffer = current_buffer,
 				callback = vim.schedule_wrap(function()
 					util.request(current_buffer, function(result)
-            if result then
-              util.clear_render()
-              util.render(current_buffer,fn.line("."))
-            end
+						if result then
+							util.clear_render()
+							util.render(current_buffer, fn.line("."))
+						end
 					end)
 				end),
 				desc = lib_util.command_desc("Lightbulb update when CursorHold"),
