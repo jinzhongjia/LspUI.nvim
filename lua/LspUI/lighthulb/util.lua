@@ -83,7 +83,6 @@ M.request = function(buffer_id, callback)
 			end
 		end, buffer_id)
 	end
-
 end
 
 return M
