@@ -1,10 +1,8 @@
 local api, fn = vim.api, vim.fn
 local lib_notify = require("LspUI.lib.notify")
 local lib_util = require("LspUI.lib.util")
-local command = require("LspUI.command")
 local config = require("LspUI.config")
 local util = require("LspUI.lighthulb.util")
-local lib_debug = require("LspUI.lib.debug")
 
 local M = {}
 
@@ -69,6 +67,10 @@ M.init = function()
 		end,
 		desc = lib_util.command_desc("Lsp attach lightbulb cmd"),
 	})
+end
+
+M.run = function()
+	lib_notify.Info("lighthulb has no run func")
 end
 
 return M
