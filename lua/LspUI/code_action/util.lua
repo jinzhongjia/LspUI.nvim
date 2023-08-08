@@ -102,9 +102,9 @@ M.render = function(action_tuples)
 	end
 
 	local height = #contents
-  if height == 0 then
-    return
-  end
+	if height == 0 then
+		return
+	end
 
 	local new_buffer = api.nvim_create_buf(false, true)
 
