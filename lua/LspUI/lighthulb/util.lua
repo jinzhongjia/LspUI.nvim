@@ -4,12 +4,13 @@ local code_action_feature = lsp.protocol.Methods.textDocument_codeAction
 local config = require("LspUI.config")
 local global = require("LspUI.global")
 local lib_lsp = require("LspUI.lib.lsp")
+local lib_util = require("LspUI.lib.util")
 
 local M = {}
 
 -- get all valid clients for lighthulb
 --- @param buffer_id integer
---- @return table|nil clients array or nil
+--- @return lsp.Client[]|nil clients array or nil
 M.get_clients = function(buffer_id)
 	local clients = lsp.get_clients({ bufnr = buffer_id, method = code_action_feature })
 	return #clients == 0 and nil or clients
@@ -42,30 +43,47 @@ end
 --- @param callback function callback is a function, has a param boolean
 M.request = function(buffer_id, callback)
 	local params = lsp.util.make_range_params()
-
 	local context = {
 		triggerKind = vim.lsp.protocol.CodeActionTriggerKind.Invoked,
-		diagnostic = lib_lsp.diagnostic_vim_to_lsp(vim.diagnostic.get(buffer_id, {
+		diagnostics = lib_lsp.diagnostic_vim_to_lsp(vim.diagnostic.get(buffer_id, {
 			lnum = fn.line(".") - 1,
 		})),
 	}
-
 	params.context = context
 
-	lsp.buf_request_all(buffer_id, code_action_feature, params, function(results)
-		local has_action = false
-		for _, result in pairs(results or {}) do
-			if result.result and type(result.result) == "table" and next(result.result) ~= nil then
-				has_action = true
-				break
+	-- which commented below is the old logic
+	-- lsp.buf_request_all(buffer_id, code_action_feature, params, function(results)
+	-- 	local has_action = false
+	-- 	for _, result in pairs(results or {}) do
+	-- 		if result.result and type(result.result) == "table" and next(result.result) ~= nil then
+	-- 			has_action = true
+	-- 			break
+	-- 		end
+	-- 	end
+	-- 	if has_action then
+	-- 		callback(true)
+	-- 	else
+	-- 		callback(false)
+	-- 	end
+	-- end)
+
+	-- new logic, reduce a little calculations
+	local new_callback = lib_util.exec_once(callback)
+	local clients = M.get_clients(buffer_id)
+	local tmp_number = 0
+	for _, client in pairs(clients or {}) do
+		client.request(code_action_feature, params, function(_, result, _, _)
+			tmp_number = tmp_number + 1
+			if result and type(result) == "table" and next(result) ~= nil then
+				new_callback(true)
+				return
 			end
-		end
-		if has_action then
-			callback(true)
-		else
-			callback(false)
-		end
-	end)
+			if tmp_number == #clients then
+				new_callback(false)
+			end
+		end, buffer_id)
+	end
+
 end
 
 return M

@@ -38,8 +38,8 @@ M.init = function()
 				buffer = current_buffer,
 				callback = vim.schedule_wrap(function()
 					util.request(current_buffer, function(result)
+						util.clear_render()
 						if result then
-							util.clear_render()
 							util.render(current_buffer, fn.line("."))
 						end
 					end)
