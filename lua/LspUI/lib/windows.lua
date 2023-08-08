@@ -214,6 +214,36 @@ M.set_title_position_window = function(window_wrap, title_position)
 	return window_wrap
 end
 
+-- set window's left title
+--- @param window_wrap table wrap of window
+--- @param title string|table
+--- @return table window_wrap a windows wrap config for other function to use
+M.set_left_title_window = function(window_wrap, title)
+	window_wrap.config.title_pos = "left"
+	window_wrap.config.title = title
+	return window_wrap
+end
+
+-- set window's center title
+--- @param window_wrap table wrap of window
+--- @param title string|table
+--- @return table window_wrap a windows wrap config for other function to use
+M.set_center_title_window = function(window_wrap, title)
+	window_wrap.config.title_pos = "center"
+	window_wrap.config.title = title
+	return window_wrap
+end
+
+-- set window's right title
+--- @param window_wrap table wrap of window
+--- @param title string|table
+--- @return table window_wrap a windows wrap config for other function to use
+M.set_right_title_window = function(window_wrap, title)
+	window_wrap.config.title_pos = "right"
+	window_wrap.config.title = title
+	return window_wrap
+end
+
 -- set window's noautocmd
 -- if set true, this will shield buffer-related event
 -- such as `BufEnter`, `BufeLeave`, `BufeWinEnter`
