@@ -41,10 +41,7 @@ M.init = function()
 					util.request(current_buffer, function(result)
 						util.clear_render()
 						if result then
-							util.render(
-								current_buffer,
-								fn.line(".")
-							)
+							util.render(current_buffer, fn.line("."))
 						end
 					end)
 				end),

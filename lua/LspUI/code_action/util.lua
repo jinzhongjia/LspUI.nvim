@@ -136,9 +136,12 @@ local apply_action = function(action, client, buffer_id)
 	end
 	if action.command then
 		local command = type(action.command) == "table" and action.command or action
-		exec_command(client,
-    --- @cast command lsp.Command
-    command, buffer_id)
+		exec_command(
+			client,
+			--- @cast command lsp.Command
+			command,
+			buffer_id
+		)
 	end
 end
 

@@ -47,7 +47,7 @@ local M = {}
 
 -- LspUI plugin init function
 -- you need to pass a table
---- @param config LspUI_config 
+--- @param config LspUI_config
 M.setup = function(config)
 	-- check plugin whether has initialized
 	if is_already_init then

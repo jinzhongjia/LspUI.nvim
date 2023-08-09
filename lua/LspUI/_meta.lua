@@ -14,7 +14,6 @@
 --- @field command_enable boolean whether enable command for `lighthulb`
 --- @field key_binding { exec: string, prev: string, next: string, quit: string } keybind for `code_action`
 
-
 --- @class LspUI_config config for LspUI
 --- @field rename LspUI_rename_config `rename` module
 --- @field lighthulb LspUI_lighthulb_config `lighthulb` module
