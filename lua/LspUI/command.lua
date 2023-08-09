@@ -60,7 +60,7 @@ end
 -- this function register command
 --- @param command_key string
 --- @param run function
---- @param args table
+--- @param args string[]
 M.register_command = function(command_key, run, args)
 	command_store[command_key] = command_store[command_key] or {}
 	command_store[command_key].run = run

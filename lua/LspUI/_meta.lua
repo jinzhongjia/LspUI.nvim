@@ -14,7 +14,12 @@
 --- @field command_enable boolean whether enable command for `lightbulb`
 --- @field key_binding { exec: string, prev: string, next: string, quit: string } keybind for `code_action`
 
+--- @class LspUI_diagnostic
+--- @field enable boolean whether enable `diagnostic` module
+--- @field command_enable boolean whether enable command for `diagnostic`
+
 --- @class LspUI_config config for LspUI
 --- @field rename LspUI_rename_config `rename` module
 --- @field lightbulb LspUI_lightbulb_config `lightbulb` module
 --- @field code_action LspUI_code_action_config `code_action` module
+--- @field diagnostic LspUI_diagnostic `diagnostic` module

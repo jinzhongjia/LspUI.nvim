@@ -31,12 +31,19 @@ local default_code_action_config = {
 	},
 }
 
+--- @type LspUI_diagnostic
+local default_diagnostic = {
+	enable = true,
+	command_enable = true,
+}
+
 -- default config
 --- @type LspUI_config
 local default_config = {
 	rename = default_rename_config,
 	lightbulb = default_lightbulb_config,
 	code_action = default_code_action_config,
+	diagnostic = default_diagnostic,
 }
 
 -- Prevent plugins from being initialized multiple times
