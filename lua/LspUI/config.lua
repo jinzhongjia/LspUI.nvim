@@ -1,5 +1,6 @@
 local lib_notify = require("LspUI.lib.notify")
 
+--- @type LspUI_rename_config
 local default_rename_config = {
 	enable = true,
 	command_enable = true,
@@ -10,6 +11,7 @@ local default_rename_config = {
 	},
 }
 
+--- @type LspUI_lighthulb_config
 local default_lighthulb_config = {
 	enable = true,
 	-- whether cache code action, if do, code action will use lighthulb's cache
@@ -17,6 +19,7 @@ local default_lighthulb_config = {
 	icon = "💡",
 }
 
+--- @type LspUI_code_action_config
 local default_code_action_config = {
 	enable = true,
 	command_enable = true,
@@ -30,6 +33,7 @@ local default_code_action_config = {
 }
 
 -- default config
+--- @type LspUI_config
 local default_config = {
 	rename = default_rename_config,
 	lighthulb = default_lighthulb_config,
@@ -43,7 +47,7 @@ local M = {}
 
 -- LspUI plugin init function
 -- you need to pass a table
---- @param config table
+--- @param config LspUI_config 
 M.setup = function(config)
 	-- check plugin whether has initialized
 	if is_already_init then

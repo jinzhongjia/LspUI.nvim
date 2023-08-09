@@ -27,6 +27,7 @@ end
 
 -- generate command description
 --- @param desc string
+--- @return string
 M.command_desc = function(desc)
 	return "[LspUI]: " .. desc
 end
@@ -43,6 +44,8 @@ M.exec_once = function(callback)
 	end
 end
 
+-- lib function: get version of LspUI
+--- @return string
 M.version = function()
 	return version
 end

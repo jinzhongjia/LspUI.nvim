@@ -5,6 +5,7 @@ local util = require("LspUI.lib.util")
 local command_store = {}
 
 -- get command keys
+--- @return string[]
 local function command_keys()
 	return vim.tbl_keys(command_store)
 end
@@ -15,6 +16,8 @@ local function default_exec()
 end
 
 -- exec run function
+--- @param key string?
+--- @param args any
 local function exec(key, args)
 	if key == nil then
 		default_exec()

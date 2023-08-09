@@ -23,6 +23,7 @@ end
 
 -- make range params
 --- @param buffer_id integer
+--- @return lsp.CodeActionParams
 M.get_range_params = function(buffer_id)
 	local mode = api.nvim_get_mode().mode
 	local params
@@ -135,7 +136,9 @@ local apply_action = function(action, client, buffer_id)
 	end
 	if action.command then
 		local command = type(action.command) == "table" and action.command or action
-		exec_command(client, command, buffer_id)
+		exec_command(client,
+    --- @cast command lsp.Command
+    command, buffer_id)
 	end
 end
 

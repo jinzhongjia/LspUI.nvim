@@ -11,6 +11,7 @@ local is_initialized = false
 
 local lightbulb_group = api.nvim_create_augroup("Lspui_lightBulb", { clear = true })
 
+-- init for lighthulb
 M.init = function()
 	if not config.options.lighthulb.enable then
 		return
@@ -40,7 +41,10 @@ M.init = function()
 					util.request(current_buffer, function(result)
 						util.clear_render()
 						if result then
-							util.render(current_buffer, fn.line("."))
+							util.render(
+								current_buffer,
+								fn.line(".")
+							)
 						end
 					end)
 				end),
@@ -69,6 +73,7 @@ M.init = function()
 	})
 end
 
+-- run for lighthulb
 M.run = function()
 	lib_notify.Info("lighthulb has no run func")
 end

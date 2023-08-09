@@ -9,6 +9,7 @@ local M = {}
 -- whether this module is initialized
 local is_initialized = false
 
+-- init for code action
 M.init = function()
 	if not config.options.code_action.enable then
 		return
@@ -25,6 +26,7 @@ M.init = function()
 	end
 end
 
+-- run for acode action
 M.run = function()
 	if not config.options.code_action.enable then
 		lib_notify.Info("code_sction is not enabled!")

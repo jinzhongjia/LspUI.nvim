@@ -54,7 +54,11 @@ M.run = function()
 	local new_buffer = api.nvim_create_buf(false, true)
 
 	-- note: this must set before modifiable, when modifiable is false, this function will fail
-	api.nvim_buf_set_lines(new_buffer, 0, -1, false, { old_name })
+	api.nvim_buf_set_lines(new_buffer, 0, -1, false, {
+
+		--- @cast old_name string
+		old_name,
+	})
 	api.nvim_buf_set_option(new_buffer, "filetype", "LspUI-rename")
 	api.nvim_buf_set_option(new_buffer, "modifiable", true)
 	api.nvim_buf_set_option(new_buffer, "bufhidden", "wipe")
@@ -62,7 +66,10 @@ M.run = function()
 	local new_window_wrap = lib_windows.new_window(new_buffer)
 
 	-- For aesthetics, the minimum width is 8
-	local width = fn.strcharlen(old_name) + 3 > 8 and fn.strcharlen(old_name) + 3 or 8
+	local width = fn.strcharlen(
+		--- @cast old_name string
+		old_name
+	) + 3 > 8 and fn.strcharlen(old_name) + 3 or 8
 
 	lib_windows.set_width_window(new_window_wrap, width)
 	lib_windows.set_height_window(new_window_wrap, 1)

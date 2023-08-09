@@ -5,7 +5,7 @@ local command = require("LspUI.command")
 
 return {
 	-- init `LspUI` plugin
-	--- @param user_config table user's plugin config
+	--- @param user_config LspUI_config user's plugin config
 	setup = function(user_config)
 		config.setup(user_config)
 		command.init()
@@ -13,5 +13,5 @@ return {
 			module.init()
 		end
 	end,
-	api = api,
+	api = api.api,
 }

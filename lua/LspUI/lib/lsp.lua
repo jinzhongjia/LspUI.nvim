@@ -7,6 +7,7 @@ local M = {}
 -- check whether there is an active lsp client
 -- note: this function now should not be called!!
 --- @param is_notify boolean whether notify, default not
+--- @return boolean
 M.is_lsp_active = function(is_notify)
 	is_notify = is_notify or false
 	local current_buf = api.nvim_get_current_buf()
@@ -25,6 +26,10 @@ M.is_lsp_active = function(is_notify)
 	return true
 end
 
+-- format and complete diagnostic default option,
+-- this func is referred from https://github.com/neovim/neovim/blob/master/runtime/lua/vim/lsp/diagnostic.lua#L138-L160
+--- @param diagnostics lsp.Diagnostic[]
+--- @return lsp.Diagnostic[]
 M.diagnostic_vim_to_lsp = function(diagnostics)
 	---@diagnostic disable-next-line:no-unknown
 	return vim.tbl_map(function(diagnostic)
