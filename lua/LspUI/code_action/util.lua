@@ -1,10 +1,15 @@
 local lsp, api, fn = vim.lsp, vim.api, vim.fn
 local code_action_feature = lsp.protocol.Methods.textDocument_codeAction
+local exec_command_feature = lsp.protocol.Methods.workspace_executeCommand
+local code_action_resolve_feature = lsp.protocol.Methods.codeAction_resolve
+
 local config = require("LspUI.config")
 local lib_lsp = require("LspUI.lib.lsp")
 local lib_debug = require("LspUI.lib.debug")
 local lib_notify = require("LspUI.lib.notify")
 local lib_windows = require("LspUI.lib.windows")
+
+--- @alias action_tuple { action: lsp.CodeAction|lsp.Command, client: lsp.Client }
 
 local M = {}
 
@@ -16,6 +21,8 @@ M.get_clients = function(buffer_id)
 	return #clients == 0 and nil or clients
 end
 
+-- make range params
+--- @param buffer_id integer
 M.get_range_params = function(buffer_id)
 	local mode = api.nvim_get_mode().mode
 	local params
@@ -74,6 +81,7 @@ M.get_action_tuples = function(clients, params, buffer_id, callback)
 			for _, action in pairs(result or {}) do
 				-- add a detectto prevent action.title is blank
 				if action.title ~= "" then
+					-- here must be suitable for alias action_tuple
 					table.insert(action_tuples, { action = action, client = client })
 				end
 			end
@@ -86,7 +94,12 @@ M.get_action_tuples = function(clients, params, buffer_id, callback)
 end
 
 -- render the menu for the code actions
+--- @param action_tuples action_tuple[]
 M.render = function(action_tuples)
+	if #action_tuples == 0 then
+		lib_notify.Info("no code action!")
+		return
+	end
 	local contents = {}
 	local title = "code_action"
 	local max_width = 0
@@ -102,9 +115,6 @@ M.render = function(action_tuples)
 	end
 
 	local height = #contents
-	if height == 0 then
-		return
-	end
 
 	local new_buffer = api.nvim_create_buf(false, true)
 
@@ -130,6 +140,83 @@ M.render = function(action_tuples)
 	local window_id = lib_windows.display_window(new_window_wrap)
 
 	api.nvim_win_set_option(window_id, "winhighlight", "Normal:Normal")
+end
+
+-- exec command
+-- execute a lsp command, either via client command function (if available)
+-- or via workspace/executeCommand (if supported by the server)
+-- this func is referred from https://github.com/neovim/neovim/blob/master/runtime/lua/vim/lsp.lua#L1666-L1697C6
+--- @param client lsp.Client
+--- @param command lsp.Command
+--- @param buffer_id integer
+--- @param handler? lsp-handler only called if a server command
+M.exec_command = function(client, command, buffer_id, handler)
+	local cmdname = command.command
+	local func = client.commands[cmdname] or lsp.commands[cmdname]
+	if func then
+		func(command, { bufnr = buffer_id, client_id = client.id })
+		return
+	end
+
+	-- get the server all available commands
+	local command_provider = client.server_capabilities.executeCommandProvider
+	local commands = type(command_provider) == "table" and command_provider.commands or {}
+
+	if not vim.list_contains(commands, cmdname) then
+		lib_notify.Warn(string.format("Language server `%s` does not support command `%s`", client.name, cmdname))
+		return
+	end
+
+	local params = {
+		command = command.command,
+		arguments = command.arguments,
+	}
+
+	client.request(exec_command_feature, params, handler, buffer_id)
+end
+
+--- @param action lsp.CodeAction|lsp.Command
+--- @param client lsp.Client
+--- @param buffer_id integer
+M.apply_action = function(action, client, buffer_id)
+	if action.edit then
+		lsp.util.apply_workspace_edit(action.edit, client.offset_encoding)
+	end
+	if action.command then
+		local command = type(action.command) == "table" and action.command or action
+		M.exec_command(client, command, buffer_id)
+	end
+end
+
+-- choice action tuple
+-- this function is referred from https://github.com/neovim/neovim/blob/master/runtime/lua/vim/lsp/buf.lua#L639-L675C6
+--- @param action_tuple action_tuple
+--- @param buffer_id integer
+M.choice_action_tupe = function(action_tuple, buffer_id)
+	local action = action_tuple.action
+	local client = action_tuple.client
+	local reg = client.dynamic_capabilities:get(code_action_feature, { bufnr = buffer_id })
+
+	local supports_resolve = vim.tbl_get(reg or {}, "registerOptions", "resolveProvider")
+		or client.supports_method(code_action_resolve_feature)
+	if not action.edit and client and supports_resolve then
+		client.request(
+			code_action_resolve_feature,
+			action,
+			--- @param err lsp.ResponseError
+			--- @param resolved_action any
+			function(err, resolved_action)
+				if err then
+					vim.notify(err.code .. ": " .. err.message, vim.log.levels.ERROR)
+					return
+				end
+				M.apply_action(resolved_action, client, buffer_id)
+			end,
+			buffer_id
+		)
+	else
+		M.apply_action(action, client, buffer_id)
+	end
 end
 
 return M
