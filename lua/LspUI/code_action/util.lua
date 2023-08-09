@@ -256,15 +256,15 @@ local keybinding_autocmd = function(buffer_id, window_id, action_tuples)
 		desc = lib_util.command_desc("lock the cursor"),
 	})
 
-  -- auto close window when focus leave float window
-  api.nvim_create_autocmd("WinLeave",{
-    buffer=buffer_id,
-    once=true,
-    callback=function ()
-      lib_windows.close_window(window_id)
-    end,
-    desc=lib_util.command_desc("code action auto close window when focus leave")
-  })
+	-- auto close window when focus leave float window
+	api.nvim_create_autocmd("WinLeave", {
+		buffer = buffer_id,
+		once = true,
+		callback = function()
+			lib_windows.close_window(window_id)
+		end,
+		desc = lib_util.command_desc("code action auto close window when focus leave"),
+	})
 end
 
 -- render the menu for the code actions
