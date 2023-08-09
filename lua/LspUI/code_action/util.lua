@@ -5,11 +5,11 @@ local code_action_resolve_feature = lsp.protocol.Methods.codeAction_resolve
 
 local config = require("LspUI.config")
 local lib_lsp = require("LspUI.lib.lsp")
-local lib_debug = require("LspUI.lib.debug")
+local lib_util = require("LspUI.lib.util")
 local lib_notify = require("LspUI.lib.notify")
 local lib_windows = require("LspUI.lib.windows")
 
---- @alias action_tuple { action: lsp.CodeAction|lsp.Command, client: lsp.Client }
+--- @alias action_tuple { action: lsp.CodeAction|lsp.Command, client: lsp.Client, buffer_id: integer }
 
 local M = {}
 
@@ -82,7 +82,7 @@ M.get_action_tuples = function(clients, params, buffer_id, callback)
 				-- add a detectto prevent action.title is blank
 				if action.title ~= "" then
 					-- here must be suitable for alias action_tuple
-					table.insert(action_tuples, { action = action, client = client })
+					table.insert(action_tuples, { action = action, client = client, buffer_id = buffer_id })
 				end
 			end
 
@@ -91,6 +91,180 @@ M.get_action_tuples = function(clients, params, buffer_id, callback)
 			end
 		end, buffer_id)
 	end
+end
+
+-- exec command
+-- execute a lsp command, either via client command function (if available)
+-- or via workspace/executeCommand (if supported by the server)
+-- this func is referred from https://github.com/neovim/neovim/blob/master/runtime/lua/vim/lsp.lua#L1666-L1697C6
+--- @param client lsp.Client
+--- @param command lsp.Command
+--- @param buffer_id integer
+--- @param handler? lsp-handler only called if a server command
+local exec_command = function(client, command, buffer_id, handler)
+	local cmdname = command.command
+	local func = client.commands[cmdname] or lsp.commands[cmdname]
+	if func then
+		func(command, { bufnr = buffer_id, client_id = client.id })
+		return
+	end
+
+	-- get the server all available commands
+	local command_provider = client.server_capabilities.executeCommandProvider
+	local commands = type(command_provider) == "table" and command_provider.commands or {}
+
+	if not vim.list_contains(commands, cmdname) then
+		lib_notify.Warn(string.format("Language server `%s` does not support command `%s`", client.name, cmdname))
+		return
+	end
+
+	local params = {
+		command = command.command,
+		arguments = command.arguments,
+	}
+
+	client.request(exec_command_feature, params, handler, buffer_id)
+end
+
+--- @param action lsp.CodeAction|lsp.Command
+--- @param client lsp.Client
+--- @param buffer_id integer
+local apply_action = function(action, client, buffer_id)
+	if action.edit then
+		lsp.util.apply_workspace_edit(action.edit, client.offset_encoding)
+	end
+	if action.command then
+		local command = type(action.command) == "table" and action.command or action
+		exec_command(client, command, buffer_id)
+	end
+end
+
+-- choice action tuple
+-- this function is referred from https://github.com/neovim/neovim/blob/master/runtime/lua/vim/lsp/buf.lua#L639-L675C6
+--- @param action_tuple action_tuple
+local choice_action_tupe = function(action_tuple)
+	local action = action_tuple.action
+	local client = action_tuple.client
+	local reg = client.dynamic_capabilities:get(code_action_feature, { bufnr = action_tuple.buffer_id })
+
+	local supports_resolve = vim.tbl_get(reg or {}, "registerOptions", "resolveProvider")
+		or client.supports_method(code_action_resolve_feature)
+	if not action.edit and client and supports_resolve then
+		client.request(
+			code_action_resolve_feature,
+			action,
+			--- @param err lsp.ResponseError
+			--- @param resolved_action any
+			function(err, resolved_action)
+				if err then
+					vim.notify(err.code .. ": " .. err.message, vim.log.levels.ERROR)
+					return
+				end
+				apply_action(resolved_action, client, action_tuple.buffer_id)
+			end,
+			action_tuple.buffer_id
+		)
+	else
+		apply_action(action, client, action_tuple.buffer_id)
+	end
+end
+
+--- @param buffer_id integer
+--- @param window_id integer
+--- @param action_tuples action_tuple[]
+local keybinding_autocmd = function(buffer_id, window_id, action_tuples)
+	-- keybind
+
+	-- next action
+	api.nvim_buf_set_keymap(buffer_id, "n", config.options.code_action.key_binding.next, "", {
+		callback = function()
+			-- get current line number
+			local _, lnum, _, _ = unpack(vim.fn.getpos("."))
+			if lnum == #action_tuples then
+				api.nvim_win_set_cursor(window_id, { 1, 1 })
+				return
+			end
+
+			api.nvim_win_set_cursor(window_id, { lnum + 1, 1 })
+		end,
+		desc = lib_util.command_desc("go to next action"),
+	})
+
+	-- prev action
+	api.nvim_buf_set_keymap(buffer_id, "n", config.options.code_action.key_binding.prev, "", {
+		callback = function()
+			-- get current line number
+			local _, lnum, _, _ = unpack(vim.fn.getpos("."))
+			if lnum == 1 then
+				api.nvim_win_set_cursor(window_id, { #action_tuples, 1 })
+				return
+			end
+
+			api.nvim_win_set_cursor(window_id, { lnum - 1, 1 })
+		end,
+		desc = lib_util.command_desc("go to prev action"),
+	})
+
+	-- quit action
+	api.nvim_buf_set_keymap(buffer_id, "n", config.options.code_action.key_binding.quit, "", {
+		callback = function()
+			-- the buffer will be deleted automatically when windows closed
+			lib_windows.close_window(window_id)
+		end,
+		desc = lib_util.command_desc("quit code_action"),
+	})
+
+	-- exec action
+	api.nvim_buf_set_keymap(buffer_id, "n", config.options.code_action.key_binding.exec, "", {
+		callback = function()
+			local action_tuple_index = tonumber(fn.expand("<cword>"))
+			if action_tuple_index == nil then
+				lib_notify.Error(
+					string.format("this plugin occurs an error: %s", "try to convert a non-number to number")
+				)
+				return
+			end
+			local action_tuple = action_tuples[action_tuple_index]
+			choice_action_tupe(action_tuple)
+			lib_windows.close_window(window_id)
+		end,
+		desc = lib_util.command_desc("execute acode action"),
+	})
+
+	-- number keys exec action
+	for action_tuple_index, action_tuple in pairs(action_tuples) do
+		api.nvim_buf_set_keymap(buffer_id, "n", tostring(action_tuple_index), "", {
+			callback = function()
+				choice_action_tupe(action_tuple)
+				lib_windows.close_window(window_id)
+			end,
+			desc = lib_util.command_desc(string.format("exec action with numberk key [%d]", action_tuple_index)),
+		})
+	end
+
+	--
+	-- lock cursor
+	--
+	api.nvim_create_autocmd("CursorMoved", {
+		buffer = buffer_id,
+		callback = function()
+			local _, lnum, col, _ = unpack(vim.fn.getpos("."))
+			if col ~= 2 then
+				api.nvim_win_set_cursor(window_id, { lnum, 1 })
+			end
+		end,
+		desc = lib_util.command_desc("lock the cursor"),
+	})
+
+  -- auto close window when focus leave float window
+  api.nvim_create_autocmd("WinLeave",{
+    buffer=buffer_id,
+    once=true,
+    callback=function ()
+      lib_windows.close_window(window_id)
+    end,
+    desc=lib_util.command_desc("code action auto close window when focus leave")
+  })
 end
 
 -- render the menu for the code actions
@@ -140,83 +314,8 @@ M.render = function(action_tuples)
 	local window_id = lib_windows.display_window(new_window_wrap)
 
 	api.nvim_win_set_option(window_id, "winhighlight", "Normal:Normal")
-end
 
--- exec command
--- execute a lsp command, either via client command function (if available)
--- or via workspace/executeCommand (if supported by the server)
--- this func is referred from https://github.com/neovim/neovim/blob/master/runtime/lua/vim/lsp.lua#L1666-L1697C6
---- @param client lsp.Client
---- @param command lsp.Command
---- @param buffer_id integer
---- @param handler? lsp-handler only called if a server command
-M.exec_command = function(client, command, buffer_id, handler)
-	local cmdname = command.command
-	local func = client.commands[cmdname] or lsp.commands[cmdname]
-	if func then
-		func(command, { bufnr = buffer_id, client_id = client.id })
-		return
-	end
-
-	-- get the server all available commands
-	local command_provider = client.server_capabilities.executeCommandProvider
-	local commands = type(command_provider) == "table" and command_provider.commands or {}
-
-	if not vim.list_contains(commands, cmdname) then
-		lib_notify.Warn(string.format("Language server `%s` does not support command `%s`", client.name, cmdname))
-		return
-	end
-
-	local params = {
-		command = command.command,
-		arguments = command.arguments,
-	}
-
-	client.request(exec_command_feature, params, handler, buffer_id)
-end
-
---- @param action lsp.CodeAction|lsp.Command
---- @param client lsp.Client
---- @param buffer_id integer
-M.apply_action = function(action, client, buffer_id)
-	if action.edit then
-		lsp.util.apply_workspace_edit(action.edit, client.offset_encoding)
-	end
-	if action.command then
-		local command = type(action.command) == "table" and action.command or action
-		M.exec_command(client, command, buffer_id)
-	end
-end
-
--- choice action tuple
--- this function is referred from https://github.com/neovim/neovim/blob/master/runtime/lua/vim/lsp/buf.lua#L639-L675C6
---- @param action_tuple action_tuple
---- @param buffer_id integer
-M.choice_action_tupe = function(action_tuple, buffer_id)
-	local action = action_tuple.action
-	local client = action_tuple.client
-	local reg = client.dynamic_capabilities:get(code_action_feature, { bufnr = buffer_id })
-
-	local supports_resolve = vim.tbl_get(reg or {}, "registerOptions", "resolveProvider")
-		or client.supports_method(code_action_resolve_feature)
-	if not action.edit and client and supports_resolve then
-		client.request(
-			code_action_resolve_feature,
-			action,
-			--- @param err lsp.ResponseError
-			--- @param resolved_action any
-			function(err, resolved_action)
-				if err then
-					vim.notify(err.code .. ": " .. err.message, vim.log.levels.ERROR)
-					return
-				end
-				M.apply_action(resolved_action, client, buffer_id)
-			end,
-			buffer_id
-		)
-	else
-		M.apply_action(action, client, buffer_id)
-	end
+	keybinding_autocmd(new_buffer, window_id, action_tuples)
 end
 
 return M

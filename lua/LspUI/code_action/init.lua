@@ -3,7 +3,6 @@ local config = require("LspUI.config")
 local command = require("LspUI.command")
 local lib_notify = require("LspUI.lib.notify")
 local util = require("LspUI.code_action.util")
-local lib_debug = require("LspUI.lib.debug")
 
 local M = {}
 
