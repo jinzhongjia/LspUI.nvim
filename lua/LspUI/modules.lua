@@ -1,5 +1,5 @@
 return {
 	rename = require("LspUI.rename"),
-	lighthulb = require("LspUI.lighthulb"),
+	lightbulb = require("LspUI.lightbulb"),
 	code_action = require("LspUI.code_action"),
 }

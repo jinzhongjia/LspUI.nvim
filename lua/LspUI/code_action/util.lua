@@ -13,7 +13,7 @@ local lib_windows = require("LspUI.lib.windows")
 
 local M = {}
 
--- get all valid clients for lighthulb
+-- get all valid clients for lightbulb
 --- @param buffer_id integer
 --- @return lsp.Client[]|nil clients array or nil
 M.get_clients = function(buffer_id)

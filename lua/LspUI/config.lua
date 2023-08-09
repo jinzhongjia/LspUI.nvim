@@ -11,10 +11,10 @@ local default_rename_config = {
 	},
 }
 
---- @type LspUI_lighthulb_config
-local default_lighthulb_config = {
+--- @type LspUI_lightbulb_config
+local default_lightbulb_config = {
 	enable = true,
-	-- whether cache code action, if do, code action will use lighthulb's cache
+	-- whether cache code action, if do, code action will use lightbulb's cache
 	is_cached = true,
 	icon = "💡",
 }
@@ -35,7 +35,7 @@ local default_code_action_config = {
 --- @type LspUI_config
 local default_config = {
 	rename = default_rename_config,
-	lighthulb = default_lighthulb_config,
+	lightbulb = default_lightbulb_config,
 	code_action = default_code_action_config,
 }
 

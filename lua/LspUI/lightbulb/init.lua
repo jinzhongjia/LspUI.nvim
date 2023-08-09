@@ -2,7 +2,7 @@ local api, fn = vim.api, vim.fn
 local lib_notify = require("LspUI.lib.notify")
 local lib_util = require("LspUI.lib.util")
 local config = require("LspUI.config")
-local util = require("LspUI.lighthulb.util")
+local util = require("LspUI.lightbulb.util")
 
 local M = {}
 
@@ -11,9 +11,9 @@ local is_initialized = false
 
 local lightbulb_group = api.nvim_create_augroup("Lspui_lightBulb", { clear = true })
 
--- init for lighthulb
+-- init for lightbulb
 M.init = function()
-	if not config.options.lighthulb.enable then
+	if not config.options.lightbulb.enable then
 		return
 	end
 
@@ -70,9 +70,9 @@ M.init = function()
 	})
 end
 
--- run for lighthulb
+-- run for lightbulb
 M.run = function()
-	lib_notify.Info("lighthulb has no run func")
+	lib_notify.Info("lightbulb has no run func")
 end
 
 return M

@@ -8,7 +8,7 @@ local lib_util = require("LspUI.lib.util")
 
 local M = {}
 
--- get all valid clients for lighthulb
+-- get all valid clients for lightbulb
 --- @param buffer_id integer
 --- @return lsp.Client[]|nil clients array or nil
 M.get_clients = function(buffer_id)
@@ -21,7 +21,7 @@ end
 --- @param line integer the line number, and this will be set as sign id
 --- @return integer sign_identifier sign's identifier, -1 means failing
 M.render = function(buffer_id, line)
-	return fn.sign_place(line, global.lighthulb.sign_group, global.lighthulb.sign_name, buffer_id, {
+	return fn.sign_place(line, global.lightbulb.sign_group, global.lightbulb.sign_name, buffer_id, {
 		lnum = line,
 	})
 end
@@ -29,13 +29,13 @@ end
 -- clear sign
 M.clear_render = function()
 	-- TODO:Do you need to add pcall here???
-	fn.sign_unplace(global.lighthulb.sign_group)
+	fn.sign_unplace(global.lightbulb.sign_group)
 end
 
 -- register the sign
 -- note: this func only can be called once!
 M.register_sign = function()
-	fn.sign_define(global.lighthulb.sign_name, { text = config.options.lighthulb.icon })
+	fn.sign_define(global.lightbulb.sign_name, { text = config.options.lightbulb.icon })
 end
 
 -- this function will request all lsp clients
