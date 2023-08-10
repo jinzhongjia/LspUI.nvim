@@ -18,8 +18,14 @@
 --- @field enable boolean whether enable `diagnostic` module
 --- @field command_enable boolean whether enable command for `diagnostic`
 
+--- @class LspUI_hover
+--- @field enable boolean whether enable `hover` module
+--- @field command_enable boolean whether enable command for `hover`
+--- @field key_binding { prev: string, next: string, quit: string } keybind for `hover`
+
 --- @class LspUI_config config for LspUI
 --- @field rename LspUI_rename_config `rename` module
 --- @field lightbulb LspUI_lightbulb_config `lightbulb` module
 --- @field code_action LspUI_code_action_config `code_action` module
 --- @field diagnostic LspUI_diagnostic `diagnostic` module
+--- @field hover  LspUI_hover `hover` module

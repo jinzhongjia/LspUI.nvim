@@ -19,6 +19,8 @@ local M = {}
 M.api = {
 	code_action = modules.code_action.run,
 	rename = modules.code_action.run,
+	diagnostic = modules.diagnostic.run,
+	hover = modules.hover.run,
 }
 
 return M

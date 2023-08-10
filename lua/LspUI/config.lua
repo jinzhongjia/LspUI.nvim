@@ -32,9 +32,20 @@ local default_code_action_config = {
 }
 
 --- @type LspUI_diagnostic
-local default_diagnostic = {
+local default_diagnostic_config = {
 	enable = true,
 	command_enable = true,
+}
+
+--- @type LspUI_hover
+local default_hover_config = {
+	enable = true,
+	command_enable = true,
+	key_binding = {
+		prev = "p",
+		next = "n",
+		quit = "q",
+	},
 }
 
 -- default config
@@ -43,7 +54,8 @@ local default_config = {
 	rename = default_rename_config,
 	lightbulb = default_lightbulb_config,
 	code_action = default_code_action_config,
-	diagnostic = default_diagnostic,
+	diagnostic = default_diagnostic_config,
+	hover = default_hover_config,
 }
 
 -- Prevent plugins from being initialized multiple times
