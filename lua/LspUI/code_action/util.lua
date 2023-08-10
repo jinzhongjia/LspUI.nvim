@@ -294,7 +294,8 @@ M.render = function(action_tuples)
 		table.insert(contents, action_title)
 	end
 
-	local height = #contents
+  -- max height should be 10, TODO: maybe this number should be set by user
+	local height = #contents > 10 and 10 or #contents
 
 	local new_buffer = api.nvim_create_buf(false, true)
 
