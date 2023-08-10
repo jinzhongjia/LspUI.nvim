@@ -25,7 +25,7 @@ local function exec(key, args)
 		if command_store[key] then
 			pcall(command_store[key].run, args)
 		else
-			notify.Warn(string.format("command %s not exist!"))
+			notify.Warn(string.format("command %s not exist!", key))
 		end
 	end
 end
