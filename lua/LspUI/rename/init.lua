@@ -55,7 +55,6 @@ M.run = function()
 
 	-- note: this must set before modifiable, when modifiable is false, this function will fail
 	api.nvim_buf_set_lines(new_buffer, 0, -1, false, {
-
 		--- @cast old_name string
 		old_name,
 	})

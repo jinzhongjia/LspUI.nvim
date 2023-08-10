@@ -1,4 +1,6 @@
 local config = require("LspUI.config")
+local command = require("LspUI.command")
+local util = require("LspUI.diagnostic.util")
 local M = {}
 
 -- whether this module has initialized
@@ -14,12 +16,19 @@ M.init = function()
 	end
 
 	is_initialized = true
+
+	if config.options.diagnostic.command_enable then
+		command.register_command("diagnostic", M.run, { "next", "prev" })
+	end
 end
 
 --- @param arg "next"|"prev"
 M.run = function(arg)
 	if not config.options.diagnostic.enable then
 		return
+	end
+	if arg == "next" then
+	elseif arg == "prev" then
 	end
 end
 
