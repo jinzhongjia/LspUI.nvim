@@ -182,7 +182,7 @@ M.render = function(action)
 					msg = string.format("   %s", message)
 				end
 			end
-			local msg_len = fn.strcharlen(msg)
+			local msg_len = fn.strdisplaywidth(msg)
 			if msg_len > max_width then
 				max_width = msg_len
 			end
@@ -220,10 +220,16 @@ M.render = function(action)
 		)
 	end
 
+	-- TODO:whether this can be set by user?
+	local width = math.min(max_width, math.floor(lib_windows.get_max_width() * 0.6))
+
+	local height = lib_windows.compute_height_for_windows(content, width)
+
 	local new_window_wrap = lib_windows.new_window(new_buffer)
 
-	lib_windows.set_width_window(new_window_wrap, max_width)
-	lib_windows.set_height_window(new_window_wrap, #content)
+	lib_windows.set_width_window(new_window_wrap, width)
+	-- lib_windows.set_height_window(new_window_wrap, #content)
+	lib_windows.set_height_window(new_window_wrap, height)
 	lib_windows.set_enter_window(new_window_wrap, false)
 	lib_windows.set_anchor_window(new_window_wrap, "NW")
 	lib_windows.set_border_window(new_window_wrap, "rounded")
@@ -238,6 +244,7 @@ M.render = function(action)
 	local window_id = lib_windows.display_window(new_window_wrap)
 
 	api.nvim_win_set_option(window_id, "winhighlight", "Normal:Normal")
+	api.nvim_win_set_option(window_id, "wrap", true)
 
 	vim.schedule(function()
 		M.audocmd(current_buffer, window_id)

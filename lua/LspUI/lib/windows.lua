@@ -1,4 +1,4 @@
-local api = vim.api
+local api, fn = vim.api, vim.fn
 
 --- @alias window_wrap { buffer: integer, enter: boolean, config: vim.api.keyset.float_config } wrap for windows
 
@@ -256,6 +256,20 @@ end
 M.set_noautocmd_window = function(window_wrap, noautocmd)
 	window_wrap.config.noautocmd = noautocmd
 	return window_wrap
+end
+
+--- compute height for window
+--- @param contents string[]
+--- @return integer
+M.compute_height_for_windows = function(contents, width)
+	local height = 0
+	for _, line in pairs(contents) do
+		--- @type integer
+		local line_height = fn.strdisplaywidth(line)
+		height = height + math.max(1, math.ceil(line_height / width))
+	end
+
+	return height
 end
 
 return M
