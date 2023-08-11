@@ -13,6 +13,7 @@ local M = {}
 -- convert severity to string
 --- @param severity integer
 --- @return string?
+---@diagnostic disable-next-line: unused-local, unused-function
 local diagnostic_severity_to_string = function(severity)
 	local arr = {
 		"Error",
