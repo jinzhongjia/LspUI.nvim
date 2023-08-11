@@ -1,6 +1,14 @@
 local api, fn = vim.api, vim.fn
 local lib_windows = require("LspUI.lib.windows")
+local lib_debug = require("LspUI.lib.debug")
+local lib_util = require("LspUI.lib.util")
 local M = {}
+
+--- @class LspUI-highlightgroup
+--- @field severity 1|2|3|4
+--- @field lnum integer
+--- @field col integer
+--- @field end_col integer
 
 -- convert severity to string
 --- @param severity integer
@@ -15,37 +23,220 @@ local diagnostic_severity_to_string = function(severity)
 	return arr[severity] or nil
 end
 
--- generate title
+-- convert severity to highlight
 --- @param severity integer
---- @param lnum integer
---- @param col integer
---- @param source string?
---- @return string?
-local generate_title = function(width, severity, lnum, col, source)
-	local severity_string = diagnostic_severity_to_string(severity)
-	if severity_string == nil then
-		return nil
-	end
-	--- @type string
-	local title_left = string.format("%s ❮%d:%d❯", severity_string, lnum + 1, col + 1)
-	if source == nil then
-		return nil
-	end
-	--- @type string
-	local title_right = source
+--- @return string
+local diagnostic_severity_to_hightlight = function(severity)
+	local arr = {
+		"DiagnosticError",
+		"DiagnosticWarn",
+		"DiagnosticInfo",
+		"DiagnosticHint",
+	}
+	return arr[severity] or nil
+end
 
-	--- @type string
-	local title = string.format("%s %s", title_left, title_right)
+--- @param diagnostics Diagnostic[]
+--- @return Diagnostic[][][]
+local sort_diagnostics = function(diagnostics)
+	local sorted_diagnostics = {}
 
-	return title
+	for _, diagnostic in pairs(diagnostics) do
+		--- @type Diagnostic[][]?
+		local lnum_diagnostics = sorted_diagnostics[diagnostic.lnum]
+		if lnum_diagnostics == nil then
+			lnum_diagnostics = {}
+			lnum_diagnostics[diagnostic.col] = { diagnostic }
+			sorted_diagnostics[diagnostic.lnum] = lnum_diagnostics
+			goto continue
+		end
+		local col_diagnostics = lnum_diagnostics[diagnostic.col]
+		if col_diagnostics == nil then
+			lnum_diagnostics[diagnostic.col] = { diagnostic }
+			goto continue
+		end
+		table.insert(col_diagnostics, diagnostic)
+		::continue::
+	end
+	return sorted_diagnostics
+end
+
+-- get next position diagnostics
+--- @param sorted_diagnostics Diagnostic[][][]
+--- @param row integer (row,col) is a tuple, get from `nvim_win_get_cursor`
+--- @param col integer (row,col) is a tuple, get from `nvim_win_get_cursor`
+--- @param search_forward boolean true is down, false is up
+--- @param buffer_id integer
+--- @return Diagnostic[]?
+local next_position_diagnostics = function(sorted_diagnostics, row, col, search_forward, buffer_id)
+	row = row - 1
+	local buffer_lines = api.nvim_buf_line_count(buffer_id)
+	for i = 0, buffer_lines do
+		local offset = i * (search_forward and 1 or -1)
+		local lnum = row + offset
+		if lnum < 0 or lnum >= buffer_lines then
+			lnum = (lnum + buffer_lines) % buffer_lines
+		end
+		local lnum_diagnostics = sorted_diagnostics[lnum]
+		if lnum_diagnostics and not vim.tbl_isempty(lnum_diagnostics) then
+			for current_col, col_diagnostics in pairs(lnum_diagnostics) do
+				if search_forward then
+					-- down
+					if offset ~= 0 then
+						return col_diagnostics
+					end
+					if current_col > col then
+						return col_diagnostics
+					end
+				else
+					-- up
+					if offset ~= 0 then
+						return col_diagnostics
+					end
+					if current_col < col then
+						return col_diagnostics
+					end
+				end
+			end
+		end
+	end
 end
 
 -- render the float window
---- @param diagnostic Diagnostic?
-M.render = function(diagnostic)
-	if diagnostic == nil then
+--- @param action "prev"|"next"
+M.render = function(action)
+	--- @type boolean
+	local search_forward
+	if action == "prev" then
+		search_forward = false
+	elseif action == "next" then
+		search_forward = true
+	else
+		lib_debug.debug(string.format("diagnostic, unknown action %s", action))
 		return
 	end
+	-- get current buffer
+	local current_buffer = api.nvim_get_current_buf()
+	-- get current window
+	local current_window = api.nvim_get_current_win()
+	-- get current buffer's diagnostics
+	local diagnostics = vim.diagnostic.get(current_buffer)
+	if diagnostics == nil then
+		return
+	end
+	local sorted_diagnostics = sort_diagnostics(diagnostics)
+	-- get cursor position
+	local position = api.nvim_win_get_cursor(0)
+	local row = position[1]
+	local col = position[2]
+
+	local next_diagnostics = next_position_diagnostics(sorted_diagnostics, row, col, search_forward, current_buffer)
+	if next_diagnostics == nil then
+		return
+	end
+
+	local next_row = next_diagnostics[1].lnum
+	local next_col = next_diagnostics[1].col
+
+	-- local severities = {}
+	-- get content
+	local content = {}
+	local max_width = 0
+	--- @type LspUI-highlightgroup[]
+	local highlight_groups = {}
+	for diagnostic_index, diagnostic in pairs(next_diagnostics) do
+		-- table.insert(severities, diagnostic_severity_to_string(diagnostic.severity))
+		local messages = vim.split(diagnostic.message, "\n")
+		for index, message in pairs(messages) do
+			--- @type string
+			local msg
+			if index == 1 then
+				if #next_diagnostics == 1 then
+					msg = string.format("%s", message)
+				else
+					msg = string.format("%d. %s", diagnostic_index, message)
+				end
+			else
+				if #next_diagnostics == 1 then
+					msg = string.format("%s", message)
+				else
+					msg = string.format("   %s", message)
+				end
+			end
+			local msg_len = fn.strcharlen(msg)
+			if msg_len > max_width then
+				max_width = msg_len
+			end
+			table.insert(
+				highlight_groups,
+				--- @type LspUI-highlightgroup
+				{
+					severity = diagnostic.severity,
+					lnum = #content,
+					col = #next_diagnostics == 1 and 0 or 3,
+					end_col = -1,
+				}
+			)
+			table.insert(content, msg)
+		end
+	end
+
+	-- create a new buffer
+	local new_buffer = api.nvim_create_buf(false, true)
+	api.nvim_buf_set_lines(new_buffer, 0, -1, false, content)
+	api.nvim_buf_set_option(new_buffer, "filetype", "LspUI-diagnostic")
+	api.nvim_buf_set_option(new_buffer, "modifiable", false)
+	api.nvim_buf_set_option(new_buffer, "bufhidden", "wipe")
+
+	-- highlight buffer
+	for _, highlight_group in pairs(highlight_groups) do
+		api.nvim_buf_add_highlight(
+			new_buffer,
+			-1,
+			--- @type string
+			diagnostic_severity_to_hightlight(highlight_group.severity),
+			highlight_group.lnum,
+			highlight_group.col,
+			highlight_group.end_col
+		)
+	end
+
+	local new_window_wrap = lib_windows.new_window(new_buffer)
+
+	lib_windows.set_width_window(new_window_wrap, max_width)
+	lib_windows.set_height_window(new_window_wrap, #content)
+	lib_windows.set_enter_window(new_window_wrap, false)
+	lib_windows.set_anchor_window(new_window_wrap, "NW")
+	lib_windows.set_border_window(new_window_wrap, "rounded")
+	lib_windows.set_focusable_window(new_window_wrap, true)
+	lib_windows.set_relative_window(new_window_wrap, "cursor")
+	lib_windows.set_col_window(new_window_wrap, 1)
+	lib_windows.set_row_window(new_window_wrap, 1)
+	lib_windows.set_style_window(new_window_wrap, "minimal")
+	lib_windows.set_right_title_window(new_window_wrap, "diagnostic")
+
+	api.nvim_win_set_cursor(current_window, { next_row + 1, next_col })
+	local window_id = lib_windows.display_window(new_window_wrap)
+
+	api.nvim_win_set_option(window_id, "winhighlight", "Normal:Normal")
+
+	vim.schedule(function()
+		M.audocmd(current_buffer, window_id)
+	end)
+end
+
+-- autocmd for diagnostic
+--- @param buffer_id integer original buffer id, not float window's buffer id
+--- @param window_id integer float window's id
+M.audocmd = function(buffer_id, window_id)
+	api.nvim_create_autocmd({ "CursorMoved", "InsertEnter" }, {
+		buffer = buffer_id,
+		callback = function(arg)
+			lib_windows.close_window(window_id)
+			api.nvim_del_autocmd(arg.id)
+		end,
+		desc = lib_util.command_desc("diagnostic, auto close windows"),
+	})
 end
 
 return M

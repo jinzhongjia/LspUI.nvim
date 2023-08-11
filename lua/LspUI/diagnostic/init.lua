@@ -1,3 +1,4 @@
+local api = vim.api
 local config = require("LspUI.config")
 local command = require("LspUI.command")
 local util = require("LspUI.diagnostic.util")
@@ -27,9 +28,8 @@ M.run = function(arg)
 	if not config.options.diagnostic.enable then
 		return
 	end
-	if arg == "next" then
-	elseif arg == "prev" then
-	end
+
+	util.render(arg)
 end
 
 return M
