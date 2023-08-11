@@ -3,7 +3,6 @@ local hover_feature = lsp.protocol.Methods.textDocument_hover
 local lib_notify = require("LspUI.lib.notify")
 local lib_windows = require("LspUI.lib.windows")
 local lib_util = require("LspUI.lib.util")
-local lib_debug = require("LspUI.lib.debug")
 
 --- @alias hover_tuple { client: lsp.Client, buffer_id: integer, contents: string[], width: integer, height: integer }
 
@@ -55,7 +54,11 @@ M.get_hovers = function(clients, buffer_id, callback)
 
 				local new_buffer = api.nvim_create_buf(false, true)
 
-				markdown_lines = lsp.util.stylize_markdown(new_buffer, markdown_lines, {})
+				markdown_lines = lsp.util.stylize_markdown(
+					new_buffer,
+					markdown_lines,
+					{ max_width = lib_windows.get_max_width() * 0.6 }
+				)
 
 				local max_width = 0
 
