@@ -1,6 +1,8 @@
+local api = vim.api
 local lib_notify = require("LspUI.lib.notify")
 local config = require("LspUI.config")
 local command = require("LspUI.command")
+local util = require("LspUI.hover.util")
 local M = {}
 
 -- whether this module has initialized
@@ -30,6 +32,25 @@ M.run = function()
 		lib_notify.Info("hover is not enabled!")
 		return
 	end
+	-- get current buffer
+	local current_buffer = api.nvim_get_current_buf()
+	local clients = util.get_clients(current_buffer)
+	if clients == nil then
+		lib_notify.Warn("no client supports hover!")
+		return
+	end
+	util.get_hovers(
+		clients,
+		current_buffer,
+
+		--- @param hover_tuples hover_tuple[]
+		function(hover_tuples)
+			local window_id = util.base_render(hover_tuples[1])
+			vim.schedule(function()
+				util.autocmd(current_buffer, window_id)
+			end)
+		end
+	)
 end
 
 return M
