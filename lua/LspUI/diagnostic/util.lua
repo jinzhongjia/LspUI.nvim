@@ -1,7 +1,8 @@
+local lib_debug = require("LspUI.lib.debug")
 local api, fn = vim.api, vim.fn
 local lib_windows = require("LspUI.lib.windows")
-local lib_debug = require("LspUI.lib.debug")
 local lib_util = require("LspUI.lib.util")
+local lib_notify = require("LspUI.lib.notify")
 local M = {}
 
 --- @class LspUI-highlightgroup
@@ -63,8 +64,8 @@ end
 
 -- get next position diagnostics
 --- @param sorted_diagnostics Diagnostic[][][]
---- @param row integer (row,col) is a tuple, get from `nvim_win_get_cursor`
---- @param col integer (row,col) is a tuple, get from `nvim_win_get_cursor`
+--- @param row integer (row,col) is a tuple, get from `nvim_win_get_cursor`, 1 based
+--- @param col integer (row,col) is a tuple, get from `nvim_win_get_cursor`, 0 based
 --- @param search_forward boolean true is down, false is up
 --- @param buffer_id integer
 --- @return Diagnostic[]?
@@ -79,22 +80,40 @@ local next_position_diagnostics = function(sorted_diagnostics, row, col, search_
 		end
 		local lnum_diagnostics = sorted_diagnostics[lnum]
 		if lnum_diagnostics and not vim.tbl_isempty(lnum_diagnostics) then
-			for current_col, col_diagnostics in pairs(lnum_diagnostics) do
-				if search_forward then
-					-- down
-					if offset ~= 0 then
-						return col_diagnostics
+			local line_length = #api.nvim_buf_get_lines(buffer_id, lnum, lnum + 1, true)[1]
+			if search_forward then
+				-- note: Since the lsp protocol stipulates that col starts from 0, so we should use line_length-1, but rust-analyzer
+				-- ```rust
+				-- dd
+				-- fn main() {
+				--     println!("Hello, world!");
+				-- }
+				-- ````
+				-- it will return diagnostic position is row=0,col=2,but it should be row=0,col= (0 or 1)?
+				--
+				-- Why not raise an issue with rust-analyzer?
+				-- that's too much trouble... 0.0
+				for current_col = 0, line_length do
+					local col_diagnostics = lnum_diagnostics[current_col]
+					if col_diagnostics ~= nil then
+						if offset ~= 0 then
+							return col_diagnostics
+						end
+						if current_col > col then
+							return col_diagnostics
+						end
 					end
-					if current_col > col then
-						return col_diagnostics
-					end
-				else
-					-- up
-					if offset ~= 0 then
-						return col_diagnostics
-					end
-					if current_col < col then
-						return col_diagnostics
+				end
+			else
+				for current_col = line_length, 0, -1 do
+					local col_diagnostics = lnum_diagnostics[current_col]
+					if col_diagnostics ~= nil then
+						if offset ~= 0 then
+							return col_diagnostics
+						end
+						if current_col < col then
+							return col_diagnostics
+						end
 					end
 				end
 			end
@@ -112,7 +131,7 @@ M.render = function(action)
 	elseif action == "next" then
 		search_forward = true
 	else
-		lib_debug.debug(string.format("diagnostic, unknown action %s", action))
+		lib_notify.Warn(string.format("diagnostic, unknown action %s", action))
 		return
 	end
 	-- get current buffer
