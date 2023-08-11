@@ -8,6 +8,10 @@ local M = {}
 -- whether this module has initialized
 local is_initialized = false
 
+-- window's id
+--- @type integer
+local window_id = -1
+
 -- init for hover
 M.init = function()
 	if not config.options.hover.enable then
@@ -32,6 +36,10 @@ M.run = function()
 		lib_notify.Info("hover is not enabled!")
 		return
 	end
+	if api.nvim_win_is_valid(window_id) then
+		api.nvim_set_current_win(window_id)
+		return
+	end
 	-- get current buffer
 	local current_buffer = api.nvim_get_current_buf()
 	local clients = util.get_clients(current_buffer)
@@ -45,7 +53,7 @@ M.run = function()
 
 		--- @param hover_tuples hover_tuple[]
 		function(hover_tuples)
-			local window_id = util.base_render(hover_tuples[1])
+			window_id = util.base_render(hover_tuples[1])
 			vim.schedule(function()
 				util.autocmd(current_buffer, window_id)
 			end)
