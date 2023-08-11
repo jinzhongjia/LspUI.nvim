@@ -288,7 +288,7 @@ M.render = function(action_tuples)
 		local action_title = ""
 		if action_tuple.action.title then
 			action_title = string.format("[%d] %s", index, action_tuple.action.title)
-      --- @type integer
+			--- @type integer
 			local action_title_len = fn.strdisplaywidth(action_title)
 			max_width = max_width < action_title_len and action_title_len or max_width
 		end
