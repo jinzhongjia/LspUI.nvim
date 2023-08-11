@@ -68,9 +68,9 @@ M.run = function()
 	local width = fn.strdisplaywidth(
 		--- @cast old_name string
 		old_name
-	) + 3 > 8
-			and fn.strdisplaywidth(old_name) + 3
-		or 8
+	) + 5 > 8
+			and fn.strdisplaywidth(old_name) + 5
+		or 10
 
 	lib_windows.set_width_window(new_window_wrap, width)
 	lib_windows.set_height_window(new_window_wrap, 1)

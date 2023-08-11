@@ -247,14 +247,14 @@ M.render = function(action)
 	api.nvim_win_set_option(window_id, "wrap", true)
 
 	vim.schedule(function()
-		M.audocmd(current_buffer, window_id)
+		M.autocmd(current_buffer, window_id)
 	end)
 end
 
 -- autocmd for diagnostic
 --- @param buffer_id integer original buffer id, not float window's buffer id
 --- @param window_id integer float window's id
-M.audocmd = function(buffer_id, window_id)
+M.autocmd = function(buffer_id, window_id)
 	api.nvim_create_autocmd({ "CursorMoved", "InsertEnter" }, {
 		buffer = buffer_id,
 		callback = function(arg)
