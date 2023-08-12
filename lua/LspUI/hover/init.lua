@@ -50,10 +50,11 @@ M.run = function()
 	util.get_hovers(
 		clients,
 		current_buffer,
-
 		--- @param hover_tuples hover_tuple[]
 		function(hover_tuples)
-			window_id = util.base_render(hover_tuples[1])
+			local buffer_id
+			window_id, buffer_id = util.base_render(hover_tuples[1], #hover_tuples)
+			util.keybind(hover_tuples, window_id, buffer_id)
 			vim.schedule(function()
 				util.autocmd(current_buffer, window_id)
 			end)
