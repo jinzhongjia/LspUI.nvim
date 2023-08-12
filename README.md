@@ -31,6 +31,7 @@ Migrating from the old version, there is no need to change the original configur
 ```lua
 {
     "jinzhongjia/LspUI.nvim",
+	branch = "v2",
     config=function()
         require("LspUI").setup()
     end
@@ -42,6 +43,7 @@ Migrating from the old version, there is no need to change the original configur
 ```lua
 use {
         "jinzhongjia/LspUI.nvim",
+		branch = 'v2',
         config=function()
             require("LspUI").setup()
         end
