@@ -2,6 +2,7 @@ local api, fn = vim.api, vim.fn
 local lib_windows = require("LspUI.lib.windows")
 local lib_util = require("LspUI.lib.util")
 local lib_notify = require("LspUI.lib.notify")
+local lib_debug = require("LspUI.lib.debug")
 local M = {}
 
 --- @class LspUI-highlightgroup
@@ -99,7 +100,7 @@ local next_position_diagnostics = function(sorted_diagnostics, row, col, search_
 						if offset ~= 0 then
 							return col_diagnostics
 						end
-						if current_col > col then
+						if math.min(current_col, line_length - 1) > col then
 							return col_diagnostics
 						end
 					end
@@ -111,7 +112,7 @@ local next_position_diagnostics = function(sorted_diagnostics, row, col, search_
 						if offset ~= 0 then
 							return col_diagnostics
 						end
-						if current_col < col then
+						if math.min(current_col, line_length - 1) < col then
 							return col_diagnostics
 						end
 					end
@@ -245,6 +246,10 @@ M.render = function(action)
 
 	api.nvim_win_set_option(window_id, "winhighlight", "Normal:Normal")
 	api.nvim_win_set_option(window_id, "wrap", true)
+
+	-- this is very very important, because it will hide highlight group
+	api.nvim_win_set_option(window_id, "conceallevel", 2)
+	api.nvim_win_set_option(window_id, "concealcursor", "n")
 
 	vim.schedule(function()
 		M.autocmd(current_buffer, window_id)
