@@ -183,6 +183,7 @@ local keybinding_autocmd = function(buffer_id, window_id, action_tuples)
 
 	-- next action
 	api.nvim_buf_set_keymap(buffer_id, "n", config.options.code_action.key_binding.next, "", {
+		nowait = true,
 		callback = function()
 			-- get current line number
 			local _, lnum, _, _ = unpack(vim.fn.getpos("."))
@@ -198,6 +199,8 @@ local keybinding_autocmd = function(buffer_id, window_id, action_tuples)
 
 	-- prev action
 	api.nvim_buf_set_keymap(buffer_id, "n", config.options.code_action.key_binding.prev, "", {
+		nowait = true,
+		noremap = true,
 		callback = function()
 			-- get current line number
 			local _, lnum, _, _ = unpack(vim.fn.getpos("."))
@@ -213,6 +216,8 @@ local keybinding_autocmd = function(buffer_id, window_id, action_tuples)
 
 	-- quit action
 	api.nvim_buf_set_keymap(buffer_id, "n", config.options.code_action.key_binding.quit, "", {
+		nowait = true,
+		noremap = true,
 		callback = function()
 			-- the buffer will be deleted automatically when windows closed
 			lib_windows.close_window(window_id)
@@ -222,6 +227,8 @@ local keybinding_autocmd = function(buffer_id, window_id, action_tuples)
 
 	-- exec action
 	api.nvim_buf_set_keymap(buffer_id, "n", config.options.code_action.key_binding.exec, "", {
+		nowait = true,
+		noremap = true,
 		callback = function()
 			local action_tuple_index = tonumber(fn.expand("<cword>"))
 			if action_tuple_index == nil then
@@ -240,6 +247,7 @@ local keybinding_autocmd = function(buffer_id, window_id, action_tuples)
 	-- number keys exec action
 	for action_tuple_index, action_tuple in pairs(action_tuples) do
 		api.nvim_buf_set_keymap(buffer_id, "n", tostring(action_tuple_index), "", {
+			noremap = true,
 			callback = function()
 				choice_action_tupe(action_tuple)
 				lib_windows.close_window(window_id)
