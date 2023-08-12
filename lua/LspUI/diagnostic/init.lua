@@ -1,4 +1,3 @@
-local api = vim.api
 local config = require("LspUI.config")
 local command = require("LspUI.command")
 local util = require("LspUI.diagnostic.util")
