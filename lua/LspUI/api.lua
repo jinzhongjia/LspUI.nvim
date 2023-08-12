@@ -21,6 +21,7 @@ M.api = {
 	rename = modules.code_action.run,
 	diagnostic = modules.diagnostic.run,
 	hover = modules.hover.run,
+	definition = modules.definition.run,
 }
 
 return M

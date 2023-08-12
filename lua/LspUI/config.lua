@@ -49,6 +49,12 @@ local default_hover_config = {
 	},
 }
 
+--- @type LspUI_definition_config
+local default_definition_config = {
+	enable = true,
+	command_enable = true,
+}
+
 -- default config
 --- @type LspUI_config
 local default_config = {
@@ -57,6 +63,7 @@ local default_config = {
 	code_action = default_code_action_config,
 	diagnostic = default_diagnostic_config,
 	hover = default_hover_config,
+	definition = default_definition_config,
 }
 
 -- Prevent plugins from being initialized multiple times

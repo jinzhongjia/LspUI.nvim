@@ -23,9 +23,14 @@
 --- @field command_enable boolean? whether enable command for `hover`
 --- @field key_binding { prev: string?, next: string?, quit: string? }? keybind for `hover`
 
+--- @class LspUI_definition_config
+--- @field enable boolean? whether enable `definition` module
+--- @field command_enable boolean? whether enable command for `definition`
+
 --- @class LspUI_config config for LspUI
 --- @field rename LspUI_rename_config? `rename` module
 --- @field lightbulb LspUI_lightbulb_config? `lightbulb` module
 --- @field code_action LspUI_code_action_config? `code_action` module
 --- @field diagnostic LspUI_diagnostic_config? `diagnostic` module
 --- @field hover  LspUI_hover_config? `hover` module
+--- @field definition LspUI_definition_config? `definition` module
