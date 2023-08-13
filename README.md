@@ -22,7 +22,7 @@ Re-implemented some functions of neovim, theoretically, the running speed should
 
 ## Install
 
-neovim version >= 0.9.0
+neovim version is `nightly`
 
 Migrating from the old version, there is no need to change the original configuration (after refactoring, only some configuration items are deleted)
 
