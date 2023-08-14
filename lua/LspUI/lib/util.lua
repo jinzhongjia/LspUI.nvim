@@ -44,6 +44,25 @@ M.exec_once = function(callback)
 	end
 end
 
+-- debounce
+--- @param func function
+---@param delay integer
+M.debounce = function(func, delay)
+	local timer = nil
+	return function(...)
+		local args = { ... }
+		if timer then
+			timer:stop()
+			timer = nil
+		end
+
+		timer = vim.defer_fn(function()
+			func(unpack(args))
+			timer = nil
+		end, delay)
+	end
+end
+
 -- lib function: get version of LspUI
 --- @return string
 M.version = function()
