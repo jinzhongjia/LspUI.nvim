@@ -151,6 +151,7 @@ end
 local choice_action_tupe = function(action_tuple)
 	local action = action_tuple.action
 	local client = action_tuple.client
+	---@diagnostic disable-next-line: invisible
 	local reg = client.dynamic_capabilities:get(code_action_feature, { bufnr = action_tuple.buffer_id })
 
 	local supports_resolve = vim.tbl_get(reg or {}, "registerOptions", "resolveProvider")
