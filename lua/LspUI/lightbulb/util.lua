@@ -81,6 +81,16 @@ M.request = function(buffer_id, callback)
 
     -- new logic, reduce a little calculations
     local new_callback = lib_util.exec_once(callback)
+    if config.options.code_action.gitsigns then
+        local status, gitsigns = pcall(require, "gitsigns")
+        if status then
+            local gitsigns_actions = gitsigns.get_actions()
+            if gitsigns_actions and not vim.tbl_isempty(gitsigns_actions) then
+                new_callback(true)
+            end
+        end
+    end
+
     local clients = M.get_clients(buffer_id)
     local tmp_number = 0
     for _, client in pairs(clients or {}) do

@@ -9,7 +9,7 @@ local lib_notify = require("LspUI.lib.notify")
 local lib_util = require("LspUI.lib.util")
 local lib_windows = require("LspUI.lib.windows")
 
---- @alias action_tuple { action: lsp.CodeAction|lsp.Command, client: lsp.Client, buffer_id: integer }
+--- @alias action_tuple { action: lsp.CodeAction|lsp.Command, client: lsp.Client?, buffer_id: integer, callback: function? }
 
 local M = {}
 
@@ -24,11 +24,14 @@ end
 
 -- make range params
 --- @param buffer_id integer
---- @return lsp.CodeActionParams
+--- @return lsp.CodeActionParams params
+--- @return boolean is_visual
 M.get_range_params = function(buffer_id)
     local mode = api.nvim_get_mode().mode
     local params
+    local is_visual = false
     if mode == "v" or mode == "V" then
+        is_visual = true
         --this logic here is taken from https://github.com/neovim/neovim/blob/master/runtime/lua/vim/lsp/buf.lua#L125-L153
         -- [bufnum, lnum, col, off]; both row and column 1-indexed
         local start = vim.fn.getpos("v")
@@ -65,15 +68,75 @@ M.get_range_params = function(buffer_id)
 
     params.context = context
 
-    return params
+    return params, is_visual
+end
+
+-- get gitsigns actions
+--- @param action_tuples action_tuple[]
+--- @param buffer_id integer
+--- @param is_visual boolean
+--- @param uri lsp.DocumentUri
+--- @param range lsp.Range
+--- @return action_tuple[]
+local get_gitsigns_actions = function(
+    action_tuples,
+    buffer_id,
+    is_visual,
+    uri,
+    range
+)
+    if not config.options.code_action.gitsigns then
+        -- if not enable gitsigns, just return
+        return action_tuples
+    end
+    local status, gitsigns = pcall(require, "gitsigns")
+    -- if gitsigns not exists, just return
+    if not status then
+        return action_tuples
+    end
+
+    local gitsigns_actions = gitsigns.get_actions()
+    for name, gitsigns_action in pairs(gitsigns_actions or {}) do
+        local title = string.format(
+            "%s%s",
+            string.sub(name, 1, 1),
+            string.sub(string.gsub(name, "_", " "), 2)
+        )
+        local func = gitsigns_action
+        if is_visual then
+            func = function()
+                gitsigns_action({ range.start.line, range["end"].line })
+            end
+        end
+
+        local do_func = function()
+            local bufnr = vim.uri_to_bufnr(uri)
+            api.nvim_buf_call(bufnr, func)
+        end
+
+        table.insert(
+            action_tuples,
+            --- @type action_tuple
+            {
+                action = {
+                    title = title,
+                },
+                buffer_id = buffer_id,
+                callback = do_func,
+            }
+        )
+    end
+    return action_tuples
 end
 
 -- get action tuples
 --- @param clients lsp.Client[]
 --- @param params table
 --- @param buffer_id integer
+--- @param is_visual boolean
 --- @param callback function
-M.get_action_tuples = function(clients, params, buffer_id, callback)
+M.get_action_tuples = function(clients, params, buffer_id, is_visual, callback)
+    --- @type action_tuple[]
     local action_tuples = {}
     local tmp_number = 0
     for _, client in pairs(clients) do
@@ -89,15 +152,26 @@ M.get_action_tuples = function(clients, params, buffer_id, callback)
                 -- add a detectto prevent action.title is blank
                 if action.title ~= "" then
                     -- here must be suitable for alias action_tuple
-                    table.insert(action_tuples, {
-                        action = action,
-                        client = client,
-                        buffer_id = buffer_id,
-                    })
+                    table.insert(
+                        action_tuples,
+                        --- @type action_tuple
+                        {
+                            action = action,
+                            client = client,
+                            buffer_id = buffer_id,
+                        }
+                    )
                 end
             end
 
             if tmp_number == #clients then
+                action_tuples = get_gitsigns_actions(
+                    action_tuples,
+                    buffer_id,
+                    is_visual,
+                    params.textDocument.uri,
+                    params.range
+                )
                 callback(action_tuples)
             end
         end, buffer_id)
@@ -168,8 +242,22 @@ end
 -- this function is referred from https://github.com/neovim/neovim/blob/master/runtime/lua/vim/lsp/buf.lua#L639-L675C6
 --- @param action_tuple action_tuple
 local choice_action_tupe = function(action_tuple)
+    local callback = action_tuple.callback
+    if callback then
+        callback()
+        return
+    end
     local action = action_tuple.action
     local client = action_tuple.client
+    if client == nil then
+        lib_notify.Warn(
+            string.format(
+                "not exist client,buffer id: %d",
+                action_tuple.buffer_id
+            )
+        )
+        return
+    end
     ---@diagnostic disable-next-line: invisible
     local reg = client.dynamic_capabilities:get(
         code_action_feature,

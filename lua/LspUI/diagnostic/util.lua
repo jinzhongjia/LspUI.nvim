@@ -1,5 +1,4 @@
 local api, fn = vim.api, vim.fn
-local lib_debug = require("LspUI.lib.debug")
 local lib_notify = require("LspUI.lib.notify")
 local lib_util = require("LspUI.lib.util")
 local lib_windows = require("LspUI.lib.windows")

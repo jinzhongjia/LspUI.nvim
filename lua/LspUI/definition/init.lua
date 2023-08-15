@@ -11,6 +11,9 @@ M.init = function()
     if not config.options.definition.enable then
         return
     end
+    lib_notify.Error(
+        "definition has not been completed yet, please do not enable it"
+    )
 
     if is_initialized then
         return
@@ -18,9 +21,10 @@ M.init = function()
 
     is_initialized = true
 
-    if config.options.definition.command_enable then
-        command.register_command("definition", M.run, {})
-    end
+    -- TODO: de-comment this
+    -- if config.options.definition.command_enable then
+    --     command.register_command("definition", M.run, {})
+    -- end
 end
 
 M.run = function()
@@ -28,27 +32,24 @@ M.run = function()
         lib_notify.Info("definition is not enabled!")
         return
     end
-
-    -- get current buffer
-    local current_buffer = api.nvim_get_current_buf()
-
-    api.nvim_buf_set_option(current_buffer, "foldmethod", "expr")
-    local function cc()
-        return "1"
-    end
-    api.nvim_buf_set_option(current_buffer, "foldexpr", cc)
-
-    local clients = util.get_clients(current_buffer)
-    if clients == nil then
-        return
-    end
-
-    -- get current window
-    local current_window = api.nvim_get_current_win()
-
-    local params = util.make_params(current_window)
-
-    util.render(current_buffer, clients, params, function() end)
+    lib_notify.Error(
+        "definition has not been completed yet, please do not enable it"
+    )
+    -- TODO:de-comment this
+    -- -- get current buffer
+    -- local current_buffer = api.nvim_get_current_buf()
+    --
+    -- local clients = util.get_clients(current_buffer)
+    -- if clients == nil then
+    --     return
+    -- end
+    --
+    -- -- get current window
+    -- local current_window = api.nvim_get_current_win()
+    --
+    -- local params = util.make_params(current_window)
+    --
+    -- util.render(current_buffer, clients, params)
 end
 
 return M

@@ -12,6 +12,7 @@
 --- @class LspUI_code_action_config
 --- @field enable boolean? whether enable `code_action` module
 --- @field command_enable boolean? whether enable command for `lightbulb`
+--- @field gitsigns boolean? whether enable gitsigns support?
 --- @field key_binding { exec: string?, prev: string?, next: string?, quit: string? }? keybind for `code_action`
 
 --- @class LspUI_diagnostic_config

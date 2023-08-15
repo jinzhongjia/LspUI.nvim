@@ -42,11 +42,13 @@ M.run = function()
         return
     end
 
-    local params = util.get_range_params(current_buffer)
+    local params, is_visual = util.get_range_params(current_buffer)
+
     util.get_action_tuples(
         clients,
         params,
         current_buffer,
+        is_visual,
         function(action_tuples)
             util.render(action_tuples)
         end
