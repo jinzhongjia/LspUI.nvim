@@ -43,9 +43,14 @@ M.run = function()
     end
 
     local params = util.get_range_params(current_buffer)
-    util.get_action_tuples(clients, params, current_buffer, function(action_tuples)
-        util.render(action_tuples)
-    end)
+    util.get_action_tuples(
+        clients,
+        params,
+        current_buffer,
+        function(action_tuples)
+            util.render(action_tuples)
+        end
+    )
 end
 
 return M

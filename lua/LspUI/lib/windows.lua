@@ -34,7 +34,11 @@ end
 --- @return integer window_id
 --- @param window_wrap window_wrap
 M.display_window = function(window_wrap)
-    local window_id = api.nvim_open_win(window_wrap.buffer, window_wrap.enter, window_wrap.config)
+    local window_id = api.nvim_open_win(
+        window_wrap.buffer,
+        window_wrap.enter,
+        window_wrap.config
+    )
     return window_id
 end
 

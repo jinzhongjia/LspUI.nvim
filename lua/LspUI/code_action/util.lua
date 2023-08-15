@@ -17,7 +17,8 @@ local M = {}
 --- @param buffer_id integer
 --- @return lsp.Client[]|nil clients array or nil
 M.get_clients = function(buffer_id)
-    local clients = lsp.get_clients({ bufnr = buffer_id, method = code_action_feature })
+    local clients =
+        lsp.get_clients({ bufnr = buffer_id, method = code_action_feature })
     return #clients == 0 and nil or clients
 end
 
@@ -45,16 +46,21 @@ M.get_range_params = function(buffer_id)
             start_row, end_row = end_row, start_row
             start_col, end_col = end_col, start_col
         end
-        params = lsp.util.make_given_range_params({ start_row, start_col - 1 }, { end_row, end_col - 1 })
+        params = lsp.util.make_given_range_params(
+            { start_row, start_col - 1 },
+            { end_row, end_col - 1 }
+        )
     else
         params = lsp.util.make_range_params()
     end
 
     local context = {
         triggerKind = vim.lsp.protocol.CodeActionTriggerKind.Invoked,
-        diagnostics = lib_lsp.diagnostic_vim_to_lsp(vim.diagnostic.get(buffer_id, {
-            lnum = fn.line(".") - 1,
-        })),
+        diagnostics = lib_lsp.diagnostic_vim_to_lsp(
+            vim.diagnostic.get(buffer_id, {
+                lnum = fn.line(".") - 1,
+            })
+        ),
     }
 
     params.context = context
@@ -83,7 +89,11 @@ M.get_action_tuples = function(clients, params, buffer_id, callback)
                 -- add a detectto prevent action.title is blank
                 if action.title ~= "" then
                     -- here must be suitable for alias action_tuple
-                    table.insert(action_tuples, { action = action, client = client, buffer_id = buffer_id })
+                    table.insert(action_tuples, {
+                        action = action,
+                        client = client,
+                        buffer_id = buffer_id,
+                    })
                 end
             end
 
@@ -112,10 +122,18 @@ local exec_command = function(client, command, buffer_id, handler)
 
     -- get the server all available commands
     local command_provider = client.server_capabilities.executeCommandProvider
-    local commands = type(command_provider) == "table" and command_provider.commands or {}
+    local commands = type(command_provider) == "table"
+            and command_provider.commands
+        or {}
 
     if not vim.list_contains(commands, cmdname) then
-        lib_notify.Warn(string.format("Language server `%s` does not support command `%s`", client.name, cmdname))
+        lib_notify.Warn(
+            string.format(
+                "Language server `%s` does not support command `%s`",
+                client.name,
+                cmdname
+            )
+        )
         return
     end
 
@@ -135,7 +153,8 @@ local apply_action = function(action, client, buffer_id)
         lsp.util.apply_workspace_edit(action.edit, client.offset_encoding)
     end
     if action.command then
-        local command = type(action.command) == "table" and action.command or action
+        local command = type(action.command) == "table" and action.command
+            or action
         exec_command(
             client,
             --- @cast command lsp.Command
@@ -152,10 +171,16 @@ local choice_action_tupe = function(action_tuple)
     local action = action_tuple.action
     local client = action_tuple.client
     ---@diagnostic disable-next-line: invisible
-    local reg = client.dynamic_capabilities:get(code_action_feature, { bufnr = action_tuple.buffer_id })
+    local reg = client.dynamic_capabilities:get(
+        code_action_feature,
+        { bufnr = action_tuple.buffer_id }
+    )
 
-    local supports_resolve = vim.tbl_get(reg or {}, "registerOptions", "resolveProvider")
-        or client.supports_method(code_action_resolve_feature)
+    local supports_resolve = vim.tbl_get(
+        reg or {},
+        "registerOptions",
+        "resolveProvider"
+    ) or client.supports_method(code_action_resolve_feature)
     if not action.edit and client and supports_resolve then
         client.request(
             code_action_resolve_feature,
@@ -164,7 +189,10 @@ local choice_action_tupe = function(action_tuple)
             --- @param resolved_action any
             function(err, resolved_action)
                 if err then
-                    vim.notify(err.code .. ": " .. err.message, vim.log.levels.ERROR)
+                    vim.notify(
+                        err.code .. ": " .. err.message,
+                        vim.log.levels.ERROR
+                    )
                     return
                 end
                 apply_action(resolved_action, client, action_tuple.buffer_id)
@@ -183,78 +211,116 @@ local keybinding_autocmd = function(buffer_id, window_id, action_tuples)
     -- keybind
 
     -- next action
-    api.nvim_buf_set_keymap(buffer_id, "n", config.options.code_action.key_binding.next, "", {
-        nowait = true,
-        callback = function()
-            -- get current line number
-            local _, lnum, _, _ = unpack(vim.fn.getpos("."))
-            if lnum == #action_tuples then
-                api.nvim_win_set_cursor(window_id, { 1, 1 })
-                return
-            end
+    api.nvim_buf_set_keymap(
+        buffer_id,
+        "n",
+        config.options.code_action.key_binding.next,
+        "",
+        {
+            nowait = true,
+            callback = function()
+                -- get current line number
+                local _, lnum, _, _ = unpack(vim.fn.getpos("."))
+                if lnum == #action_tuples then
+                    api.nvim_win_set_cursor(window_id, { 1, 1 })
+                    return
+                end
 
-            api.nvim_win_set_cursor(window_id, { lnum + 1, 1 })
-        end,
-        desc = lib_util.command_desc("go to next action"),
-    })
+                api.nvim_win_set_cursor(window_id, { lnum + 1, 1 })
+            end,
+            desc = lib_util.command_desc("go to next action"),
+        }
+    )
 
     -- prev action
-    api.nvim_buf_set_keymap(buffer_id, "n", config.options.code_action.key_binding.prev, "", {
-        nowait = true,
-        noremap = true,
-        callback = function()
-            -- get current line number
-            local _, lnum, _, _ = unpack(vim.fn.getpos("."))
-            if lnum == 1 then
-                api.nvim_win_set_cursor(window_id, { #action_tuples, 1 })
-                return
-            end
-
-            api.nvim_win_set_cursor(window_id, { lnum - 1, 1 })
-        end,
-        desc = lib_util.command_desc("go to prev action"),
-    })
-
-    -- quit action
-    api.nvim_buf_set_keymap(buffer_id, "n", config.options.code_action.key_binding.quit, "", {
-        nowait = true,
-        noremap = true,
-        callback = function()
-            -- the buffer will be deleted automatically when windows closed
-            lib_windows.close_window(window_id)
-        end,
-        desc = lib_util.command_desc("quit code_action"),
-    })
-
-    -- exec action
-    api.nvim_buf_set_keymap(buffer_id, "n", config.options.code_action.key_binding.exec, "", {
-        nowait = true,
-        noremap = true,
-        callback = function()
-            local action_tuple_index = tonumber(fn.expand("<cword>"))
-            if action_tuple_index == nil then
-                lib_notify.Error(
-                    string.format("this plugin occurs an error: %s", "try to convert a non-number to number")
-                )
-                return
-            end
-            local action_tuple = action_tuples[action_tuple_index]
-            choice_action_tupe(action_tuple)
-            lib_windows.close_window(window_id)
-        end,
-        desc = lib_util.command_desc("execute acode action"),
-    })
-
-    -- number keys exec action
-    for action_tuple_index, action_tuple in pairs(action_tuples) do
-        api.nvim_buf_set_keymap(buffer_id, "n", tostring(action_tuple_index), "", {
+    api.nvim_buf_set_keymap(
+        buffer_id,
+        "n",
+        config.options.code_action.key_binding.prev,
+        "",
+        {
+            nowait = true,
             noremap = true,
             callback = function()
+                -- get current line number
+                local _, lnum, _, _ = unpack(vim.fn.getpos("."))
+                if lnum == 1 then
+                    api.nvim_win_set_cursor(window_id, { #action_tuples, 1 })
+                    return
+                end
+
+                api.nvim_win_set_cursor(window_id, { lnum - 1, 1 })
+            end,
+            desc = lib_util.command_desc("go to prev action"),
+        }
+    )
+
+    -- quit action
+    api.nvim_buf_set_keymap(
+        buffer_id,
+        "n",
+        config.options.code_action.key_binding.quit,
+        "",
+        {
+            nowait = true,
+            noremap = true,
+            callback = function()
+                -- the buffer will be deleted automatically when windows closed
+                lib_windows.close_window(window_id)
+            end,
+            desc = lib_util.command_desc("quit code_action"),
+        }
+    )
+
+    -- exec action
+    api.nvim_buf_set_keymap(
+        buffer_id,
+        "n",
+        config.options.code_action.key_binding.exec,
+        "",
+        {
+            nowait = true,
+            noremap = true,
+            callback = function()
+                local action_tuple_index = tonumber(fn.expand("<cword>"))
+                if action_tuple_index == nil then
+                    lib_notify.Error(
+                        string.format(
+                            "this plugin occurs an error: %s",
+                            "try to convert a non-number to number"
+                        )
+                    )
+                    return
+                end
+                local action_tuple = action_tuples[action_tuple_index]
                 choice_action_tupe(action_tuple)
                 lib_windows.close_window(window_id)
             end,
-            desc = lib_util.command_desc(string.format("exec action with numberk key [%d]", action_tuple_index)),
-        })
+            desc = lib_util.command_desc("execute acode action"),
+        }
+    )
+
+    -- number keys exec action
+    for action_tuple_index, action_tuple in pairs(action_tuples) do
+        api.nvim_buf_set_keymap(
+            buffer_id,
+            "n",
+            tostring(action_tuple_index),
+            "",
+            {
+                noremap = true,
+                callback = function()
+                    choice_action_tupe(action_tuple)
+                    lib_windows.close_window(window_id)
+                end,
+                desc = lib_util.command_desc(
+                    string.format(
+                        "exec action with numberk key [%d]",
+                        action_tuple_index
+                    )
+                ),
+            }
+        )
     end
 
     --
@@ -278,7 +344,9 @@ local keybinding_autocmd = function(buffer_id, window_id, action_tuples)
         callback = function()
             lib_windows.close_window(window_id)
         end,
-        desc = lib_util.command_desc("code action auto close window when focus leave"),
+        desc = lib_util.command_desc(
+            "code action auto close window when focus leave"
+        ),
     })
 end
 
@@ -296,10 +364,12 @@ M.render = function(action_tuples)
     for index, action_tuple in pairs(action_tuples) do
         local action_title = ""
         if action_tuple.action.title then
-            action_title = string.format("[%d] %s", index, action_tuple.action.title)
+            action_title =
+                string.format("[%d] %s", index, action_tuple.action.title)
             --- @type integer
             local action_title_len = fn.strdisplaywidth(action_title)
-            max_width = max_width < action_title_len and action_title_len or max_width
+            max_width = max_width < action_title_len and action_title_len
+                or max_width
         end
         table.insert(contents, action_title)
     end

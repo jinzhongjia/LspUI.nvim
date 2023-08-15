@@ -4,7 +4,23 @@ local M = {}
 local version = "v2-undefined"
 
 local key_bind_opt = { noremap = true, silent = true }
-local move_keys = { "h", "ge", "e", "0", "$", "l", "w", "b", "<Bs>", "j", "k", "<Left>", "<Right>", "<Up>", "<Down>" }
+local move_keys = {
+    "h",
+    "ge",
+    "e",
+    "0",
+    "$",
+    "l",
+    "w",
+    "b",
+    "<Bs>",
+    "j",
+    "k",
+    "<Left>",
+    "<Right>",
+    "<Up>",
+    "<Down>",
+}
 local other_keys = { "x", "y", "v", "o", "O", "q" }
 
 -- disable keys about moving

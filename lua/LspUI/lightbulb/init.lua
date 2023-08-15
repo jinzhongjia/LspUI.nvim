@@ -9,7 +9,8 @@ local M = {}
 -- whether this module has initialized
 local is_initialized = false
 
-local lightbulb_group = api.nvim_create_augroup("Lspui_lightBulb", { clear = true })
+local lightbulb_group =
+    api.nvim_create_augroup("Lspui_lightBulb", { clear = true })
 
 -- init for lightbulb
 M.init = function()
@@ -32,7 +33,10 @@ M.init = function()
         callback = function()
             -- get current buffer
             local current_buffer = api.nvim_get_current_buf()
-            local group_id = api.nvim_create_augroup("Lspui_lightBulb_" .. tostring(current_buffer), { clear = true })
+            local group_id = api.nvim_create_augroup(
+                "Lspui_lightBulb_" .. tostring(current_buffer),
+                { clear = true }
+            )
 
             api.nvim_create_autocmd({ "CursorHold" }, {
                 group = group_id,
@@ -49,7 +53,9 @@ M.init = function()
                         end
                     end)
                 end),
-                desc = lib_util.command_desc("Lightbulb update when CursorHold"),
+                desc = lib_util.command_desc(
+                    "Lightbulb update when CursorHold"
+                ),
             })
 
             api.nvim_create_autocmd({ "InsertEnter" }, {
@@ -58,7 +64,9 @@ M.init = function()
                 callback = function()
                     util.clear_render()
                 end,
-                desc = lib_util.command_desc("Lightbulb update when InsertEnter"),
+                desc = lib_util.command_desc(
+                    "Lightbulb update when InsertEnter"
+                ),
             })
 
             api.nvim_create_autocmd({ "BufWipeout" }, {

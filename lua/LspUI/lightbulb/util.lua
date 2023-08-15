@@ -12,7 +12,8 @@ local M = {}
 --- @param buffer_id integer
 --- @return lsp.Client[]|nil clients array or nil
 M.get_clients = function(buffer_id)
-    local clients = lsp.get_clients({ bufnr = buffer_id, method = code_action_feature })
+    local clients =
+        lsp.get_clients({ bufnr = buffer_id, method = code_action_feature })
     return #clients == 0 and nil or clients
 end
 
@@ -21,9 +22,15 @@ end
 --- @param line integer the line number, and this will be set as sign id
 --- @return integer sign_identifier sign's identifier, -1 means failing
 M.render = function(buffer_id, line)
-    return fn.sign_place(line, global.lightbulb.sign_group, global.lightbulb.sign_name, buffer_id, {
-        lnum = line,
-    })
+    return fn.sign_place(
+        line,
+        global.lightbulb.sign_group,
+        global.lightbulb.sign_name,
+        buffer_id,
+        {
+            lnum = line,
+        }
+    )
 end
 
 -- clear sign
@@ -35,7 +42,10 @@ end
 -- register the sign
 -- note: this func only can be called once!
 M.register_sign = function()
-    fn.sign_define(global.lightbulb.sign_name, { text = config.options.lightbulb.icon })
+    fn.sign_define(
+        global.lightbulb.sign_name,
+        { text = config.options.lightbulb.icon }
+    )
 end
 
 -- this function will request all lsp clients
@@ -45,9 +55,11 @@ M.request = function(buffer_id, callback)
     local params = lsp.util.make_range_params()
     local context = {
         triggerKind = vim.lsp.protocol.CodeActionTriggerKind.Invoked,
-        diagnostics = lib_lsp.diagnostic_vim_to_lsp(vim.diagnostic.get(buffer_id, {
-            lnum = fn.line(".") - 1,
-        })),
+        diagnostics = lib_lsp.diagnostic_vim_to_lsp(
+            vim.diagnostic.get(buffer_id, {
+                lnum = fn.line(".") - 1,
+            })
+        ),
     }
     params.context = context
 

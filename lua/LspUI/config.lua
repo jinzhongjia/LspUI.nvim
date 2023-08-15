@@ -90,33 +90,47 @@ end
 -- separate function for `rename` module
 --- @param rename_config LspUI_rename_config
 M.rename_setup = function(rename_config)
-    M.options.rename = vim.tbl_deep_extend("force", default_rename_config, rename_config)
+    M.options.rename =
+        vim.tbl_deep_extend("force", default_rename_config, rename_config)
 end
 
 -- separate function for `lightbulb` module
 -- now this function can't use
 --- @param lightbulb_config LspUI_lightbulb_config
 M.lightbulb_setup = function(lightbulb_config)
-    M.options.lightbulb = vim.tbl_deep_extend("force", default_lightbulb_config, lightbulb_config)
-    vim.fn.sign_define(global.lightbulb.sign_name, { text = M.options.lightbulb.icon })
+    M.options.lightbulb =
+        vim.tbl_deep_extend("force", default_lightbulb_config, lightbulb_config)
+    vim.fn.sign_define(
+        global.lightbulb.sign_name,
+        { text = M.options.lightbulb.icon }
+    )
 end
 
 -- separate function for `code_action` module
 --- @param code_action_config LspUI_code_action_config
 M.code_action_setup = function(code_action_config)
-    M.options.code_action = vim.tbl_deep_extend("force", default_code_action_config, code_action_config)
+    M.options.code_action = vim.tbl_deep_extend(
+        "force",
+        default_code_action_config,
+        code_action_config
+    )
 end
 
 -- separate function for `diagnostic` module
 --- @param diagnostic_config LspUI_diagnostic_config
 M.diagnostic_setup = function(diagnostic_config)
-    M.options.diagnostic = vim.tbl_deep_extend("force", default_diagnostic_config, diagnostic_config)
+    M.options.diagnostic = vim.tbl_deep_extend(
+        "force",
+        default_diagnostic_config,
+        diagnostic_config
+    )
 end
 
 -- separate function for `hover` module
 --- @param hover_config LspUI_hover_config
 M.hover_setup = function(hover_config)
-    M.options.hover = vim.tbl_deep_extend("force", default_hover_config, hover_config)
+    M.options.hover =
+        vim.tbl_deep_extend("force", default_hover_config, hover_config)
 end
 
 return M

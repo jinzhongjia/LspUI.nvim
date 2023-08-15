@@ -16,7 +16,8 @@ local hover_tuple_index
 --- @param buffer_id integer
 --- @return lsp.Client[]|nil clients array or nil
 M.get_clients = function(buffer_id)
-    local clients = lsp.get_clients({ bufnr = buffer_id, method = hover_feature })
+    local clients =
+        lsp.get_clients({ bufnr = buffer_id, method = hover_feature })
     return #clients == 0 and nil or clients
 end
 
@@ -41,27 +42,37 @@ M.get_hovers = function(clients, buffer_id, callback)
 
                 if not (result and result.contents) then
                     if lsp_config.silent ~= true then
-                        lib_notify.Warn(string.format("No valid hover, %s", client.name))
+                        lib_notify.Warn(
+                            string.format("No valid hover, %s", client.name)
+                        )
                     end
                     return
                 end
 
-                local markdown_lines = lsp.util.convert_input_to_markdown_lines(result.contents)
+                local markdown_lines =
+                    lsp.util.convert_input_to_markdown_lines(result.contents)
                 markdown_lines = lsp.util.trim_empty_lines(markdown_lines)
 
                 if vim.tbl_isempty(markdown_lines) then
                     if lsp_config.silent ~= true then
-                        lib_notify.Warn(string.format("No valid hover, %s", client.name))
+                        lib_notify.Warn(
+                            string.format("No valid hover, %s", client.name)
+                        )
                     end
                     return
                 end
 
                 local new_buffer = api.nvim_create_buf(false, true)
 
-                markdown_lines = lsp.util.stylize_markdown(new_buffer, markdown_lines, {
-                    max_width = math.floor(lib_windows.get_max_width() * 0.6),
-                    max_height = math.floor(lib_windows.get_max_height() * 0.8),
-                })
+                markdown_lines =
+                    lsp.util.stylize_markdown(new_buffer, markdown_lines, {
+                        max_width = math.floor(
+                            lib_windows.get_max_width() * 0.6
+                        ),
+                        max_height = math.floor(
+                            lib_windows.get_max_height() * 0.8
+                        ),
+                    })
 
                 local max_width = 0
 
@@ -73,9 +84,15 @@ M.get_hovers = function(clients, buffer_id, callback)
                 api.nvim_buf_set_option(new_buffer, "modifiable", false)
                 api.nvim_buf_set_option(new_buffer, "bufhidden", "wipe")
 
-                local width = math.min(max_width, math.floor(lib_windows.get_max_width() * 0.6))
+                local width = math.min(
+                    max_width,
+                    math.floor(lib_windows.get_max_width() * 0.6)
+                )
 
-                local height = lib_windows.compute_height_for_windows(markdown_lines, width)
+                local height = lib_windows.compute_height_for_windows(
+                    markdown_lines,
+                    width
+                )
 
                 table.insert(
                     hover_tuples,
@@ -85,7 +102,10 @@ M.get_hovers = function(clients, buffer_id, callback)
                         buffer_id = new_buffer,
                         contents = markdown_lines,
                         width = width,
-                        height = math.min(height, math.floor(lib_windows.get_max_height() * 0.8)),
+                        height = math.min(
+                            height,
+                            math.floor(lib_windows.get_max_height() * 0.8)
+                        ),
                     }
                 )
 
@@ -120,7 +140,9 @@ M.base_render = function(hover_tuple, hover_tuple_number)
     lib_windows.set_style_window(new_window_wrap, "minimal")
     lib_windows.set_right_title_window(
         new_window_wrap,
-        hover_tuple_number > 1 and string.format("hover[1/%d]", hover_tuple_number) or "hover"
+        hover_tuple_number > 1
+                and string.format("hover[1/%d]", hover_tuple_number)
+            or "hover"
     )
 
     local window_id = lib_windows.display_window(new_window_wrap)
@@ -162,7 +184,9 @@ local next_render = function(hover_tuples, window_id, forward)
     api.nvim_win_set_config(window_id, {
         width = hover_tuple.width,
         height = hover_tuple.height,
-        title = #hover_tuples > 1 and string.format("hover[1/%d]", #hover_tuples) or "hover",
+        title = #hover_tuples > 1
+                and string.format("hover[1/%d]", #hover_tuples)
+            or "hover",
         title_pos = "right",
     })
 
@@ -190,40 +214,58 @@ end
 --- @param buffer_id integer buffer's id
 M.keybind = function(hover_tuples, window_id, buffer_id)
     -- next
-    api.nvim_buf_set_keymap(buffer_id, "n", config.options.hover.key_binding.next, "", {
-        nowait = true,
-        noremap = true,
-        callback = function()
-            if #hover_tuples == 1 then
-                return
-            end
-            local next_buffer = next_render(hover_tuples, window_id, true)
-            M.keybind(hover_tuples, window_id, next_buffer)
-        end,
-        desc = lib_util.command_desc("next hover"),
-    })
+    api.nvim_buf_set_keymap(
+        buffer_id,
+        "n",
+        config.options.hover.key_binding.next,
+        "",
+        {
+            nowait = true,
+            noremap = true,
+            callback = function()
+                if #hover_tuples == 1 then
+                    return
+                end
+                local next_buffer = next_render(hover_tuples, window_id, true)
+                M.keybind(hover_tuples, window_id, next_buffer)
+            end,
+            desc = lib_util.command_desc("next hover"),
+        }
+    )
     -- prev
-    api.nvim_buf_set_keymap(buffer_id, "n", config.options.hover.key_binding.prev, "", {
-        nowait = true,
-        noremap = true,
-        callback = function()
-            if #hover_tuples == 1 then
-                return
-            end
-            local next_buffer = next_render(hover_tuples, window_id, false)
-            M.keybind(hover_tuples, window_id, next_buffer)
-        end,
-        desc = lib_util.command_desc("prev hover"),
-    })
+    api.nvim_buf_set_keymap(
+        buffer_id,
+        "n",
+        config.options.hover.key_binding.prev,
+        "",
+        {
+            nowait = true,
+            noremap = true,
+            callback = function()
+                if #hover_tuples == 1 then
+                    return
+                end
+                local next_buffer = next_render(hover_tuples, window_id, false)
+                M.keybind(hover_tuples, window_id, next_buffer)
+            end,
+            desc = lib_util.command_desc("prev hover"),
+        }
+    )
     -- quit
-    api.nvim_buf_set_keymap(buffer_id, "n", config.options.hover.key_binding.quit, "", {
-        nowait = true,
-        noremap = true,
-        callback = function()
-            lib_windows.close_window(window_id)
-        end,
-        desc = lib_util.command_desc("hover, close window"),
-    })
+    api.nvim_buf_set_keymap(
+        buffer_id,
+        "n",
+        config.options.hover.key_binding.quit,
+        "",
+        {
+            nowait = true,
+            noremap = true,
+            callback = function()
+                lib_windows.close_window(window_id)
+            end,
+            desc = lib_util.command_desc("hover, close window"),
+        }
+    )
 end
 
 return M

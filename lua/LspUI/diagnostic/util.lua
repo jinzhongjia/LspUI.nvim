@@ -70,7 +70,13 @@ end
 --- @param search_forward boolean true is down, false is up
 --- @param buffer_id integer
 --- @return Diagnostic[]?
-local next_position_diagnostics = function(sorted_diagnostics, row, col, search_forward, buffer_id)
+local next_position_diagnostics = function(
+    sorted_diagnostics,
+    row,
+    col,
+    search_forward,
+    buffer_id
+)
     row = row - 1
     local buffer_lines = api.nvim_buf_line_count(buffer_id)
     for i = 0, buffer_lines do
@@ -81,7 +87,8 @@ local next_position_diagnostics = function(sorted_diagnostics, row, col, search_
         end
         local lnum_diagnostics = sorted_diagnostics[lnum]
         if lnum_diagnostics and not vim.tbl_isempty(lnum_diagnostics) then
-            local line_length = #api.nvim_buf_get_lines(buffer_id, lnum, lnum + 1, true)[1]
+            local line_length =
+                #api.nvim_buf_get_lines(buffer_id, lnum, lnum + 1, true)[1]
             if search_forward then
                 -- note: Since the lsp protocol stipulates that col starts from 0, so we should use line_length-1, but rust-analyzer
                 -- ```rust
@@ -150,7 +157,13 @@ M.render = function(action)
     local row = position[1]
     local col = position[2]
 
-    local next_diagnostics = next_position_diagnostics(sorted_diagnostics, row, col, search_forward, current_buffer)
+    local next_diagnostics = next_position_diagnostics(
+        sorted_diagnostics,
+        row,
+        col,
+        search_forward,
+        current_buffer
+    )
     if next_diagnostics == nil then
         return
     end
@@ -222,7 +235,8 @@ M.render = function(action)
     end
 
     -- TODO:whether this can be set by user?
-    local width = math.min(max_width, math.floor(lib_windows.get_max_width() * 0.6))
+    local width =
+        math.min(max_width, math.floor(lib_windows.get_max_width() * 0.6))
 
     local height = lib_windows.compute_height_for_windows(content, width)
 
