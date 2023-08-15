@@ -80,6 +80,8 @@ end
 --- @return window_wrap window_wrap a windows wrap config for other function to use
 M.set_relative_window = function(window_wrap, relative)
     window_wrap.config.relative = relative
+    window_wrap.config.row = 0
+    window_wrap.config.col = 0
     return window_wrap
 end
 
@@ -270,6 +272,14 @@ M.compute_height_for_windows = function(contents, width)
     end
 
     return height
+end
+
+-- set window cursor
+--- @param window_id integer
+--- @param row integer 1 based
+--- @param col integer 0 based
+M.window_set_cursor = function(window_id, row, col)
+    api.nvim_win_set_cursor(window_id, { row, col })
 end
 
 return M
