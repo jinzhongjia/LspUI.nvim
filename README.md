@@ -102,6 +102,7 @@ local default_rename_config = {
 local default_lightbulb_config = {
 	enable = true,
 	-- whether cache code action, if do, code action will use lightbulb's cache
+	-- Sadly, currently this option is invalid, I haven't implemented caching yet
 	is_cached = true,
 	icon = "💡",
 }
@@ -110,6 +111,7 @@ local default_lightbulb_config = {
 local default_code_action_config = {
 	enable = true,
 	command_enable = true,
+	gitsigns = true, -- this will support gitsigns code actions, if you install gitsigns
 	key_binding = {
 		exec = "<cr>",
 		prev = "k",
