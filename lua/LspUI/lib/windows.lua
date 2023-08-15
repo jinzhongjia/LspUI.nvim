@@ -80,8 +80,12 @@ end
 --- @return window_wrap window_wrap a windows wrap config for other function to use
 M.set_relative_window = function(window_wrap, relative)
     window_wrap.config.relative = relative
-    window_wrap.config.row = 0
-    window_wrap.config.col = 0
+    if not window_wrap.config.row then
+        window_wrap.config.row = 0
+    end
+    if not window_wrap.config.col then
+        window_wrap.config.col = 0
+    end
     return window_wrap
 end
 

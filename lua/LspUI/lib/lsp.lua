@@ -18,7 +18,10 @@ M.is_lsp_active = function(is_notify)
 
     if vim.tbl_isempty(clients) then
         if is_notify then
-            local message = string.format("not found lsp client on this buffer, id is %d", current_buf)
+            local message = string.format(
+                "not found lsp client on this buffer, id is %d",
+                current_buf
+            )
             lib_notify.Warn(message)
         end
         return false
@@ -27,7 +30,8 @@ M.is_lsp_active = function(is_notify)
 end
 
 -- format and complete diagnostic default option,
--- this func is referred from https://github.com/neovim/neovim/blob/master/runtime/lua/vim/lsp/diagnostic.lua#L138-L160
+-- this func is referred from
+-- https://github.com/neovim/neovim/blob/master/runtime/lua/vim/lsp/diagnostic.lua#L138-L160
 --- @param diagnostics lsp.Diagnostic[]
 --- @return lsp.Diagnostic[]
 M.diagnostic_vim_to_lsp = function(diagnostics)
@@ -35,7 +39,8 @@ M.diagnostic_vim_to_lsp = function(diagnostics)
     return vim.tbl_map(function(diagnostic)
         ---@cast diagnostic Diagnostic
         return vim.tbl_extend("keep", {
-            -- "keep" the below fields over any duplicate fields in diagnostic.user_data.lsp
+            -- "keep" the below fields over any duplicate fields
+            -- in diagnostic.user_data.lsp
             range = {
                 start = {
                     line = diagnostic.lnum,
@@ -46,7 +51,8 @@ M.diagnostic_vim_to_lsp = function(diagnostics)
                     character = diagnostic.end_col,
                 },
             },
-            severity = type(diagnostic.severity) == "string" and vim.diagnostic.severity[diagnostic.severity]
+            severity = type(diagnostic.severity) == "string"
+                    and vim.diagnostic.severity[diagnostic.severity]
                 or diagnostic.severity,
             message = diagnostic.message,
             source = diagnostic.source,
@@ -56,6 +62,8 @@ M.diagnostic_vim_to_lsp = function(diagnostics)
 end
 
 -- abstruct lsp request, this will request all clients which are passed
+-- this function only can be called by `definition` or `declaration`
+-- or `type definition` or `reference` or `implementation`
 --- @param buffer_id integer
 --- @param clients lsp.Client[]
 --- @param method string
