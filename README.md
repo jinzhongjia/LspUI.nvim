@@ -105,6 +105,8 @@ local default_lightbulb_config = {
 	-- Sadly, currently this option is invalid, I haven't implemented caching yet
 	is_cached = true,
 	icon = "💡",
+	-- defalt is 250 milliseconds, this will reduce calculations when you move the cursor frequently, but it will cause the delay of lightbulb, false will disable it
+	debounce = 250, 
 }
 
 --- @type LspUI_code_action_config
