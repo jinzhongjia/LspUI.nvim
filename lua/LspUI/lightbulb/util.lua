@@ -176,7 +176,7 @@ M.autocmd = function()
                 ),
             })
 
-            api.nvim_create_autocmd({ "InsertEnter" }, {
+            api.nvim_create_autocmd({ "InsertEnter", "WinLeave" }, {
                 group = group_id,
                 buffer = current_buffer,
                 callback = function()
