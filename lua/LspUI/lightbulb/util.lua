@@ -1,4 +1,4 @@
-local lsp, fn = vim.lsp, vim.fn
+local lsp, fn, api = vim.lsp, vim.fn, vim.api
 local code_action_feature = lsp.protocol.Methods.textDocument_codeAction
 
 local config = require("LspUI.config")
@@ -7,6 +7,9 @@ local lib_lsp = require("LspUI.lib.lsp")
 local lib_util = require("LspUI.lib.util")
 
 local M = {}
+
+local lightbulb_group =
+    api.nvim_create_augroup("Lspui_lightBulb", { clear = true })
 
 -- get all valid clients for lightbulb
 --- @param buffer_id integer
@@ -105,6 +108,96 @@ M.request = function(buffer_id, callback)
             end
         end, buffer_id)
     end
+end
+
+local debounce_func = function(buffer_id)
+    local func = function()
+        M.request(buffer_id, function(result)
+            M.clear_render()
+            if result then
+                local line = fn.line(".")
+                if line == nil then
+                    return
+                end
+                M.render(buffer_id, line)
+            end
+        end)
+    end
+    if config.options.lightbulb.debounce then
+        if type(config.options.lightbulb.debounce) == "number" then
+            return lib_util.debounce(
+                func,
+                ---@diagnostic disable-next-line: param-type-mismatch
+                math.floor(config.options.lightbulb.debounce)
+            )
+        else
+            return lib_util.debounce(func, 250)
+        end
+    else
+        return func
+    end
+end
+
+-- auto command for lightbulb
+M.autocmd = function()
+    -- here is just no cache option
+    api.nvim_create_autocmd("LspAttach", {
+        group = lightbulb_group,
+        callback = function()
+            -- get current buffer
+            local current_buffer = api.nvim_get_current_buf()
+            local group_id = api.nvim_create_augroup(
+                "Lspui_lightBulb_" .. tostring(current_buffer),
+                { clear = true }
+            )
+
+            -- local debounce_func = lib_util.debounce(function()
+            --     M.request(current_buffer, function(result)
+            --         M.clear_render()
+            --         if result then
+            --             local line = fn.line(".")
+            --             if line == nil then
+            --                 return
+            --             end
+            --             M.render(current_buffer, line)
+            --         end
+            --     end)
+            -- end, 250)
+
+            local new_func = debounce_func(current_buffer)
+            api.nvim_create_autocmd({ "CursorHold" }, {
+                group = group_id,
+                buffer = current_buffer,
+                callback = vim.schedule_wrap(function()
+                    new_func()
+                end),
+                desc = lib_util.command_desc(
+                    "Lightbulb update when CursorHold"
+                ),
+            })
+
+            api.nvim_create_autocmd({ "InsertEnter" }, {
+                group = group_id,
+                buffer = current_buffer,
+                callback = function()
+                    M.clear_render()
+                end,
+                desc = lib_util.command_desc(
+                    "Lightbulb update when InsertEnter"
+                ),
+            })
+
+            api.nvim_create_autocmd({ "BufWipeout" }, {
+                group = group_id,
+                buffer = current_buffer,
+                callback = function()
+                    api.nvim_del_augroup_by_id(group_id)
+                end,
+                desc = lib_util.command_desc("Exec clean cmd when QuitPre"),
+            })
+        end,
+        desc = lib_util.command_desc("Lsp attach lightbulb cmd"),
+    })
 end
 
 return M

@@ -8,6 +8,7 @@
 --- @field enable boolean? whether enable `lightbulb` module
 --- @field is_cached boolean? whether enable cache
 --- @field icon string? icon for lightbulb
+--- @field debounce (integer|boolean)? whether enable debounce for lightbulb ? defalt is 250 milliseconds, this will reduce calculations when you move the cursor frequently, but it will cause the delay of lightbulb, false will diable it
 
 --- @class LspUI_code_action_config
 --- @field enable boolean? whether enable `code_action` module
