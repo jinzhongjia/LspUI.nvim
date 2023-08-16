@@ -18,6 +18,7 @@ local default_lightbulb_config = {
     -- whether cache code action, if do, code action will use lightbulb's cache
     is_cached = true,
     icon = "💡",
+    debounce = 250,
 }
 
 --- @type LspUI_code_action_config
