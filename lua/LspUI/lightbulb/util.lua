@@ -84,6 +84,7 @@ M.request = function(buffer_id, callback)
 
     -- new logic, reduce a little calculations
     local new_callback = lib_util.exec_once(callback)
+    -- here will Check for new content
     if config.options.code_action.gitsigns then
         local status, gitsigns = pcall(require, "gitsigns")
         if status then

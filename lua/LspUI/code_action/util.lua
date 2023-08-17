@@ -9,6 +9,8 @@ local lib_notify = require("LspUI.lib.notify")
 local lib_util = require("LspUI.lib.util")
 local lib_windows = require("LspUI.lib.windows")
 
+--- TODO: add abstruct and register
+
 --- @alias action_tuple { action: lsp.CodeAction|lsp.Command, client: lsp.Client?, buffer_id: integer, callback: function? }
 
 local M = {}
