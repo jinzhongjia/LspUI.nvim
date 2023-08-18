@@ -1,7 +1,9 @@
-local api = vim.api
+local api, lsp = vim.api, vim.lsp
+local definition_feature = lsp.protocol.Methods.textDocument_definition
 local command = require("LspUI.command")
 local config = require("LspUI.config")
 local lib_notify = require("LspUI.lib.notify")
+local pos_abstract = require("LspUI.pos_abstract")
 local util = require("LspUI.definition.util")
 local M = {}
 -- whether this module is initialized
@@ -41,8 +43,25 @@ M.run = function()
     local current_window = api.nvim_get_current_win()
 
     local params = util.make_params(current_window)
+    params.context = { includeDeclaration = true }
+    pos_abstract.lsp_clients_request(
+        current_buffer,
+        clients,
+        definition_feature,
+        params,
+        function(datas)
+            if not datas then
+                lib_notify.Info("no valid definition")
+                return
+            end
 
-    util.render(current_buffer, clients, params)
+            pos_abstract.set_datas(datas)
+
+            pos_abstract.secondary_view_render("definition")
+
+            api.nvim_set_current_win(pos_abstract.secondary_view_window())
+        end
+    )
 end
 
 return M

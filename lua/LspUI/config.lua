@@ -55,6 +55,16 @@ local default_hover_config = {
 local default_definition_config = {
     enable = true,
     command_enable = true,
+    key_binding = {
+        main = {
+            quit = "q",
+            hide_secondary = "<leader>h",
+        },
+        secondary = {
+            jump = "o",
+            quit = "q",
+        },
+    },
 }
 
 -- default config
