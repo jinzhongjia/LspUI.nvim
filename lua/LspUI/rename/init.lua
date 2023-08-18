@@ -38,6 +38,7 @@ M.run = function()
     local clients = util.get_clients(current_buffer)
     if clients == nil then
         -- if no valid client, step into here
+        lib_notify.Warn("no client supports rename!")
         return
     end
 
