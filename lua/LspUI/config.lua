@@ -53,7 +53,7 @@ local default_hover_config = {
 
 --- @type LspUI_definition_config
 local default_definition_config = {
-    enable = true,
+    enable = false,
     command_enable = true,
 }
 
