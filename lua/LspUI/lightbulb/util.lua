@@ -23,8 +23,11 @@ end
 -- render sign
 --- @param buffer_id integer buffer's id
 --- @param line integer the line number, and this will be set as sign id
---- @return integer sign_identifier sign's identifier, -1 means failing
+--- @return integer? sign_identifier sign's identifier, -1 means failing
 M.render = function(buffer_id, line)
+    if not api.nvim_buf_is_valid(buffer_id) then
+        return
+    end
     return fn.sign_place(
         line,
         global.lightbulb.sign_group,
