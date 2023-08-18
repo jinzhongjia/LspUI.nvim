@@ -23,8 +23,11 @@ end
 -- render sign
 --- @param buffer_id integer buffer's id
 --- @param line integer the line number, and this will be set as sign id
---- @return integer sign_identifier sign's identifier, -1 means failing
+--- @return integer? sign_identifier sign's identifier, -1 means failing
 M.render = function(buffer_id, line)
+    if not api.nvim_buf_is_valid(buffer_id) then
+        return
+    end
     return fn.sign_place(
         line,
         global.lightbulb.sign_group,
@@ -84,6 +87,7 @@ M.request = function(buffer_id, callback)
 
     -- new logic, reduce a little calculations
     local new_callback = lib_util.exec_once(callback)
+    -- here will Check for new content
     if config.options.code_action.gitsigns then
         local status, gitsigns = pcall(require, "gitsigns")
         if status then
@@ -176,7 +180,7 @@ M.autocmd = function()
                 ),
             })
 
-            api.nvim_create_autocmd({ "InsertEnter" }, {
+            api.nvim_create_autocmd({ "InsertEnter", "WinLeave" }, {
                 group = group_id,
                 buffer = current_buffer,
                 callback = function()

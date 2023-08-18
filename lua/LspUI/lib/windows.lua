@@ -1,5 +1,8 @@
 local api, fn = vim.api, vim.fn
 
+local lib_debug = require("LspUI.lib.debug")
+local lib_util = require("LspUI.lib.util")
+
 --- @alias window_wrap { buffer: integer, enter: boolean, config: vim.api.keyset.float_config } wrap for windows
 
 local M = {}

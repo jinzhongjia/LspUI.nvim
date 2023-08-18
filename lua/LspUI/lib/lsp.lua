@@ -61,39 +61,4 @@ M.diagnostic_vim_to_lsp = function(diagnostics)
     end, diagnostics)
 end
 
--- abstruct lsp request, this will request all clients which are passed
--- this function only can be called by `definition` or `declaration`
--- or `type definition` or `reference` or `implementation`
---- @param buffer_id integer
---- @param clients lsp.Client[]
---- @param method string
---- @param params table
---- @param callback fun(data:{client: lsp.Client, result: any}[])
-M.lsp_clients_request = function(buffer_id, clients, method, params, callback)
-    local tmp_number = 0
-    local client_number = #clients
-
-    --- @type {client: lsp.Client, result: any}[]
-    local data = {}
-    for _, client in pairs(clients) do
-        client.request(method, params, function(err, result, _, _)
-            if err ~= nil then
-                lib_notify.Warn(string.format("when %s, err: %s", method, err))
-            end
-            tmp_number = tmp_number + 1
-            table.insert(
-                data,
-                --- @type {client: lsp.Client, result: any}
-                {
-                    client = client,
-                    result = result,
-                }
-            )
-            if tmp_number == client_number then
-                callback(data)
-            end
-        end, buffer_id)
-    end
-end
-
 return M

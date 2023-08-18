@@ -4,6 +4,8 @@ local util = require("LspUI.lightbulb.util")
 
 local M = {}
 
+--- note: lightbulb depends on code_action
+
 -- whether this module has initialized
 local is_initialized = false
 
