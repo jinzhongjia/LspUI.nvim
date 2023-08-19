@@ -624,7 +624,7 @@ M.secondary_view_render = function()
             width = width,
             height = height,
         })
-        api.nvim_win_set_cursor(M.secondary_view_window(), { 1, 0 })
+        -- api.nvim_win_set_cursor(M.secondary_view_window(), { 1, 0 })
         return
     end
 
@@ -654,7 +654,7 @@ M.secondary_view_render = function()
         "winhighlight",
         "Normal:Normal"
     )
-    api.nvim_win_set_cursor(M.secondary_view_window(), { 1, 0 })
+    -- api.nvim_win_set_cursor(M.secondary_view_window(), { 1, 0 })
 end
 
 --- @param buffer_id integer which buffer do method
