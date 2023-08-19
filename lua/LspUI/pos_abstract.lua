@@ -1,4 +1,4 @@
-local api, fn = vim.api, vim.fn
+local api, fn, lsp = vim.api, vim.fn, vim.lsp
 local config = require("LspUI.config")
 local lib_debug = require("LspUI.lib.debug")
 local lib_notify = require("LspUI.lib.notify")
@@ -11,59 +11,137 @@ local M = {}
 --- @alias lsp_position  { buffer_id: integer, fold: boolean, range: lsp_range[]}
 --- @alias Lsp_position_wrap  { [lsp.URI]: lsp_position}
 
+--- @type { method: string, name: string }
+local method = nil
+
 --- @type Lsp_position_wrap
 local datas = {}
 
---- @type integer
-local type = 0
-
+-- main view
 local main_view = {
     buffer = -1,
     window = -1,
+    hide = false,
 }
 
+-- secondary view
 local secondary_view = {
     buffer = -1,
     window = -1,
+    hide = false,
 }
 
-M.type = {
-    definition = 1,
-    type_definition = 2,
-    declaration = 3,
-    reference = 4,
-    implemention = 5,
+-- expose method
+M.method = {
+    definition = {
+        method = lsp.protocol.Methods.textDocument_definition,
+        name = "definition",
+    },
+    type_definition = {
+        method = lsp.protocol.Methods.textDocument_typeDefinition,
+        name = "type definition",
+    },
+    declaration = {
+        method = lsp.protocol.Methods.textDocument_declaration,
+        name = "declaration",
+    },
+    reference = {
+        method = lsp.protocol.Methods.textDocument_references,
+        name = "reference",
+    },
+    implemention = {
+        method = lsp.protocol.Methods.textDocument_implementation,
+        name = "implemention",
+    },
 }
 
+--- @param buffer_id integer?
 --- @return integer
-M.main_view_buffer = function()
+M.main_view_buffer = function(buffer_id)
+    if buffer_id then
+        main_view.buffer = buffer_id
+    end
     return main_view.buffer
 end
 
+--- @param window_id integer?
 --- @return integer
-M.main_view_window = function()
+M.main_view_window = function(window_id)
+    if window_id then
+        main_view.window = window_id
+    end
     return main_view.window
 end
 
+--- @param hide boolean?
+--- @return boolean
+M.main_view_hide = function(hide)
+    if hide then
+        main_view.hide = hide
+    end
+    return main_view.hide
+end
+
+--- @param buffer_id integer?
 --- @return integer
-M.secondary_view_buffer = function()
+M.secondary_view_buffer = function(buffer_id)
+    if buffer_id then
+        secondary_view.buffer = buffer_id
+    end
     return secondary_view.buffer
 end
 
+--- @param window_id integer?
 --- @return integer
-M.secondary_view_window = function()
+M.secondary_view_window = function(window_id)
+    if window_id then
+        secondary_view.window = window_id
+    end
     return secondary_view.window
 end
 
---- @param param Lsp_position_wrap
-M.set_datas = function(param)
-    datas = param
+--- @param hide boolean?
+--- @return boolean
+M.secondary_view_hide = function(hide)
+    if hide then
+        secondary_view.hide = hide
+    end
+    return secondary_view.hide
+end
+
+--- @param param Lsp_position_wrap?
+--- @return Lsp_position_wrap
+M.datas = function(param)
+    if param then
+        datas = param
+    end
+    return datas
+end
+
+--- @param lnum integer
+--- @return string? uri
+--- @return lsp_range? range
+local get_lsp_position_by_lnum = function(lnum)
+    for uri, data in pairs(datas) do
+        lnum = lnum - 1
+        if lnum == 0 then
+            return uri, nil
+        end
+        if not data.fold then
+            for _, val in pairs(data.range) do
+                lnum = lnum - 1
+                if lnum == 0 then
+                    return uri, val
+                end
+            end
+        end
+    end
 end
 
 -- abstruct lsp request, this will request all clients which are passed
 -- this function only can be called by `definition` or `declaration`
 -- or `type definition` or `reference` or `implementation`
---- @param buffer_id integer
+--- @param buffer_id integer which buffer do method
 --- @param clients lsp.Client[]
 --- @param method string
 --- @param params table
@@ -93,7 +171,7 @@ M.lsp_clients_request = function(buffer_id, clients, method, params, callback)
                 if data[uri] == nil then
                     data[uri] = {
                         buffer_id = uri_buffer,
-                        fold = false,
+                        fold = true,
                         range = {},
                     }
                 end
@@ -110,7 +188,7 @@ M.lsp_clients_request = function(buffer_id, clients, method, params, callback)
                     if data[uri] == nil then
                         data[uri] = {
                             buffer_id = uri_buffer,
-                            fold = false,
+                            fold = true,
                             range = {},
                         }
                     end
@@ -128,100 +206,173 @@ M.lsp_clients_request = function(buffer_id, clients, method, params, callback)
     end
 end
 
-local secondary_view_keybind = function()
-    api.nvim_buf_set_keymap(
-        secondary_view.buffer,
-        "n",
-        config.options.definition.key_binding.secondary.jump,
-        "",
-        {
-            nowait = true,
-            callback = function()
-                -- get current cursor position
-                local cursor_position =
-                    api.nvim_win_get_cursor(secondary_view.window)
-                -- get current lnum
-                local lnum = cursor_position[1]
-                -- get uri and range
-                local uri, range = M.get_lsp_position_by_lnum(lnum)
-                if not uri then
-                    return
-                end
+-- local main_view_keybind = function()
+--     local origin_back = api.nvim_buf_get_keymap(main_view.buffer, "n")
+--     lib_debug.debug(origin_back)
+--     -- back keybind
+--     api.nvim_buf_set_keymap(
+--         main_view.buffer,
+--         "n",
+--         config.options.pos_keybind.main.back,
+--         "",
+--         {
+--             callback = function()
+--                 if M.secondary_view_hide() then
+--                     lib_windows.close_window(main_view.window)
+--                 else
+--                     api.nvim_set_current_win(secondary_view.window)
+--                 end
+--             end,
+--         }
+--     )
+--     -- hide secondary view
+--     api.nvim_buf_set_keymap(
+--         main_view.buffer,
+--         "n",
+--         config.options.pos_keybind.main.hide_secondary,
+--         "",
+--         {
+--             callback = function()
+--                 M.secondary_view_hide(not M.secondary_view_hide())
+--                 if M.secondary_view_hide() then
+--                     lib_windows.close_window(secondary_view.window)
+--                 else
+--                     M.secondary_view_render("definition")
+--                 end
+--             end,
+--         }
+--     )
+-- end
 
-                if range then
-                    -- local uri_buffer = datas[uri].buffer_id
-                    -- main_view.buffer = uri_buffer
-                    --
-                    -- M.main_view_render()
-                    -- lib_windows.window_set_cursor(
-                    --     main_view.window,
-                    --     range.start.line + 1,
-                    --     range.start.character
-                    -- )
-                    -- api.nvim_set_current_win(main_view.window)
-                else
-                    datas[uri].fold = not datas[uri].fold
-                    M.secondary_view_render("definition")
-                end
-            end,
-        }
-    )
-end
+-- local main_view_autocmd = function() end
 
-local secondary_view_autocmd = function()
-    api.nvim_create_autocmd("WinClosed", {
-        buffer = secondary_view.buffer,
-        callback = function()
-            lib_windows.close_window(main_view.window)
-        end,
-    })
-    api.nvim_create_autocmd("CursorHold", {
-        buffer = secondary_view.buffer,
-        callback = function()
-            local cursor_position =
-                api.nvim_win_get_cursor(secondary_view.window)
-            local lnum = cursor_position[1]
-            local uri, range = M.get_lsp_position_by_lnum(lnum)
-            if not uri then
-                return
-            end
+-- local secondary_view_keybind = function()
+--     -- keybind for jump
+--     api.nvim_buf_set_keymap(
+--         secondary_view.buffer,
+--         "n",
+--         config.options.pos_keybind.secondary.jump,
+--         "",
+--         {
+--             nowait = true,
+--             callback = function()
+--                 -- get current cursor position
+--                 local cursor_position =
+--                     api.nvim_win_get_cursor(secondary_view.window)
+--                 -- get current lnum
+--                 local lnum = cursor_position[1]
+--                 -- get uri and range
+--                 local uri, range = M.get_lsp_position_by_lnum(lnum)
+--                 if not uri then
+--                     return
+--                 end
+--
+--                 if range then
+--                     -- when main is not hidden, we can enter it
+--                     if not M.main_view_hide() then
+--                         api.nvim_set_current_win(main_view.window)
+--                     end
+--                 else
+--                     datas[uri].fold = not datas[uri].fold
+--                     M.secondary_view_render("definition")
+--                 end
+--             end,
+--         }
+--     )
+--
+--     -- quit for secondary
+--     api.nvim_buf_set_keymap(
+--         secondary_view.buffer,
+--         "n",
+--         config.options.pos_keybind.secondary.quit,
+--         "",
+--         {
+--             callback = function()
+--                 lib_windows.close_window(secondary_view.window)
+--                 lib_windows.close_window(main_view.window)
+--             end,
+--         }
+--     )
+--
+--     -- hide main for keybind
+--     api.nvim_buf_set_keymap(
+--         secondary_view.buffer,
+--         "n",
+--         config.options.pos_keybind.secondary.hide_main,
+--         "",
+--         {
+--             callback = function()
+--                 -- first we need to set main hide
+--                 M.main_view_hide(not M.main_view_hide())
+--                 if M.main_view_hide() then
+--                     lib_windows.close_window(main_view.window)
+--                 else
+--                     M.main_view_render()
+--                 end
+--             end,
+--         }
+--     )
+-- end
 
-            if range then
-                local uri_buffer = datas[uri].buffer_id
-                main_view.buffer = uri_buffer
-
-                M.main_view_render()
-                api.nvim_buf_call(main_view.buffer, function()
-                    if
-                        vim.api.nvim_buf_get_option(
-                            main_view.buffer,
-                            "filetype"
-                        ) == ""
-                    then
-                        vim.cmd("do BufRead")
-                    end
-                end)
-                lib_windows.window_set_cursor(
-                    main_view.window,
-                    range.start.line + 1,
-                    range.start.character
-                )
-            end
-        end,
-    })
-end
-
-local main_view_keybind = function() end
-
-local main_view_autocmd = function() end
+-- local secondary_view_autocmd = function()
+--     api.nvim_create_autocmd("WinClosed", {
+--         buffer = secondary_view.buffer,
+--         callback = function()
+--             -- when secondary hide, just return
+--             if M.secondary_view_hide() then
+--                 return
+--             end
+--             lib_windows.close_window(main_view.window)
+--         end,
+--     })
+--     api.nvim_create_autocmd("CursorHold", {
+--         buffer = secondary_view.buffer,
+--         callback = function()
+--             -- when main hide, just return
+--
+--             local cursor_position =
+--                 api.nvim_win_get_cursor(secondary_view.window)
+--             local lnum = cursor_position[1]
+--             local uri, range = M.get_lsp_position_by_lnum(lnum)
+--             if not uri then
+--                 return
+--             end
+--
+--             if range then
+--                 local uri_buffer = datas[uri].buffer_id
+--                 main_view.buffer = uri_buffer
+--                 main_view_keybind()
+--
+--                 if not M.main_view_hide() then
+--                     M.main_view_render()
+--                 end
+--                 api.nvim_buf_call(main_view.buffer, function()
+--                     if
+--                         vim.api.nvim_buf_get_option(
+--                             main_view.buffer,
+--                             "filetype"
+--                         ) == ""
+--                     then
+--                         vim.cmd("do BufRead")
+--                     end
+--                 end)
+--                 if not M.main_view_hide() then
+--                     lib_windows.window_set_cursor(
+--                         main_view.window,
+--                         range.start.line + 1,
+--                         range.start.character
+--                     )
+--                 end
+--             end
+--         end,
+--     })
+-- end
 
 --- @return integer width
 --- @return integer height
 local generate_secondary_view = function()
-    if not api.nvim_buf_is_valid(secondary_view.buffer) then
-        secondary_view.buffer = api.nvim_create_buf(false, true)
-        secondary_view_autocmd()
-        secondary_view_keybind()
+    if not api.nvim_buf_is_valid(M.secondary_view_buffer()) then
+        M.secondary_view_buffer(api.nvim_create_buf(false, true))
     end
 
     local content = {}
@@ -277,7 +428,7 @@ local generate_secondary_view = function()
         end
     end
 
-    api.nvim_buf_set_lines(secondary_view.buffer, 0, -1, true, content)
+    api.nvim_buf_set_lines(M.secondary_view_buffer(), 0, -1, true, content)
 
     -- For aesthetics, increase the width
     return max_width + 2 > 30 and 30 or max_width + 2, height + 1
@@ -285,22 +436,24 @@ end
 
 -- render main view
 M.main_view_render = function()
-    if not api.nvim_buf_is_valid(main_view.buffer) then
+    if not api.nvim_buf_is_valid(M.main_view_buffer()) then
         lib_notify.Error(
             "render main view fails, main view buffer is not valid"
         )
         return
     end
-    if not api.nvim_buf_is_loaded(main_view.buffer) then
-        fn.bufload(main_view.buffer)
+    if not api.nvim_buf_is_loaded(M.main_view_buffer()) then
+        fn.bufload(M.main_view_buffer())
     end
 
-    if lib_windows.is_valid_window(main_view.window) then
-        lib_debug.debug("not new")
-        api.nvim_win_set_buf(main_view.window, main_view.buffer)
+    if lib_windows.is_valid_window(M.main_view_window()) then
+        -- if now windows is valid, just set buffer
+        api.nvim_win_set_buf(M.main_view_window(), M.main_view_buffer())
         return
     end
-    local main_window_wrap = lib_windows.new_window(main_view.buffer)
+
+    -- window is not valid, create a new window
+    local main_window_wrap = lib_windows.new_window(M.main_view_buffer())
     lib_windows.set_width_window(main_window_wrap, lib_windows.get_max_width())
     lib_windows.set_height_window(
         main_window_wrap,
@@ -315,23 +468,28 @@ M.main_view_render = function()
     lib_windows.set_col_window(main_window_wrap, 0)
     lib_windows.set_row_window(main_window_wrap, 1)
 
-    main_view.window = lib_windows.display_window(main_window_wrap)
+    M.main_view_window(lib_windows.display_window(main_window_wrap))
 end
 
 --- @param name string
+--- TODO: remove name
 M.secondary_view_render = function(name)
+    -- generate buffer, get width and height
     local width, height = generate_secondary_view()
 
-    if lib_windows.is_valid_window(secondary_view.window) then
-        api.nvim_win_set_buf(secondary_view.window, secondary_view.buffer)
-        api.nvim_win_set_config(secondary_view.window, {
+    if lib_windows.is_valid_window(M.secondary_view_window()) then
+        api.nvim_win_set_buf(
+            M.secondary_view_window(),
+            M.secondary_view_buffer()
+        )
+        api.nvim_win_set_config(M.secondary_view_window(), {
             width = width,
             height = height,
         })
         return
     end
 
-    local second_window_wrap = lib_windows.new_window(secondary_view.buffer)
+    local second_window_wrap = lib_windows.new_window(M.secondary_view_buffer())
 
     -- set width
     lib_windows.set_width_window(second_window_wrap, width)
@@ -351,27 +509,33 @@ M.secondary_view_render = function(name)
     lib_windows.set_anchor_window(second_window_wrap, "NW")
     lib_windows.set_center_title_window(second_window_wrap, name)
 
-    secondary_view.window = lib_windows.display_window(second_window_wrap)
+    M.secondary_view_window(lib_windows.display_window(second_window_wrap))
 end
 
---- @param lnum integer
---- @return string? uri
---- @return lsp_range? range
-M.get_lsp_position_by_lnum = function(lnum)
-    for uri, data in pairs(datas) do
-        lnum = lnum - 1
-        if lnum == 0 then
-            return uri, nil
-        end
-        if not data.fold then
-            for _, val in pairs(data.range) do
-                lnum = lnum - 1
-                if lnum == 0 then
-                    return uri, val
-                end
+--- @param buffer_id integer which buffer do method
+--- @param clients lsp.Client[]
+--- @param params table
+--- @param new_method { method: string, name: string }
+M.go = function(new_method, buffer_id, clients, params)
+    method = new_method
+    M.lsp_clients_request(
+        buffer_id,
+        clients,
+        method.method,
+        params,
+        function(data)
+            if not data then
+                lib_notify.Info("no valid definition")
+                return
             end
+            M.datas(data)
+
+            M.secondary_view_render(method.name)
+
+            -- set current window
+            api.nvim_set_current_win(M.secondary_view_window())
         end
-    end
+    )
 end
 
 return M

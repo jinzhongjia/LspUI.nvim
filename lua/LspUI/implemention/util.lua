@@ -1,5 +1,5 @@
 local lsp = vim.lsp
-local definition_feature = lsp.protocol.Methods.textDocument_definition
+local implemention_feature = lsp.protocol.Methods.textDocument_implementation
 
 local M = {}
 
@@ -8,7 +8,7 @@ local M = {}
 --- @return lsp.Client[]|nil clients array or nil
 M.get_clients = function(buffer_id)
     local clients =
-        lsp.get_clients({ bufnr = buffer_id, method = definition_feature })
+        lsp.get_clients({ bufnr = buffer_id, method = implemention_feature })
     if vim.tbl_isempty(clients) then
         return nil
     end
@@ -20,7 +20,7 @@ end
 --
 --- @param window_id integer
 --- @return lsp.TextDocumentPositionParams
---- @see https://microsoft.github.io/language-server-protocol/specifications/lsp/3.17/specification/#definitionParams
+--- @see https://microsoft.github.io/language-server-protocol/specifications/lsp/3.17/specification/#implementationParams
 M.make_params = function(window_id)
     local params = lsp.util.make_position_params(window_id)
     return params

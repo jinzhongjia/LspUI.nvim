@@ -55,16 +55,30 @@ local default_hover_config = {
 local default_definition_config = {
     enable = true,
     command_enable = true,
-    key_binding = {
-        main = {
-            quit = "q",
-            hide_secondary = "<leader>h",
-        },
-        secondary = {
-            jump = "o",
-            quit = "q",
-        },
-    },
+}
+
+--- @type LspUI_type_definition_config
+local default_type_definition_config = {
+    enable = true,
+    command_enable = true,
+}
+
+--- @type LspUI_declaration_config
+local default_declaration_config = {
+    enable = true,
+    command_enable = true,
+}
+
+--- @type LspUI_implemention_config
+local default_implemention_config = {
+    enable = true,
+    command_enable = true,
+}
+
+--- @type LspUI_reference_config
+local default_reference_config = {
+    enable = true,
+    command_enable = true,
 }
 
 -- default config
@@ -76,6 +90,21 @@ local default_config = {
     diagnostic = default_diagnostic_config,
     hover = default_hover_config,
     definition = default_definition_config,
+    type_definition = default_type_definition_config,
+    declaration = default_declaration_config,
+    implemention = default_implemention_config,
+    reference = default_reference_config,
+    pos_keybind = {
+        main = {
+            back = "q",
+            hide_secondary = "<leader>h",
+        },
+        secondary = {
+            jump = "o",
+            quit = "q",
+            hide_main = "<leader>h",
+        },
+    },
 }
 
 -- Prevent plugins from being initialized multiple times

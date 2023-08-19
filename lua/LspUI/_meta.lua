@@ -25,12 +25,28 @@
 --- @field command_enable boolean? whether enable command for `hover`
 --- @field key_binding { prev: string?, next: string?, quit: string? }? keybind for `hover`
 
---- @alias pos_abstract_keybind { secondary: { jump: string?, quit:string? }?, main: { quit: string?, hide_secondary: string? }? }
+-- this is just for some keybind like definition, type definition, declaration, reference, implemention
+--- @alias pos_abstract_keybind { secondary: { jump: string?, quit:string?, hide_main:string? }?, main: { back: string?, hide_secondary: string? }? }
 
 --- @class LspUI_definition_config
 --- @field enable boolean? whether enable `definition` module
 --- @field command_enable boolean? whether enable command for `definition`
---- @field key_binding pos_abstract_keybind?
+
+--- @class LspUI_type_definition_config
+--- @field enable boolean? whether enable `definition` module
+--- @field command_enable boolean? whether enable command for `definition`
+
+--- @class LspUI_declaration_config
+--- @field enable boolean? whether enable `definition` module
+--- @field command_enable boolean? whether enable command for `definition`
+
+--- @class LspUI_implemention_config
+--- @field enable boolean? whether enable `definition` module
+--- @field command_enable boolean? whether enable command for `definition`
+
+--- @class LspUI_reference_config
+--- @field enable boolean? whether enable `definition` module
+--- @field command_enable boolean? whether enable command for `definition`
 
 --- @class LspUI_config config for LspUI
 --- @field rename LspUI_rename_config? `rename` module
@@ -39,3 +55,8 @@
 --- @field diagnostic LspUI_diagnostic_config? `diagnostic` module
 --- @field hover  LspUI_hover_config? `hover` module
 --- @field definition LspUI_definition_config? `definition` module
+--- @field type_definition LspUI_type_definition_config? `type_definition` module
+--- @field declaration LspUI_declaration_config? `declaration` module
+--- @field implemention LspUI_implemention_config? `implemention` module
+--- @field reference LspUI_reference_config? `reference` module
+--- @field pos_keybind pos_abstract_keybind? keybind for `definition`, `type definition`, `declaration`, `reference`, implemention
