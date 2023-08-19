@@ -1,3 +1,4 @@
+local api = vim.api
 local global = require("LspUI.global")
 local lib_notify = require("LspUI.lib.notify")
 

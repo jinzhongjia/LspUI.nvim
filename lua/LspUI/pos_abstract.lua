@@ -7,6 +7,11 @@ local lib_windows = require("LspUI.lib.windows")
 
 local M = {}
 
+-- create a namespace
+local main_namespace = api.nvim_create_namespace("LspUI_main")
+
+local seconday_namespace = api.nvim_create_namespace("LspUI_seconday")
+
 --- @alias lsp_range { start: lsp.Position, finish: lsp.Position }
 --- @alias lsp_position  { buffer_id: integer, fold: boolean, range: lsp_range[]}
 --- @alias Lsp_position_wrap  { [lsp.URI]: lsp_position}
@@ -75,6 +80,58 @@ local get_lsp_position_by_lnum = function(lnum)
                 end
             end
         end
+    end
+end
+
+--- @param data lsp_position
+local main_set_hl = function(data)
+    for _, val in pairs(data.range) do
+        for row = val.start.line, val.finish.line, 1 do
+            local start_col = 0
+            local end_col = -1
+            if row == val.start.line then
+                start_col = val.start.character
+            end
+
+            if row == val.finish.line then
+                end_col = val.finish.character
+            end
+
+            api.nvim_buf_add_highlight(
+                M.main_view_buffer(),
+                main_namespace,
+                "Search",
+                row,
+                start_col,
+                end_col
+            )
+        end
+    end
+end
+
+local secondary_set_hl = function() end
+
+-- clear main highlight
+local main_clear_hl = function()
+    if api.nvim_buf_is_valid(M.main_view_buffer()) then
+        vim.api.nvim_buf_clear_namespace(
+            M.main_view_buffer(),
+            main_namespace,
+            0,
+            -1
+        )
+    end
+end
+
+-- clear secondary highlight
+local secondary_clear_hl = function()
+    if api.nvim_buf_is_valid(M.secondary_view_buffer()) then
+        vim.api.nvim_buf_clear_namespace(
+            M.secondary_view_buffer(),
+            seconday_namespace,
+            0,
+            -1
+        )
     end
 end
 
@@ -160,6 +217,8 @@ local secondary_view_keybind = function()
         config.options.pos_keybind.secondary.enter,
         "",
         {
+            nowait = true,
+            noremap = true,
             callback = function()
                 -- when main is not hidden, we can enter it
                 if not M.main_view_hide() then
@@ -176,6 +235,8 @@ local secondary_view_keybind = function()
         config.options.pos_keybind.secondary.quit,
         "",
         {
+            nowait = true,
+            noremap = true,
             callback = function()
                 lib_windows.close_window(M.secondary_view_window())
                 lib_windows.close_window(M.main_view_window())
@@ -190,6 +251,8 @@ local secondary_view_keybind = function()
         config.options.pos_keybind.secondary.hide_main,
         "",
         {
+            nowait = true,
+            noremap = true,
             callback = function()
                 -- first we need to set main hide
                 M.main_view_hide(not M.main_view_hide())
@@ -212,6 +275,8 @@ local secondary_view_autocmd = function()
                 return
             end
             lib_windows.close_window(M.main_view_window())
+            -- when seconday view close, clear main view highlight
+            main_clear_hl()
         end,
     })
     api.nvim_create_autocmd("CursorMoved", {
@@ -244,16 +309,16 @@ local secondary_view_autocmd = function()
                 if not M.main_view_hide() then
                     M.main_view_render()
                 end
-                api.nvim_buf_call(M.main_view_buffer(), function()
-                    if
-                        vim.api.nvim_buf_get_option(
-                            M.main_view_buffer(),
-                            "filetype"
-                        ) == ""
-                    then
-                        vim.cmd("do BufRead")
-                    end
-                end)
+                -- api.nvim_buf_call(M.main_view_buffer(), function()
+                --     if
+                --         vim.api.nvim_buf_get_option(
+                --             M.main_view_buffer(),
+                --             "filetype"
+                --         ) == ""
+                --     then
+                --         vim.cmd("do BufRead")
+                --     end
+                -- end)
                 if not M.main_view_hide() then
                     lib_windows.window_set_cursor(
                         M.main_view_window(),
@@ -276,7 +341,23 @@ end
 --- @return integer
 M.main_view_buffer = function(buffer_id)
     if buffer_id then
+        main_clear_hl()
         main_view.buffer = buffer_id
+        if not api.nvim_buf_is_loaded(M.main_view_buffer()) then
+            fn.bufload(M.main_view_buffer())
+        end
+        -- TODO: why we must do `BufRead`
+        api.nvim_buf_call(M.main_view_buffer(), function()
+            if
+                vim.api.nvim_buf_get_option(M.main_view_buffer(), "filetype")
+                == ""
+            then
+                vim.cmd("do BufRead")
+            end
+        end)
+        -- lib_debug.debug(string.format("id:%d", buffer_id))
+        -- lib_debug.debug(string.format("uri:%s", current_item.buffer_id))
+        main_set_hl(datas[current_item.uri])
     end
     return main_view.buffer
 end
