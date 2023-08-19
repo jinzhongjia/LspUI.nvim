@@ -1,90 +1,107 @@
 # LspUI.nvim
 
-A plugin which wrap s lsp opeartions
+A plugin which wraps Neovim LSP operations with a nicer UI.
 
-## Design ideas
 
-> As neovim is the host system, its plugins should be kept as minimally intrusive as possible
->
-> And plugins should be highly controllable
+## ✨ Features
 
--   Highly controllable functions
--   Least invasive
+- Custom implementations of common LSP functions
+- Great out of the box UI
+- Due to reimplementation of builtins, potentially better performance than builtin neovim functions.
+- Commands:
+  - Code Action
+  - Rename
+  - Hover
+  - Show Diagnostics
 
-## Feature
+## 📦 Installation
 
-Re-implemented some functions of neovim, theoretically, the running speed should be slightly higher than the built-in functions of neovim, and at the same time, it has a good UI
+- Requires neovim `nightly`
+- Migrating from v1? See [Migration](#migration)
 
--   `code action`
--   `rename`
--   `hover`
--   `diagnostic`
-
-## Install
-
-neovim version is `nightly`
-
-Migrating from the old version, there is no need to change the original configuration (after refactoring, only some configuration items are deleted)
-
-### Lazy.nvim
+### [lazy.nvim](https://github.com/folke/lazy.nvim)
 
 ```lua
 {
     "jinzhongjia/LspUI.nvim",
 	branch = "v2",
-    config=function()
-        require("LspUI").setup()
+    config = function()
+        require("LspUI").setup({
+			-- config options go here
+		})
     end
 }
 ```
 
-### Packer.nvim
+### [packer.nvim](https://github.com/wbthomason/packer.nvim)
 
 ```lua
 use {
         "jinzhongjia/LspUI.nvim",
 		branch = 'v2',
-        config=function()
-            require("LspUI").setup()
+        config = function()
+            require("LspUI").setup({
+				-- config options go here
+			})
         end
     }
 ```
 
-## Config
+## ⚙️ Configuration
 
-You just require `LspUI.nvim` like `require("LspUI").setup({})`.
-
-For parameters, there are complete type annotations recognized by `lua_ls`
-
----
-
-If you want to use lua api to bind key, you can use the follow way.
+## Setup
 
 ```lua
-local api = require("LspUI").api
--- more api info you can read api.lua in source code
+require("LspUI").setup({
+	code_action = {
+		-- e.g disable gitsigns for code_action
+		gitsigns = false
+		-- ...
+	},
+	lightbulb = {},
+	rename = {},
+	diagnostic = {},
+	hover = {},
+	definition = {}
+	-- See below for all options
+})
 ```
 
 ---
 
-If you want to change the settings of the module in real time after neovim has loaded all the plugins, you can use:
-
-`local LspUI_config = require("LspUI.config")`
+To use bind a key with the lua api, use `require("LspUI").api`, for example:
 
 ```lua
--- LspUI_config has these function to use
-{
-    code_action_setup: function,
-    diagnostic_setup: function,
-    hover_setup: function,
-    lightbulb_setup: function,
-    rename_setup: function,
-}
+local lsp_ui = require("LspUI").api
+
+vim.keymap.set("n", "K", lsp_ui.api.hover, { desc = "LSP Hover" })
+vim.keymap.set("n", "<leader>ca", lsp_ui.api.code_action, { desc = "LSP Code Action" })
+-- ...etc.
+-- see more in api.lua
+
+```
+
+---
+You can also change the settings of any LspUI module at any time after initialization. For example:
+
+```lua
+local lsp_ui_config = require("LspUI.config")
+
+-- Override just the properties you need
+lsp_ui_config.code_action_setup({
+	gitsigns = false
+})
+
+-- There are corresponding functions for each module:
+lsp_ui_config.diagnostic_setup(...)
+lsp_ui_config.hover_setup(...)
+lsp_ui_config.lightbulb_setup(...)
+lsp_ui_config.rename_setup(...)
 ```
 
 ---
 
-Default config:
+### Default Config Options
 
 ```lua
 --- @type LspUI_rename_config
@@ -149,18 +166,32 @@ local default_config = {
 	hover = default_hover_config,
 }
 ```
+## 🚀 Usage
 
-## Command
+## Commands
 
--   `LspUI hover`
--   `LspUI rename`
--   `LspUI code_action`
--   `LspUI diagnostic next`
--   `LspUI diagnostic prev`
+-   `LspUI hover`: Open an LSP hover window above cursor
+-   `LspUI rename`: Rename the symbol below the cursor
+-   `LspUI code_action`: Open a code action selection prompt
+-   `LspUI diagnostic next`: Go to the next diagnostic
+-   `LspUI diagnostic prev`: Go to the previous diagnostic
 
-## Current Goals
+## Migration
 
-You can see [here](https://github.com/jinzhongjia/LspUI.nvim/issues/12)
+There's no need to change the your configuration as it's backwards compatible - however, some previous config items are deleted in v2. 
+
+## Current Goals / Roadmap
+
+You can see the current goals [here](https://github.com/jinzhongjia/LspUI.nvim/issues/12).
+
+### Design Goals
+
+> As neovim is the host system, its plugins should be kept as minimally intrusive as possible
+>
+> And plugins should be highly controllable
+
+-   Highly controllable functions
+-   Minimally invasive
 
 
 ## Reference
