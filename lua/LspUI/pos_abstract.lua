@@ -202,6 +202,14 @@ local secondary_view_keybind = function()
                             )
                         )
                     end
+                    api.nvim_win_set_cursor(
+                        0,
+                        {
+                            current_item.range.start.line + 1,
+                            current_item.range.start.character,
+                        }
+                    )
+                    vim.cmd("norm! zz")
                 else
                     datas[current_item.uri].fold =
                         not datas[current_item.uri].fold
@@ -569,6 +577,11 @@ M.main_view_render = function()
     if lib_windows.is_valid_window(M.main_view_window()) then
         -- if now windows is valid, just set buffer
         api.nvim_win_set_buf(M.main_view_window(), M.main_view_buffer())
+        api.nvim_win_set_option(
+            M.main_view_window(),
+            "winhighlight",
+            "Normal:Normal"
+        )
         return
     end
 
@@ -589,6 +602,12 @@ M.main_view_render = function()
     lib_windows.set_row_window(main_window_wrap, 1)
 
     M.main_view_window(lib_windows.display_window(main_window_wrap))
+
+    api.nvim_win_set_option(
+        M.main_view_window(),
+        "winhighlight",
+        "Normal:Normal"
+    )
 end
 
 --- TODO: remove name
@@ -605,6 +624,7 @@ M.secondary_view_render = function()
             width = width,
             height = height,
         })
+        api.nvim_win_set_cursor(M.secondary_view_window(), { 1, 0 })
         return
     end
 
@@ -634,6 +654,7 @@ M.secondary_view_render = function()
         "winhighlight",
         "Normal:Normal"
     )
+    api.nvim_win_set_cursor(M.secondary_view_window(), { 1, 0 })
 end
 
 --- @param buffer_id integer which buffer do method
