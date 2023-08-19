@@ -26,7 +26,7 @@
 --- @field key_binding { prev: string?, next: string?, quit: string? }? keybind for `hover`
 
 -- this is just for some keybind like definition, type definition, declaration, reference, implemention
---- @alias pos_abstract_keybind { secondary: { jump: string?, quit:string?, hide_main:string? }?, main: { back: string?, hide_secondary: string? }? }
+--- @alias pos_abstract_keybind { secondary: { jump: string?, quit:string?, hide_main:string?, enter: string? }?, main: { back: string?, hide_secondary: string? }? }
 
 --- @class LspUI_definition_config
 --- @field enable boolean? whether enable `definition` module

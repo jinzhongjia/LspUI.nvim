@@ -103,6 +103,7 @@ local default_config = {
             jump = "o",
             quit = "q",
             hide_main = "<leader>h",
+            enter = "<leader>l",
         },
     },
 }
