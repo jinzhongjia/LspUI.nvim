@@ -197,6 +197,20 @@ local default_reference_config = {
     command_enable = true,
 }
 
+--- @type LspUI_pos_keybind_config
+local default_pos_keybind_config = {
+    main = {
+        back = "q",
+        hide_secondary = "<leader>h",
+    },
+    secondary = {
+        jump = "o",
+        quit = "q",
+        hide_main = "<leader>h",
+        enter = "<leader>l",
+    },
+}
+
 -- default config
 --- @type LspUI_config
 local default_config = {
@@ -210,18 +224,7 @@ local default_config = {
     declaration = default_declaration_config,
     implemention = default_implemention_config,
     reference = default_reference_config,
-    pos_keybind = {
-        main = {
-            back = "q",
-            hide_secondary = "<leader>h",
-        },
-        secondary = {
-            jump = "o",
-            quit = "q",
-            hide_main = "<leader>h",
-            enter = "<leader>l",
-        },
-    },
+    pos_keybind = default_pos_keybind_config,
 }
 
 ```

@@ -82,6 +82,20 @@ local default_reference_config = {
     command_enable = true,
 }
 
+--- @type LspUI_pos_keybind_config
+local default_pos_keybind_config = {
+    main = {
+        back = "q",
+        hide_secondary = "<leader>h",
+    },
+    secondary = {
+        jump = "o",
+        quit = "q",
+        hide_main = "<leader>h",
+        enter = "<leader>l",
+    },
+}
+
 -- default config
 --- @type LspUI_config
 local default_config = {
@@ -95,24 +109,15 @@ local default_config = {
     declaration = default_declaration_config,
     implemention = default_implemention_config,
     reference = default_reference_config,
-    pos_keybind = {
-        main = {
-            back = "q",
-            hide_secondary = "<leader>h",
-        },
-        secondary = {
-            jump = "o",
-            quit = "q",
-            hide_main = "<leader>h",
-            enter = "<leader>l",
-        },
-    },
+    pos_keybind = default_pos_keybind_config,
 }
 
 -- Prevent plugins from being initialized multiple times
 local is_already_init = false
 
 local M = {}
+
+M.options = {}
 
 -- LspUI plugin init function
 -- you need to pass a table
@@ -133,16 +138,22 @@ end
 -- separate function for `rename` module
 --- @param rename_config LspUI_rename_config
 M.rename_setup = function(rename_config)
-    M.options.rename =
-        vim.tbl_deep_extend("force", default_rename_config, rename_config)
+    M.options.rename = vim.tbl_deep_extend(
+        "force",
+        M.options.rename or default_rename_config,
+        rename_config
+    )
 end
 
 -- separate function for `lightbulb` module
 -- now this function can't use
 --- @param lightbulb_config LspUI_lightbulb_config
 M.lightbulb_setup = function(lightbulb_config)
-    M.options.lightbulb =
-        vim.tbl_deep_extend("force", default_lightbulb_config, lightbulb_config)
+    M.options.lightbulb = vim.tbl_deep_extend(
+        "force",
+        M.options.lightbulb or default_lightbulb_config,
+        lightbulb_config
+    )
     vim.fn.sign_define(
         global.lightbulb.sign_name,
         { text = M.options.lightbulb.icon }
@@ -154,7 +165,7 @@ end
 M.code_action_setup = function(code_action_config)
     M.options.code_action = vim.tbl_deep_extend(
         "force",
-        default_code_action_config,
+        M.options.code_action or default_code_action_config,
         code_action_config
     )
 end
@@ -164,7 +175,7 @@ end
 M.diagnostic_setup = function(diagnostic_config)
     M.options.diagnostic = vim.tbl_deep_extend(
         "force",
-        default_diagnostic_config,
+        M.options.diagnostic or default_diagnostic_config,
         diagnostic_config
     )
 end
@@ -172,8 +183,71 @@ end
 -- separate function for `hover` module
 --- @param hover_config LspUI_hover_config
 M.hover_setup = function(hover_config)
-    M.options.hover =
-        vim.tbl_deep_extend("force", default_hover_config, hover_config)
+    M.options.hover = vim.tbl_deep_extend(
+        "force",
+        M.options.hover or default_hover_config,
+        hover_config
+    )
+end
+
+-- separate function for `definition` module
+--- @param definition_config LspUI_definition_config
+M.definition = function(definition_config)
+    M.options.definition = vim.tbl_deep_extend(
+        "force",
+        M.options.definition or default_definition_config,
+        definition_config
+    )
+end
+
+-- separate function for `type_definition` module
+--- @param type_definition_config LspUI_type_definition_config
+M.type_definition = function(type_definition_config)
+    M.options.type_definition = vim.tbl_deep_extend(
+        "force",
+        M.options.type_definition or default_type_definition_config,
+        type_definition_config
+    )
+end
+
+-- separate function for `declaration` module
+--- @param declaration_config LspUI_declaration_config
+M.declaration = function(declaration_config)
+    M.options.declaration = vim.tbl_deep_extend(
+        "force",
+        M.options.declaration or default_declaration_config,
+        declaration_config
+    )
+end
+
+-- separate function for `reference` module
+--- @param reference_config LspUI_reference_config
+M.reference = function(reference_config)
+    M.options.reference = vim.tbl_deep_extend(
+        "force",
+        M.options.reference or default_reference_config,
+        reference_config
+    )
+end
+
+-- separate function for `implemention` module
+--- @param implemention_config LspUI_implemention_config
+M.implemention = function(implemention_config)
+    M.options.implemention = vim.tbl_deep_extend(
+        "force",
+        M.options.implemention or default_implemention_config,
+        implemention_config
+    )
+end
+
+-- separate function for `pos_keybind` module
+--- @param pos_keybind_config LspUI_pos_keybind_config
+M.pos_keybind = function(pos_keybind_config)
+    M.options.pos_keybind = vim.tbl_deep_extend(
+        "force",
+        M.options.pos_keybind or default_pos_keybind_config,
+        pos_keybind_config
+    )
 end
 
 return M
