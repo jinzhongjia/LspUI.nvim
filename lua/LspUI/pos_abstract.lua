@@ -116,7 +116,6 @@ end
 
 --- @param hl integer[]
 local secondary_set_hl = function(hl)
-    lib_debug.debug(hl)
     for _, lnum in pairs(hl) do
         api.nvim_buf_add_highlight(
             M.secondary_view_buffer(),
@@ -153,43 +152,48 @@ local secondary_clear_hl = function()
     end
 end
 
--- local main_view_keybind = function()
---     local origin_back = api.nvim_buf_get_keymap(main_view.buffer, "n")
---     lib_debug.debug(origin_back)
---     -- back keybind
---     api.nvim_buf_set_keymap(
---         main_view.buffer,
---         "n",
---         config.options.pos_keybind.main.back,
---         "",
---         {
---             callback = function()
---                 if M.secondary_view_hide() then
---                     lib_windows.close_window(main_view.window)
---                 else
---                     api.nvim_set_current_win(secondary_view.window)
---                 end
---             end,
---         }
---     )
---     -- hide secondary view
---     api.nvim_buf_set_keymap(
---         main_view.buffer,
---         "n",
---         config.options.pos_keybind.main.hide_secondary,
---         "",
---         {
---             callback = function()
---                 M.secondary_view_hide(not M.secondary_view_hide())
---                 if M.secondary_view_hide() then
---                     lib_windows.close_window(secondary_view.window)
---                 else
---                     M.secondary_view_render("definition")
---                 end
---             end,
---         }
---     )
--- end
+local main_view_clear_keybind = function()
+    for lhs, _ in pairs(config.options.pos_keybind.main) do
+        pcall(vim.api.nvim_buf_del_keymap, M.main_view_buffer(), "n", lhs)
+    end
+end
+
+local main_view_keybind = function()
+    -- back keybind
+    api.nvim_buf_set_keymap(
+        M.main_view_buffer(),
+        "n",
+        config.options.pos_keybind.main.back,
+        "",
+        {
+            callback = function()
+                if M.secondary_view_hide() then
+                    lib_windows.close_window(M.main_view_window())
+                    main_view_clear_keybind()
+                else
+                    api.nvim_set_current_win(M.secondary_view_window())
+                end
+            end,
+        }
+    )
+    -- hide secondary view
+    api.nvim_buf_set_keymap(
+        M.main_view_buffer(),
+        "n",
+        config.options.pos_keybind.main.hide_secondary,
+        "",
+        {
+            callback = function()
+                M.secondary_view_hide(not M.secondary_view_hide())
+                if M.secondary_view_hide() then
+                    lib_windows.close_window(M.secondary_view_window())
+                else
+                    M.secondary_view_render()
+                end
+            end,
+        }
+    )
+end
 
 -- local main_view_autocmd = function() end
 
@@ -265,6 +269,8 @@ local secondary_view_autocmd = function()
             lib_windows.close_window(M.main_view_window())
             -- when seconday view close, clear main view highlight
             main_clear_hl()
+            --try to clear main buffer keybind
+            main_view_clear_keybind()
         end,
     })
     api.nvim_create_autocmd("CursorMoved", {
@@ -329,8 +335,13 @@ end
 --- @return integer
 M.main_view_buffer = function(buffer_id)
     if buffer_id then
+        -- remove old highlight
         main_clear_hl()
+        -- try clear keybind
+        main_view_clear_keybind()
+        -- set new main view buffer
         main_view.buffer = buffer_id
+        -- load main view buffer
         if not api.nvim_buf_is_loaded(M.main_view_buffer()) then
             fn.bufload(M.main_view_buffer())
         end
@@ -343,7 +354,10 @@ M.main_view_buffer = function(buffer_id)
                 vim.cmd("do BufRead")
             end
         end)
+        -- highlight new main_view_buffer
         main_set_hl(M.datas()[current_item.uri])
+        -- add keybind
+        main_view_keybind()
     end
     return main_view.buffer
 end
