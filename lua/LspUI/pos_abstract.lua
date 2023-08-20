@@ -18,6 +18,12 @@ local main_namespace = api.nvim_create_namespace("LspUI_main")
 
 local seconday_namespace = api.nvim_create_namespace("LspUI_seconday")
 
+-- create auto group
+local main_group = api.nvim_create_augroup("Lspui_main_view", { clear = true })
+
+local secondary_group =
+    api.nvim_create_augroup("Lspui_secondary_view", { clear = true })
+
 --- @alias lsp_range { start: lsp.Position, finish: lsp.Position }
 --- @alias lsp_position  { buffer_id: integer, fold: boolean, range: lsp_range[]}
 --- @alias Lsp_position_wrap  { [lsp.URI]: lsp_position}
@@ -273,27 +279,40 @@ end
 -- auto cmd for secondary view
 local secondary_view_autocmd = function()
     api.nvim_create_autocmd("WinClosed", {
-        buffer = M.secondary_view_buffer(),
+        group = secondary_group,
+        pattern = {
+            tostring(M.secondary_view_window()),
+        },
+        once = true,
         callback = function()
             -- when secondary hide, just return
             if M.secondary_view_hide() then
                 return
             end
+
+            -- if main view not hide, try close main view window
             lib_windows.close_window(M.main_view_window())
+
             -- when seconday view close, clear main view highlight
             main_clear_hl()
-            --try to clear main buffer keybind
-            -- main_view_clear_keybind()
         end,
+        desc = lib_util.command_desc(" secondary view winclose"),
     })
     api.nvim_create_autocmd("CursorMoved", {
+        group = secondary_group,
+        -- pattern = {
+        --     tostring(M.secondary_view_window()),
+        -- },
+        -- note: we can't use buffer and pattern together
+        -- CursorMoved can't effect on pattern
         buffer = M.secondary_view_buffer(),
         callback = function()
-            -- when main hide, just return
-
+            -- get current cursor position
             local cursor_position =
                 api.nvim_win_get_cursor(M.secondary_view_window())
+
             local lnum = cursor_position[1]
+
             local uri, range = get_lsp_position_by_lnum(lnum)
             if not uri then
                 return
@@ -307,26 +326,16 @@ local secondary_view_autocmd = function()
             }
 
             if range then
-                do
-                end
-
                 local uri_buffer = M.datas()[uri].buffer_id
+
+                -- change main view buffer
                 M.main_view_buffer(uri_buffer)
 
                 if not M.main_view_hide() then
+                    -- render main vie
                     M.main_view_render()
-                end
-                -- api.nvim_buf_call(M.main_view_buffer(), function()
-                --     if
-                --         vim.api.nvim_buf_get_option(
-                --             M.main_view_buffer(),
-                --             "filetype"
-                --         ) == ""
-                --     then
-                --         vim.cmd("do BufRead")
-                --     end
-                -- end)
-                if not M.main_view_hide() then
+
+                    -- set cursor
                     lib_windows.window_set_cursor(
                         M.main_view_window(),
                         range.start.line + 1,
@@ -398,6 +407,7 @@ end
 M.secondary_view_buffer = function(buffer_id)
     if buffer_id and buffer_id ~= M.secondary_view_buffer() then
         secondary_view.buffer = buffer_id
+        secondary_view_keybind()
     end
     return secondary_view.buffer
 end
@@ -588,7 +598,8 @@ local generate_secondary_view = function()
     -- now we have calculated the highlight line numbers
     secondary_set_hl(hl)
 
-    api.nvim_buf_set_option(M.secondary_view_buffer(), "modifiable", true)
+    -- disable change for this buffer
+    api.nvim_buf_set_option(M.secondary_view_buffer(), "modifiable", false)
 
     -- For aesthetics, increase the width
     return max_width + 2 > 30 and 30 or max_width + 2, height + 1
@@ -692,6 +703,7 @@ M.secondary_view_render = function()
             "Normal:Normal"
         )
     end
+    secondary_view_autocmd()
 end
 
 --- @param cmd string?
