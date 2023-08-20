@@ -5,6 +5,12 @@ local lib_notify = require("LspUI.lib.notify")
 local lib_util = require("LspUI.lib.util")
 local lib_windows = require("LspUI.lib.windows")
 
+---
+--- int this file, we will render two window
+--- one window's content is the file name and code line, we call it secondary view
+--- another is preview the file, we call it main view
+---
+
 local M = {}
 
 -- create a namespace
@@ -39,7 +45,7 @@ local secondary_view = {
     hide = false,
 }
 
--- expose method
+-- these are methods which are exposed
 M.method = {
     definition = {
         method = lsp.protocol.Methods.textDocument_definition,
@@ -68,6 +74,7 @@ M.method = {
     },
 }
 
+-- get pos through lnum
 --- @param lnum integer
 --- @return string? uri
 --- @return lsp_range? range
@@ -88,6 +95,7 @@ local get_lsp_position_by_lnum = function(lnum)
     end
 end
 
+-- highlight main view
 --- @param data lsp_position
 local main_set_hl = function(data)
     for _, val in pairs(data.range) do
@@ -114,6 +122,7 @@ local main_set_hl = function(data)
     end
 end
 
+-- highlight secondary view, only highlight file name
 --- @param hl integer[]
 local secondary_set_hl = function(hl)
     for _, lnum in pairs(hl) do
@@ -158,6 +167,7 @@ local main_view_clear_keybind = function()
     end
 end
 
+-- keybind for main view
 local main_view_keybind = function()
     -- back keybind
     api.nvim_buf_set_keymap(
@@ -195,8 +205,10 @@ local main_view_keybind = function()
     )
 end
 
+-- auto cmd for main view
 -- local main_view_autocmd = function() end
 
+-- keybind for secondary view
 local secondary_view_keybind = function()
     -- keybind for jump
     api.nvim_buf_set_keymap(
@@ -258,6 +270,7 @@ local secondary_view_keybind = function()
     )
 end
 
+-- auto cmd for secondary view
 local secondary_view_autocmd = function()
     api.nvim_create_autocmd("WinClosed", {
         buffer = M.secondary_view_buffer(),
@@ -335,16 +348,17 @@ end
 --- @return integer
 M.main_view_buffer = function(buffer_id)
     if buffer_id then
-        -- remove old highlight
+        -- remove old buffer's highlight
         main_clear_hl()
-        -- try clear keybind
-        -- main_view_clear_keybind()
+
         -- set new main view buffer
         main_view.buffer = buffer_id
+
         -- load main view buffer
         if not api.nvim_buf_is_loaded(M.main_view_buffer()) then
             fn.bufload(M.main_view_buffer())
         end
+
         -- TODO: why we must do `BufRead`
         api.nvim_buf_call(M.main_view_buffer(), function()
             if
@@ -354,10 +368,9 @@ M.main_view_buffer = function(buffer_id)
                 vim.cmd("do BufRead")
             end
         end)
+
         -- highlight new main_view_buffer
         main_set_hl(M.datas()[current_item.uri])
-        -- add keybind
-        -- main_view_keybind()
     end
     return main_view.buffer
 end
@@ -385,8 +398,6 @@ end
 M.secondary_view_buffer = function(buffer_id)
     if buffer_id and buffer_id ~= M.secondary_view_buffer() then
         secondary_view.buffer = buffer_id
-        secondary_view_keybind()
-        secondary_view_autocmd()
     end
     return secondary_view.buffer
 end
@@ -426,6 +437,7 @@ end
 --- @param params table
 --- @param callback fun(datas: Lsp_position_wrap|nil)
 M.lsp_clients_request = function(buffer_id, clients, params, callback)
+    -- tmp_number is only for counts
     local tmp_number = 0
     local client_number = #clients
 
@@ -496,17 +508,30 @@ end
 --- @return integer width
 --- @return integer height
 local generate_secondary_view = function()
-    secondary_clear_hl()
     if not api.nvim_buf_is_valid(M.secondary_view_buffer()) then
+        -- in this scope, we will create a new buffer
         M.secondary_view_buffer(api.nvim_create_buf(false, true))
+    else
+        -- is this scope, we will reuse old buffer, so we need clear old highlight
+        secondary_clear_hl()
     end
 
+    -- enable change for this buffer
+    api.nvim_buf_set_option(M.secondary_view_buffer(), "modifiable", true)
+
+    -- hl_num for highlight lnum recording
     local hl_num = 0
+    -- this array stores the highlighted line number
     local hl = {}
 
+    -- the buffer's new content
     local content = {}
+
+    -- calculate the max width that we need
     local max_width = 0
+    -- calculate the height for render
     local height = 0
+
     for uri, data in pairs(M.datas()) do
         -- get full file name
         local file_full_name = vim.uri_to_fname(uri)
@@ -518,7 +543,9 @@ local generate_secondary_view = function()
         )
 
         table.insert(content, file_fmt)
+
         height = height + 1
+
         hl_num = hl_num + 1
         table.insert(hl, hl_num)
 
@@ -532,13 +559,9 @@ local generate_secondary_view = function()
 
         local uri_rows = {}
         do
-            -- local tmp_store = {}
             for _, range in ipairs(data.range) do
                 local row = range.start.line
-                -- if not tmp_store[row] then
                 table.insert(uri_rows, row)
-                -- tmp_store[row] = true
-                -- end
             end
         end
 
@@ -561,7 +584,11 @@ local generate_secondary_view = function()
     end
 
     api.nvim_buf_set_lines(M.secondary_view_buffer(), 0, -1, true, content)
+
+    -- now we have calculated the highlight line numbers
     secondary_set_hl(hl)
+
+    api.nvim_buf_set_option(M.secondary_view_buffer(), "modifiable", true)
 
     -- For aesthetics, increase the width
     return max_width + 2 > 30 and 30 or max_width + 2, height + 1
@@ -569,45 +596,50 @@ end
 
 -- render main view
 M.main_view_render = function()
+    -- detect the buffer is valid
     if not api.nvim_buf_is_valid(M.main_view_buffer()) then
         lib_notify.Error(
             "render main view fails, main view buffer is not valid"
         )
         return
     end
-    if not api.nvim_buf_is_loaded(M.main_view_buffer()) then
-        fn.bufload(M.main_view_buffer())
-    end
 
     if lib_windows.is_valid_window(M.main_view_window()) then
         -- if now windows is valid, just set buffer
         api.nvim_win_set_buf(M.main_view_window(), M.main_view_buffer())
-        api.nvim_win_set_option(
-            M.main_view_window(),
-            "winhighlight",
-            "Normal:Normal"
-        )
+
         return
     end
 
     -- window is not valid, create a new window
     local main_window_wrap = lib_windows.new_window(M.main_view_buffer())
+
+    -- set width and height
     lib_windows.set_width_window(main_window_wrap, lib_windows.get_max_width())
     lib_windows.set_height_window(
         main_window_wrap,
         lib_windows.get_max_height() - 3
     )
+
+    -- set whether enter the main_view_window
     lib_windows.set_enter_window(main_window_wrap, false)
+
     lib_windows.set_anchor_window(main_window_wrap, "NW")
+
     -- set none border, TODO: add more border here
     lib_windows.set_border_window(main_window_wrap, "none")
-    lib_windows.set_relative_window(main_window_wrap, "editor")
-    lib_windows.set_zindex_window(main_window_wrap, 10)
-    lib_windows.set_col_window(main_window_wrap, 0)
-    lib_windows.set_row_window(main_window_wrap, 1)
 
+    lib_windows.set_relative_window(main_window_wrap, "editor")
+
+    lib_windows.set_zindex_window(main_window_wrap, 10)
+
+    lib_windows.set_row_window(main_window_wrap, 1)
+    lib_windows.set_col_window(main_window_wrap, 0)
+
+    -- set new main view window
     M.main_view_window(lib_windows.display_window(main_window_wrap))
 
+    -- prevent extra shadows
     api.nvim_win_set_option(
         M.main_view_window(),
         "winhighlight",
@@ -615,7 +647,7 @@ M.main_view_render = function()
     )
 end
 
---- TODO: remove name
+-- render secondary view
 M.secondary_view_render = function()
     -- generate buffer, get width and height
     local width, height = generate_secondary_view()
@@ -629,7 +661,6 @@ M.secondary_view_render = function()
             width = width,
             height = height,
         })
-        -- api.nvim_win_set_cursor(M.secondary_view_window(), { 1, 0 })
         return
     end
 
@@ -654,12 +685,13 @@ M.secondary_view_render = function()
     lib_windows.set_center_title_window(second_window_wrap, method.name)
 
     M.secondary_view_window(lib_windows.display_window(second_window_wrap))
+
+    -- prevent extra shadows
     api.nvim_win_set_option(
         M.secondary_view_window(),
         "winhighlight",
         "Normal:Normal"
     )
-    -- api.nvim_win_set_cursor(M.secondary_view_window(), { 1, 0 })
 end
 
 --- @param cmd string?
@@ -715,10 +747,27 @@ end
 
 -- define actions
 M.action = {
-    jump = action_jump,
-    enter_main = action_enter_main,
-    secondary_quit = action_secondary_quit,
-    hide_main = action_hide_main,
+    jump = function()
+        action_jump()
+    end,
+    jump_vsplit = function()
+        action_jump("vsplit")
+    end,
+    jump_split = function()
+        action_jump("split")
+    end,
+    jump_tab = function()
+        action_jump("tabe")
+    end,
+    enter_main = function()
+        action_enter_main()
+    end,
+    secondary_quit = function()
+        action_secondary_quit()
+    end,
+    hide_main = function()
+        action_hide_main()
+    end,
 }
 
 --- @param params lsp.TextDocumentPositionParams
