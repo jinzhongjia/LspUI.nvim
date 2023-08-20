@@ -661,37 +661,37 @@ M.secondary_view_render = function()
             width = width,
             height = height,
         })
-        return
+    else
+        local second_window_wrap =
+            lib_windows.new_window(M.secondary_view_buffer())
+
+        -- set width
+        lib_windows.set_width_window(second_window_wrap, width)
+        -- set height
+        lib_windows.set_height_window(second_window_wrap, height)
+        -- whether enter window
+        lib_windows.set_enter_window(second_window_wrap, false)
+        -- fixed position
+        lib_windows.set_relative_window(second_window_wrap, "editor")
+        lib_windows.set_col_window(
+            second_window_wrap,
+            lib_windows.get_max_width() - width - 2
+        )
+        lib_windows.set_style_window(second_window_wrap, "minimal")
+        lib_windows.set_border_window(second_window_wrap, "single")
+        lib_windows.set_zindex_window(second_window_wrap, 11)
+        lib_windows.set_anchor_window(second_window_wrap, "NW")
+        lib_windows.set_center_title_window(second_window_wrap, method.name)
+
+        M.secondary_view_window(lib_windows.display_window(second_window_wrap))
+
+        -- prevent extra shadows
+        api.nvim_win_set_option(
+            M.secondary_view_window(),
+            "winhighlight",
+            "Normal:Normal"
+        )
     end
-
-    local second_window_wrap = lib_windows.new_window(M.secondary_view_buffer())
-
-    -- set width
-    lib_windows.set_width_window(second_window_wrap, width)
-    -- set height
-    lib_windows.set_height_window(second_window_wrap, height)
-    -- whether enter window
-    lib_windows.set_enter_window(second_window_wrap, false)
-    -- fixed position
-    lib_windows.set_relative_window(second_window_wrap, "editor")
-    lib_windows.set_col_window(
-        second_window_wrap,
-        lib_windows.get_max_width() - width - 2
-    )
-    lib_windows.set_style_window(second_window_wrap, "minimal")
-    lib_windows.set_border_window(second_window_wrap, "single")
-    lib_windows.set_zindex_window(second_window_wrap, 11)
-    lib_windows.set_anchor_window(second_window_wrap, "NW")
-    lib_windows.set_center_title_window(second_window_wrap, method.name)
-
-    M.secondary_view_window(lib_windows.display_window(second_window_wrap))
-
-    -- prevent extra shadows
-    api.nvim_win_set_option(
-        M.secondary_view_window(),
-        "winhighlight",
-        "Normal:Normal"
-    )
 end
 
 --- @param cmd string?
