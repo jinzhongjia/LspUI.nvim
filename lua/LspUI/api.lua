@@ -22,6 +22,10 @@ M.api = {
     diagnostic = modules.diagnostic.run,
     hover = modules.hover.run,
     definition = modules.definition.run,
+    type_definition = modules.type_definition.run,
+    declaration = modules.declaration.run,
+    reference = modules.reference.run,
+    implemention = modules.implemention.run,
 }
 
 return M
