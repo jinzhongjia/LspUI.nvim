@@ -13,6 +13,11 @@ A plugin which wraps Neovim LSP operations with a nicer UI.
   - Rename
   - Hover
   - Show Diagnostics
+  - Definiton
+  - Type Definition
+  - Declaration
+  - Reference
+  - Implemention
 
 ## 📦 Installation
 
@@ -62,7 +67,13 @@ require("LspUI").setup({
 	rename = {},
 	diagnostic = {},
 	hover = {},
-	definition = {}
+	-- note: the stability of the following functions has not been tested
+	definition = {},
+	type_definition = {},
+	declaration = {},
+	implemention = {},
+	reference = {},
+	pos_keybind = {}, -- keybind for above
 	-- See below for all options
 })
 ```
@@ -156,15 +167,63 @@ local default_hover_config = {
 	},
 }
 
+--- @type LspUI_definition_config
+local default_definition_config = {
+    enable = true,
+    command_enable = true,
+}
+
+--- @type LspUI_type_definition_config
+local default_type_definition_config = {
+    enable = true,
+    command_enable = true,
+}
+
+--- @type LspUI_declaration_config
+local default_declaration_config = {
+    enable = true,
+    command_enable = true,
+}
+
+--- @type LspUI_implemention_config
+local default_implemention_config = {
+    enable = true,
+    command_enable = true,
+}
+
+--- @type LspUI_reference_config
+local default_reference_config = {
+    enable = true,
+    command_enable = true,
+}
+
 -- default config
 --- @type LspUI_config
 local default_config = {
-	rename = default_rename_config,
-	lightbulb = default_lightbulb_config,
-	code_action = default_code_action_config,
-	diagnostic = default_diagnostic_config,
-	hover = default_hover_config,
+    rename = default_rename_config,
+    lightbulb = default_lightbulb_config,
+    code_action = default_code_action_config,
+    diagnostic = default_diagnostic_config,
+    hover = default_hover_config,
+    definition = default_definition_config,
+    type_definition = default_type_definition_config,
+    declaration = default_declaration_config,
+    implemention = default_implemention_config,
+    reference = default_reference_config,
+    pos_keybind = {
+        main = {
+            back = "q",
+            hide_secondary = "<leader>h",
+        },
+        secondary = {
+            jump = "o",
+            quit = "q",
+            hide_main = "<leader>h",
+            enter = "<leader>l",
+        },
+    },
 }
+
 ```
 ## 🚀 Usage
 
@@ -175,6 +234,11 @@ local default_config = {
 -   `LspUI code_action`: Open a code action selection prompt
 -   `LspUI diagnostic next`: Go to the next diagnostic
 -   `LspUI diagnostic prev`: Go to the previous diagnostic
+-   `LspUI definition`: Open the definition
+-   `LspUI type_definition`: Open the type definition
+-   `LspUI declaration`: Open the declaration
+-   `LspUI reference`: Open the reference
+-   `LspUI implemention`: Open the implemention
 
 ## Migration
 
