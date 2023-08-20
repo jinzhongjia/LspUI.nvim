@@ -5,4 +5,8 @@ return {
     diagnostic = require("LspUI.diagnostic"),
     hover = require("LspUI.hover"),
     definition = require("LspUI.definition"),
+    type_definition = require("LspUI.type_definition"),
+    declaration = require("LspUI.declaration"),
+    implemention = require("LspUI.implemention"),
+    reference = require("LspUI.reference"),
 }
