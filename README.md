@@ -9,7 +9,7 @@ A plugin which wraps Neovim LSP operations with a nicer UI.
 - Great out of the box UI
 - Due to reimplementation of builtins, potentially better performance than builtin neovim functions.
 - Commands:
-  - Code Action
+  - Code Action (nvim plugin can register code_action)
   - Rename
   - Hover
   - Show Diagnostics
@@ -242,6 +242,32 @@ local default_config = {
 -   `LspUI declaration`: Open the declaration
 -   `LspUI reference`: Open the reference
 -   `LspUI implementation`: Open the implementation
+
+## Register `code action`
+
+now, you can register your handle on `LspUI.nvim`, just like this:
+
+```lua
+local LspUI_register = require("LspUI.code_action.register")
+
+-- register code action
+LspUI_register.register(
+    "demo",
+    --- @param uri lsp.URI
+    --- @param range lsp.Range
+    function(uri, range)
+        --- @type {title:string,action:function}[]
+        local res
+
+        -- do something
+
+        return res
+    end
+)
+
+-- unregister code action
+LspUI_register.unregister("demo")
+```
 
 ## Migration
 
