@@ -48,6 +48,7 @@ M.run = function()
     pos_abstract.go(
         pos_abstract.method.declaration,
         current_buffer,
+        current_window,
         clients,
         params
     )

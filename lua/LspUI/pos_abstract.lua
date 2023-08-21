@@ -20,6 +20,9 @@ local seconday_namespace = api.nvim_create_namespace("LspUI_seconday")
 
 local buffer_history = {}
 
+-- function for push tagstack
+local push_tagstack = nil
+
 -- create auto group
 
 --- @alias lsp_range { start: lsp.Position, finish: lsp.Position }
@@ -678,7 +681,16 @@ M.main_view_render = function()
         api.nvim_win_set_option(
             M.main_view_window(),
             "winhighlight",
-            "Normal:Normal"
+            "Normal:Normal,WinBar:Comment"
+        )
+    end
+    do
+        local fname = vim.uri_to_fname(current_item.uri)
+        local filepath = vim.fn.fnamemodify(fname, ":p:~:h")
+        api.nvim_win_set_option(
+            M.main_view_window(),
+            "winbar",
+            string.format(" %s", filepath)
         )
     end
     main_view_autocmd()
@@ -735,7 +747,10 @@ end
 --- @param cmd string?
 local action_jump = function(cmd)
     if current_item.range then
+        api.nvim_win_set_option(M.main_view_window(), "winbar", "")
         lib_windows.close_window(M.secondary_view_window())
+
+        push_tagstack()
 
         if cmd then
             vim.cmd(cmd)
@@ -867,10 +882,11 @@ local find_position_from_params = function(params)
 end
 
 --- @param buffer_id integer which buffer do method
+--- @param window_id integer which window do method
 --- @param clients lsp.Client[]
 --- @param params table
 --- @param new_method { method: string, name: string, fold: boolean }
-M.go = function(new_method, buffer_id, clients, params)
+M.go = function(new_method, buffer_id, window_id, clients, params)
     -- set method
     method = new_method
 
@@ -880,6 +896,7 @@ M.go = function(new_method, buffer_id, clients, params)
             return
         end
         M.datas(data)
+        push_tagstack = lib_util.create_push_tagstack(window_id)
 
         M.secondary_view_render()
 
