@@ -19,10 +19,6 @@ local main_namespace = api.nvim_create_namespace("LspUI_main")
 local seconday_namespace = api.nvim_create_namespace("LspUI_seconday")
 
 -- create auto group
-local main_group = api.nvim_create_augroup("Lspui_main_view", { clear = true })
-
-local secondary_group =
-    api.nvim_create_augroup("Lspui_secondary_view", { clear = true })
 
 --- @alias lsp_range { start: lsp.Position, finish: lsp.Position }
 --- @alias lsp_position  { buffer_id: integer, fold: boolean, range: lsp_range[]}
@@ -212,7 +208,16 @@ local main_view_keybind = function()
 end
 
 -- auto cmd for main view
--- local main_view_autocmd = function() end
+local main_view_autocmd = function()
+    local main_group =
+        api.nvim_create_augroup("Lspui_main_view", { clear = true })
+
+    api.nvim_create_autocmd("WinClosed", {
+        once = true,
+        callback = function() end,
+        desc = lib_util.command_desc("main view win close"),
+    })
+end
 
 -- keybind for secondary view
 local secondary_view_keybind = function()
@@ -276,8 +281,26 @@ local secondary_view_keybind = function()
     )
 end
 
+local secondary_cursormove_cmd
+
+local when_close = function()
+    -- when secondary hide, just return
+    pcall(api.nvim_del_autocmd, secondary_cursormove_cmd)
+
+    if not M.secondary_view_hide() then
+        -- if main view not hide, try close main view window
+        lib_windows.close_window(M.main_view_window())
+
+        -- when seconday view close, clear main view highlight
+        main_clear_hl()
+    end
+end
+
 -- auto cmd for secondary view
 local secondary_view_autocmd = function()
+    local secondary_group =
+        api.nvim_create_augroup("Lspui_secondary_view", { clear = true })
+
     api.nvim_create_autocmd("WinClosed", {
         group = secondary_group,
         pattern = {
@@ -285,20 +308,11 @@ local secondary_view_autocmd = function()
         },
         once = true,
         callback = function()
-            -- when secondary hide, just return
-            if M.secondary_view_hide() then
-                return
-            end
-
-            -- if main view not hide, try close main view window
-            lib_windows.close_window(M.main_view_window())
-
-            -- when seconday view close, clear main view highlight
-            main_clear_hl()
+            when_close()
         end,
         desc = lib_util.command_desc(" secondary view winclose"),
     })
-    api.nvim_create_autocmd("CursorMoved", {
+    secondary_cursormove_cmd = api.nvim_create_autocmd("CursorMoved", {
         group = secondary_group,
         -- pattern = {
         --     tostring(M.secondary_view_window()),
