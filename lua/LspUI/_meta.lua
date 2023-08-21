@@ -25,7 +25,7 @@
 --- @field command_enable boolean? whether enable command for `hover`
 --- @field key_binding { prev: string?, next: string?, quit: string? }? keybind for `hover`
 
--- this is just for some keybind like definition, type definition, declaration, reference, implementation 
+-- this is just for some keybind like definition, type definition, declaration, reference, implementation
 --- @alias LspUI_pos_keybind_config { secondary: { jump: string?, quit:string?, hide_main:string?, enter: string? }?, main: { back: string?, hide_secondary: string? }? }
 
 --- @class LspUI_definition_config
