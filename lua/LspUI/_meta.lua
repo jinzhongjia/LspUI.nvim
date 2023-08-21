@@ -25,7 +25,7 @@
 --- @field command_enable boolean? whether enable command for `hover`
 --- @field key_binding { prev: string?, next: string?, quit: string? }? keybind for `hover`
 
--- this is just for some keybind like definition, type definition, declaration, reference, implemention
+-- this is just for some keybind like definition, type definition, declaration, reference, implementation 
 --- @alias LspUI_pos_keybind_config { secondary: { jump: string?, quit:string?, hide_main:string?, enter: string? }?, main: { back: string?, hide_secondary: string? }? }
 
 --- @class LspUI_definition_config
@@ -40,7 +40,7 @@
 --- @field enable boolean? whether enable `definition` module
 --- @field command_enable boolean? whether enable command for `definition`
 
---- @class LspUI_implemention_config
+--- @class LspUI_implementation_config
 --- @field enable boolean? whether enable `definition` module
 --- @field command_enable boolean? whether enable command for `definition`
 
@@ -57,6 +57,6 @@
 --- @field definition LspUI_definition_config? `definition` module
 --- @field type_definition LspUI_type_definition_config? `type_definition` module
 --- @field declaration LspUI_declaration_config? `declaration` module
---- @field implemention LspUI_implemention_config? `implemention` module
+--- @field implementation LspUI_implementation_config? `implementation` module
 --- @field reference LspUI_reference_config? `reference` module
---- @field pos_keybind LspUI_pos_keybind_config? keybind for `definition`, `type definition`, `declaration`, `reference`, implemention
+--- @field pos_keybind LspUI_pos_keybind_config? keybind for `definition`, `type definition`, `declaration`, `reference`, implementation

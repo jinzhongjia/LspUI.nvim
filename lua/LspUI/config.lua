@@ -1,4 +1,3 @@
-local api = vim.api
 local global = require("LspUI.global")
 local lib_notify = require("LspUI.lib.notify")
 
@@ -70,8 +69,8 @@ local default_declaration_config = {
     command_enable = true,
 }
 
---- @type LspUI_implemention_config
-local default_implemention_config = {
+--- @type LspUI_implementation_config
+local default_implementation_config = {
     enable = true,
     command_enable = true,
 }
@@ -85,7 +84,7 @@ local default_reference_config = {
 --- @type LspUI_pos_keybind_config
 local default_pos_keybind_config = {
     main = {
-        back = "q",
+        back = "<leader>l",
         hide_secondary = "<leader>h",
     },
     secondary = {
@@ -107,7 +106,7 @@ local default_config = {
     definition = default_definition_config,
     type_definition = default_type_definition_config,
     declaration = default_declaration_config,
-    implemention = default_implemention_config,
+    implementation = default_implementation_config,
     reference = default_reference_config,
     pos_keybind = default_pos_keybind_config,
 }
@@ -230,13 +229,13 @@ M.reference = function(reference_config)
     )
 end
 
--- separate function for `implemention` module
---- @param implemention_config LspUI_implemention_config
-M.implemention = function(implemention_config)
-    M.options.implemention = vim.tbl_deep_extend(
+-- separate function for `implementation` module
+--- @param implementation_config LspUI_implementation_config
+M.implementation = function(implementation_config)
+    M.options.implementation = vim.tbl_deep_extend(
         "force",
-        M.options.implemention or default_implemention_config,
-        implemention_config
+        M.options.implementation or default_implementation_config,
+        implementation_config
     )
 end
 

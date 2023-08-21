@@ -490,6 +490,7 @@ M.render = function(action_tuples)
 
     local window_id = lib_windows.display_window(new_window_wrap)
 
+    -- disable change the buffer
     api.nvim_win_set_option(window_id, "winhighlight", "Normal:Normal")
 
     keybinding_autocmd(new_buffer, window_id, action_tuples)
