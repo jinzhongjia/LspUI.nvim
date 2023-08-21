@@ -17,7 +17,7 @@ A plugin which wraps Neovim LSP operations with a nicer UI.
   - Type Definition
   - Declaration
   - Reference
-  - Implemention
+  - Implementation
 
 ## 📦 Installation
 
