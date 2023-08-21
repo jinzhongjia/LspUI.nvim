@@ -374,12 +374,15 @@ end
 --- @return integer
 M.main_view_buffer = function(buffer_id)
     if buffer_id then
-        -- remove old buffer's highlight
-        main_clear_hl()
+        if not M.main_view_hide() then
+            -- remove old buffer's highlight
+            main_clear_hl()
+        end
 
         -- set new main view buffer
         main_view.buffer = buffer_id
 
+        -- TODO: maybe these can be optional run with main_view_hide
         -- load main view buffer
         if not api.nvim_buf_is_loaded(M.main_view_buffer()) then
             fn.bufload(M.main_view_buffer())
@@ -395,8 +398,10 @@ M.main_view_buffer = function(buffer_id)
             end
         end)
 
-        -- highlight new main_view_buffer
-        -- main_set_hl(M.datas()[current_item.uri])
+        if not M.main_view_hide() then
+            -- highlight new main_view_buffer
+            main_set_hl(M.datas()[current_item.uri])
+        end
     end
     return main_view.buffer
 end
@@ -415,6 +420,11 @@ end
 M.main_view_hide = function(hide)
     if hide ~= nil then
         main_view.hide = hide
+        if hide then
+            main_clear_hl()
+        else
+            main_set_hl(M.datas()[current_item.uri])
+        end
     end
     return main_view.hide
 end
