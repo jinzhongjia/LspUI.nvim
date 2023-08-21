@@ -207,6 +207,24 @@ local main_view_keybind = function()
     )
 end
 
+local secondary_cursormove_cmd
+
+local when_close = function()
+    -- when secondary hide, just return
+    pcall(api.nvim_del_autocmd, secondary_cursormove_cmd)
+
+    if not M.main_view_hide() then
+        -- clear main view highlight
+        main_clear_hl()
+        -- close main view
+        lib_windows.close_window(M.main_view_window())
+    end
+
+    if not M.secondary_view_hide() then
+        lib_windows.close_window(M.secondary_view_window())
+    end
+end
+
 -- auto cmd for main view
 local main_view_autocmd = function()
     local main_group =
@@ -279,24 +297,6 @@ local secondary_view_keybind = function()
             end,
         }
     )
-end
-
-local secondary_cursormove_cmd
-
-local when_close = function()
-    -- when secondary hide, just return
-    pcall(api.nvim_del_autocmd, secondary_cursormove_cmd)
-
-    if not M.main_view_hide() then
-        -- clear main view highlight
-        main_clear_hl()
-        -- close main view
-        lib_windows.close_window(M.main_view_window())
-    end
-
-    if not M.secondary_view_hide() then
-        lib_windows.close_window(M.secondary_view_window())
-    end
 end
 
 -- auto cmd for secondary view
