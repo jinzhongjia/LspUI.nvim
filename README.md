@@ -264,3 +264,4 @@ You can see the current goals [here](https://github.com/jinzhongjia/LspUI.nvim/i
 ## Reference
 
 - [glepnir/lspsaga.nvim](https://github.com/glepnir/lspsaga.nvim)
+- [DNLHC/glance.nvim](https://github.com/DNLHC/glance.nvim)
