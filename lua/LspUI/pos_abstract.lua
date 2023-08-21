@@ -678,7 +678,16 @@ M.main_view_render = function()
         api.nvim_win_set_option(
             M.main_view_window(),
             "winhighlight",
-            "Normal:Normal"
+            "Normal:Normal,WinBar:Comment"
+        )
+    end
+    do
+        local fname = vim.uri_to_fname(current_item.uri)
+        local filepath = vim.fn.fnamemodify(fname, ":p:~:h")
+        api.nvim_win_set_option(
+            M.main_view_window(),
+            "winbar",
+            string.format(" %s", filepath)
         )
     end
     main_view_autocmd()
@@ -735,6 +744,7 @@ end
 --- @param cmd string?
 local action_jump = function(cmd)
     if current_item.range then
+        api.nvim_win_set_option(M.main_view_window(), "winbar", "")
         lib_windows.close_window(M.secondary_view_window())
 
         if cmd then
