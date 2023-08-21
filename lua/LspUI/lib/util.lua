@@ -173,4 +173,20 @@ M.get_uri_lines = function(buffer_id, uri, rows)
     return lines
 end
 
+-- push tagstack
+--- @param window_id integer
+M.create_push_tagstack = function(window_id)
+    local pos = vim.api.nvim_win_get_cursor(0)
+    local current_word = vim.fn.expand("<cword>")
+    local from = { vim.api.nvim_get_current_buf(), pos[1], pos[2], 0 }
+    local items = { { tagname = current_word, from = from } }
+
+    return function()
+        vim.api.nvim_win_call(window_id, function()
+            vim.cmd("norm! m'")
+            vim.fn.settagstack(window_id, { items = items }, "t")
+        end)
+    end
+end
+
 return M
