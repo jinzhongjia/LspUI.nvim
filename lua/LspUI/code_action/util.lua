@@ -8,6 +8,7 @@ local lib_lsp = require("LspUI.lib.lsp")
 local lib_notify = require("LspUI.lib.notify")
 local lib_util = require("LspUI.lib.util")
 local lib_windows = require("LspUI.lib.windows")
+local register = require("LspUI.code_action.register")
 
 --- TODO: add abstruct and register
 
@@ -131,6 +132,30 @@ local get_gitsigns_actions = function(
     return action_tuples
 end
 
+-- get all register acions
+--- @param action_tuples action_tuple[]
+--- @param buffer_id integer
+--- @param uri lsp.URI
+--- @param range lsp.Range
+--- @return action_tuple[]
+local get_register_actions = function(action_tuples, buffer_id, uri, range)
+    local res = register.handle(uri, range)
+    for _, val in pairs(res) do
+        table.insert(
+            action_tuples,
+            --- @type action_tuple
+            {
+                action = {
+                    title = val.title,
+                },
+                buffer_id = buffer_id,
+                callback = val.action,
+            }
+        )
+    end
+    return action_tuples
+end
+
 -- get action tuples
 --- @param clients lsp.Client[]
 --- @param params table
@@ -171,6 +196,12 @@ M.get_action_tuples = function(clients, params, buffer_id, is_visual, callback)
                     action_tuples,
                     buffer_id,
                     is_visual,
+                    params.textDocument.uri,
+                    params.range
+                )
+                action_tuples = get_register_actions(
+                    action_tuples,
+                    buffer_id,
                     params.textDocument.uri,
                     params.range
                 )

@@ -1,6 +1,7 @@
 local lsp, fn, api = vim.lsp, vim.fn, vim.api
 local code_action_feature = lsp.protocol.Methods.textDocument_codeAction
 
+local code_action_register = require("LspUI.code_action.register")
 local config = require("LspUI.config")
 local global = require("LspUI.global")
 local lib_lsp = require("LspUI.lib.lsp")
@@ -94,8 +95,17 @@ M.request = function(buffer_id, callback)
             local gitsigns_actions = gitsigns.get_actions()
             if gitsigns_actions and not vim.tbl_isempty(gitsigns_actions) then
                 new_callback(true)
+                return
             end
         end
+    end
+    if
+        not vim.tbl_isempty(
+            code_action_register.handle(params.textDocument.uri, params.range)
+        )
+    then
+        new_callback(true)
+        return
     end
 
     local clients = M.get_clients(buffer_id)
