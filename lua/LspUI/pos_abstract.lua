@@ -165,9 +165,15 @@ local secondary_clear_hl = function()
     end
 end
 
-local main_view_clear_keybind = function()
+--- @param buffer_id integer?
+local main_view_clear_keybind = function(buffer_id)
     for _, lhs in pairs(config.options.pos_keybind.main) do
-        pcall(vim.api.nvim_buf_del_keymap, M.main_view_buffer(), "n", lhs)
+        pcall(
+            vim.api.nvim_buf_del_keymap,
+            buffer_id or M.main_view_buffer(),
+            "n",
+            lhs
+        )
     end
 end
 
@@ -181,10 +187,7 @@ local main_view_keybind = function()
         "",
         {
             callback = function()
-                if not M.secondary_view_hide() then
-                    api.nvim_set_current_win(M.secondary_view_window())
-                    main_view_clear_keybind()
-                end
+                M.action.back_secondary()
             end,
         }
     )
@@ -196,12 +199,7 @@ local main_view_keybind = function()
         "",
         {
             callback = function()
-                M.secondary_view_hide(not M.secondary_view_hide())
-                if M.secondary_view_hide() then
-                    lib_windows.close_window(M.secondary_view_window())
-                else
-                    M.secondary_view_render()
-                end
+                M.action.hide_secondary()
             end,
         }
     )
@@ -307,6 +305,9 @@ local secondary_view_autocmd = function()
             if not M.secondary_view_hide() then
                 main_clear_hl()
                 lib_windows.close_window(M.main_view_window())
+            end
+            for _, value in pairs(buffer_history) do
+                main_view_clear_keybind(value)
             end
         end,
         desc = lib_util.command_desc(" secondary view winclose"),
@@ -765,6 +766,7 @@ local action_enter_main = function()
     if not M.main_view_hide() then
         api.nvim_set_current_win(M.main_view_window())
         main_view_keybind()
+        table.insert(buffer_history, M.main_view_buffer())
     end
 end
 
@@ -778,10 +780,34 @@ local action_hide_main = function()
         lib_windows.close_window(M.main_view_window())
     else
         M.main_view_render()
+        lib_windows.window_set_cursor(
+            M.main_view_window(),
+            current_item.range.start.line + 1,
+            current_item.range.start.character
+        )
     end
 end
 
--- local action_
+local action_back_secondary = function()
+    if not M.secondary_view_hide() then
+        api.nvim_set_current_win(M.secondary_view_window())
+        main_view_clear_keybind()
+        for key, value in pairs(buffer_history) do
+            if value == M.main_view_buffer() then
+                buffer_history[key] = nil
+            end
+        end
+    end
+end
+
+local action_hide_secondary = function()
+    M.secondary_view_hide(not M.secondary_view_hide())
+    if M.secondary_view_hide() then
+        lib_windows.close_window(M.secondary_view_window())
+    else
+        M.secondary_view_render()
+    end
+end
 
 -- define actions
 M.action = {
@@ -800,11 +826,17 @@ M.action = {
     enter_main = function()
         action_enter_main()
     end,
+    back_secondary = function()
+        action_back_secondary()
+    end,
     secondary_quit = function()
         action_secondary_quit()
     end,
     hide_main = function()
         action_hide_main()
+    end,
+    hide_secondary = function()
+        action_hide_secondary()
     end,
 }
 
