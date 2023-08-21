@@ -71,7 +71,7 @@ require("LspUI").setup({
 	definition = {},
 	type_definition = {},
 	declaration = {},
-	implemention = {},
+	implementation = {},
 	reference = {},
 	pos_keybind = {}, -- keybind for above
 	-- See below for all options
@@ -185,8 +185,8 @@ local default_declaration_config = {
     command_enable = true,
 }
 
---- @type LspUI_implemention_config
-local default_implemention_config = {
+--- @type LspUI_implementation_config
+local default_implementation_config = {
     enable = true,
     command_enable = true,
 }
@@ -222,7 +222,7 @@ local default_config = {
     definition = default_definition_config,
     type_definition = default_type_definition_config,
     declaration = default_declaration_config,
-    implemention = default_implemention_config,
+    implementation = default_implementation_config,
     reference = default_reference_config,
     pos_keybind = default_pos_keybind_config,
 }
@@ -241,7 +241,7 @@ local default_config = {
 -   `LspUI type_definition`: Open the type definition
 -   `LspUI declaration`: Open the declaration
 -   `LspUI reference`: Open the reference
--   `LspUI implemention`: Open the implemention
+-   `LspUI implementation`: Open the implementation
 
 ## Migration
 

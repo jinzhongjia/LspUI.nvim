@@ -1,5 +1,5 @@
 local lsp = vim.lsp
-local implemention_feature = lsp.protocol.Methods.textDocument_implementation
+local implementation_feature = lsp.protocol.Methods.textDocument_implementation
 
 local M = {}
 
@@ -8,7 +8,7 @@ local M = {}
 --- @return lsp.Client[]|nil clients array or nil
 M.get_clients = function(buffer_id)
     local clients =
-        lsp.get_clients({ bufnr = buffer_id, method = implemention_feature })
+        lsp.get_clients({ bufnr = buffer_id, method = implementation_feature })
     if vim.tbl_isempty(clients) then
         return nil
     end

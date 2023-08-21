@@ -71,9 +71,9 @@ M.method = {
         name = "reference",
         fold = true,
     },
-    implemention = {
+    implementation = {
         method = lsp.protocol.Methods.textDocument_implementation,
-        name = "implemention",
+        name = "implementation",
         fold = true,
     },
 }

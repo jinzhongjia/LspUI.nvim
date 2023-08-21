@@ -7,6 +7,6 @@ return {
     definition = require("LspUI.definition"),
     type_definition = require("LspUI.type_definition"),
     declaration = require("LspUI.declaration"),
-    implemention = require("LspUI.implemention"),
+    implementation = require("LspUI.implementation"),
     reference = require("LspUI.reference"),
 }
