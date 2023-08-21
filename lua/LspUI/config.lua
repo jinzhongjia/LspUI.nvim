@@ -85,7 +85,7 @@ local default_reference_config = {
 --- @type LspUI_pos_keybind_config
 local default_pos_keybind_config = {
     main = {
-        back = "q",
+        back = "<leader>l",
         hide_secondary = "<leader>h",
     },
     secondary = {

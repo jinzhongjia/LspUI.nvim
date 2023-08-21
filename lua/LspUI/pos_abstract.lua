@@ -18,6 +18,8 @@ local main_namespace = api.nvim_create_namespace("LspUI_main")
 
 local seconday_namespace = api.nvim_create_namespace("LspUI_seconday")
 
+local buffer_history = {}
+
 -- create auto group
 
 --- @alias lsp_range { start: lsp.Position, finish: lsp.Position }
@@ -179,11 +181,9 @@ local main_view_keybind = function()
         "",
         {
             callback = function()
-                if M.secondary_view_hide() then
-                    lib_windows.close_window(M.main_view_window())
-                    -- main_view_clear_keybind()
-                else
+                if not M.secondary_view_hide() then
                     api.nvim_set_current_win(M.secondary_view_window())
+                    main_view_clear_keybind()
                 end
             end,
         }
@@ -207,33 +207,25 @@ local main_view_keybind = function()
     )
 end
 
-local secondary_cursormove_cmd
+local secondary_cmd = {}
 
-local when_close = function()
-    -- when secondary hide, just return
-    pcall(api.nvim_del_autocmd, secondary_cursormove_cmd)
-
-    if not M.main_view_hide() then
-        -- clear main view highlight
-        main_clear_hl()
-        -- close main view
-        lib_windows.close_window(M.main_view_window())
-    end
-
-    if not M.secondary_view_hide() then
-        lib_windows.close_window(M.secondary_view_window())
-    end
-end
-
--- auto cmd for main view
 local main_view_autocmd = function()
     local main_group =
         api.nvim_create_augroup("Lspui_main_view", { clear = true })
 
     api.nvim_create_autocmd("WinClosed", {
+        group = main_group,
+        pattern = {
+            tostring(M.main_view_window()),
+        },
         once = true,
-        callback = function() end,
-        desc = lib_util.command_desc("main view win close"),
+        callback = function()
+            if not M.main_view_hide() then
+                main_clear_hl()
+                lib_windows.close_window(M.secondary_view_window())
+                pcall(api.nvim_del_autocmd, secondary_cmd.CursorMoved)
+            end
+        end,
     })
 end
 
@@ -304,18 +296,22 @@ local secondary_view_autocmd = function()
     local secondary_group =
         api.nvim_create_augroup("Lspui_secondary_view", { clear = true })
 
-    api.nvim_create_autocmd("WinClosed", {
+    secondary_cmd.close = api.nvim_create_autocmd("WinClosed", {
         group = secondary_group,
         pattern = {
             tostring(M.secondary_view_window()),
         },
         once = true,
-        callback = function(arg)
-            when_close(arg.group)
+        callback = function()
+            pcall(api.nvim_del_autocmd, secondary_cmd.CursorMoved)
+            if not M.secondary_view_hide() then
+                main_clear_hl()
+                lib_windows.close_window(M.main_view_window())
+            end
         end,
         desc = lib_util.command_desc(" secondary view winclose"),
     })
-    secondary_cursormove_cmd = api.nvim_create_autocmd("CursorMoved", {
+    secondary_cmd.CursorMoved = api.nvim_create_autocmd("CursorMoved", {
         group = secondary_group,
         -- pattern = {
         --     tostring(M.secondary_view_window()),
@@ -684,6 +680,7 @@ M.main_view_render = function()
             "Normal:Normal"
         )
     end
+    main_view_autocmd()
 end
 
 -- render secondary view
@@ -767,6 +764,7 @@ end
 local action_enter_main = function()
     if not M.main_view_hide() then
         api.nvim_set_current_win(M.main_view_window())
+        main_view_keybind()
     end
 end
 
