@@ -780,11 +780,14 @@ local action_hide_main = function()
         lib_windows.close_window(M.main_view_window())
     else
         M.main_view_render()
-        lib_windows.window_set_cursor(
-            M.main_view_window(),
-            current_item.range.start.line + 1,
-            current_item.range.start.character
-        )
+        local range = current_item.range
+        if range then
+            lib_windows.window_set_cursor(
+                M.main_view_window(),
+                range.start.line + 1,
+                range.start.character
+            )
+        end
     end
 end
 
