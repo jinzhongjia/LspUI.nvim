@@ -287,12 +287,15 @@ local when_close = function()
     -- when secondary hide, just return
     pcall(api.nvim_del_autocmd, secondary_cursormove_cmd)
 
-    if not M.secondary_view_hide() then
-        -- if main view not hide, try close main view window
-        lib_windows.close_window(M.main_view_window())
-
-        -- when seconday view close, clear main view highlight
+    if not M.main_view_hide() then
+        -- clear main view highlight
         main_clear_hl()
+        -- close main view
+        lib_windows.close_window(M.main_view_window())
+    end
+
+    if not M.secondary_view_hide() then
+        lib_windows.close_window(M.secondary_view_window())
     end
 end
 
@@ -307,8 +310,8 @@ local secondary_view_autocmd = function()
             tostring(M.secondary_view_window()),
         },
         once = true,
-        callback = function()
-            when_close()
+        callback = function(arg)
+            when_close(arg.group)
         end,
         desc = lib_util.command_desc(" secondary view winclose"),
     })
@@ -393,7 +396,7 @@ M.main_view_buffer = function(buffer_id)
         end)
 
         -- highlight new main_view_buffer
-        main_set_hl(M.datas()[current_item.uri])
+        -- main_set_hl(M.datas()[current_item.uri])
     end
     return main_view.buffer
 end
@@ -632,44 +635,45 @@ M.main_view_render = function()
     if lib_windows.is_valid_window(M.main_view_window()) then
         -- if now windows is valid, just set buffer
         api.nvim_win_set_buf(M.main_view_window(), M.main_view_buffer())
+    else
+        -- window is not valid, create a new window
+        local main_window_wrap = lib_windows.new_window(M.main_view_buffer())
 
-        return
+        -- set width and height
+        lib_windows.set_width_window(
+            main_window_wrap,
+            lib_windows.get_max_width()
+        )
+        lib_windows.set_height_window(
+            main_window_wrap,
+            lib_windows.get_max_height() - 3
+        )
+
+        -- set whether enter the main_view_window
+        lib_windows.set_enter_window(main_window_wrap, false)
+
+        lib_windows.set_anchor_window(main_window_wrap, "NW")
+
+        -- set none border, TODO: add more border here
+        lib_windows.set_border_window(main_window_wrap, "none")
+
+        lib_windows.set_relative_window(main_window_wrap, "editor")
+
+        lib_windows.set_zindex_window(main_window_wrap, 10)
+
+        lib_windows.set_row_window(main_window_wrap, 1)
+        lib_windows.set_col_window(main_window_wrap, 0)
+
+        -- set new main view window
+        M.main_view_window(lib_windows.display_window(main_window_wrap))
+
+        -- prevent extra shadows
+        api.nvim_win_set_option(
+            M.main_view_window(),
+            "winhighlight",
+            "Normal:Normal"
+        )
     end
-
-    -- window is not valid, create a new window
-    local main_window_wrap = lib_windows.new_window(M.main_view_buffer())
-
-    -- set width and height
-    lib_windows.set_width_window(main_window_wrap, lib_windows.get_max_width())
-    lib_windows.set_height_window(
-        main_window_wrap,
-        lib_windows.get_max_height() - 3
-    )
-
-    -- set whether enter the main_view_window
-    lib_windows.set_enter_window(main_window_wrap, false)
-
-    lib_windows.set_anchor_window(main_window_wrap, "NW")
-
-    -- set none border, TODO: add more border here
-    lib_windows.set_border_window(main_window_wrap, "none")
-
-    lib_windows.set_relative_window(main_window_wrap, "editor")
-
-    lib_windows.set_zindex_window(main_window_wrap, 10)
-
-    lib_windows.set_row_window(main_window_wrap, 1)
-    lib_windows.set_col_window(main_window_wrap, 0)
-
-    -- set new main view window
-    M.main_view_window(lib_windows.display_window(main_window_wrap))
-
-    -- prevent extra shadows
-    api.nvim_win_set_option(
-        M.main_view_window(),
-        "winhighlight",
-        "Normal:Normal"
-    )
 end
 
 -- render secondary view
