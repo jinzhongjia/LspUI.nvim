@@ -671,7 +671,7 @@ M.main_view_render = function()
 
         lib_windows.set_zindex_window(main_window_wrap, 10)
 
-        lib_windows.set_row_window(main_window_wrap, 1)
+        lib_windows.set_row_window(main_window_wrap, 0)
         lib_windows.set_col_window(main_window_wrap, 0)
 
         -- set new main view window
