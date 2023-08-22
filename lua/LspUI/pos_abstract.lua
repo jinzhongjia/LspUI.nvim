@@ -476,67 +476,73 @@ end
 M.lsp_clients_request = function(buffer_id, clients, params, callback)
     -- tmp_number is only for counts
     local tmp_number = 0
+
     local client_number = #clients
 
     local origin_uri = vim.uri_from_bufnr(buffer_id)
 
     --- @type Lsp_position_wrap
     local data = {}
+
     for _, client in pairs(clients) do
         client.request(method.method, params, function(err, result, _, _)
-            if not result then
-                callback(nil)
-                return
-            end
+            -- always add one
+            tmp_number = tmp_number + 1
+
             if err ~= nil then
                 lib_notify.Warn(
                     string.format("when %s, err: %s", method.name, err)
                 )
-            end
-            tmp_number = tmp_number + 1
-
-            if result.uri then
-                -- response is a position
-                local uri = result.uri
-                local range = result.range
-                local uri_buffer = vim.uri_to_bufnr(uri)
-                if data[uri] == nil then
-                    data[uri] = {
-                        buffer_id = uri_buffer,
-                        fold = method.fold
-                                and (origin_uri ~= uri and true or false)
-                            or false,
-                        range = {},
-                    }
-                end
-
-                table.insert(data[uri].range, {
-                    start = range.start,
-                    finish = range["end"],
-                })
             else
-                for _, response in ipairs(result) do
-                    local uri = response.uri or response.targetUri
-                    local range = response.range or response.targetRange
-                    local uri_buffer = vim.uri_to_bufnr(uri)
-                    if data[uri] == nil then
-                        data[uri] = {
-                            buffer_id = uri_buffer,
-                            fold = method.fold
-                                    and (origin_uri ~= uri and true or false)
-                                or false,
-                            range = {},
-                        }
+                if result and not vim.tbl_isempty(result) then
+                    if result.uri then
+                        -- response is a position
+                        local uri = result.uri
+                        local range = result.range
+                        local uri_buffer = vim.uri_to_bufnr(uri)
+                        if data[uri] == nil then
+                            data[uri] = {
+                                buffer_id = uri_buffer,
+                                fold = method.fold
+                                        and (origin_uri ~= uri and true or false)
+                                    or false,
+                                range = {},
+                            }
+                        end
+
+                        table.insert(data[uri].range, {
+                            start = range.start,
+                            finish = range["end"],
+                        })
+                    else
+                        for _, response in ipairs(result) do
+                            local uri = response.uri or response.targetUri
+                            local range = response.range or response.targetRange
+                            local uri_buffer = vim.uri_to_bufnr(uri)
+                            if data[uri] == nil then
+                                data[uri] = {
+                                    buffer_id = uri_buffer,
+                                    fold = method.fold
+                                            and (origin_uri ~= uri and true or false)
+                                        or false,
+                                    range = {},
+                                }
+                            end
+                            table.insert(data[uri].range, {
+                                start = range.start,
+                                finish = range["end"],
+                            })
+                        end
                     end
-                    table.insert(data[uri].range, {
-                        start = range.start,
-                        finish = range["end"],
-                    })
                 end
             end
 
             if tmp_number == client_number then
-                callback(data)
+                if vim.tbl_isempty(data) then
+                    callback(nil)
+                else
+                    callback(data)
+                end
             end
         end, buffer_id)
     end
@@ -895,7 +901,9 @@ M.go = function(new_method, buffer_id, window_id, clients, params)
             lib_notify.Info("no valid definition")
             return
         end
+
         M.datas(data)
+
         push_tagstack = lib_util.create_push_tagstack(window_id)
 
         M.secondary_view_render()
