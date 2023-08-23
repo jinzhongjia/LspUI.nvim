@@ -2,7 +2,6 @@
 
 A plugin which wraps Neovim LSP operations with a nicer UI.
 
-
 ## ✨ Features
 
 - Custom implementations of common LSP functions
