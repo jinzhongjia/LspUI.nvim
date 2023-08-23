@@ -189,6 +189,8 @@ local main_view_keybind = function()
         config.options.pos_keybind.main.back,
         "",
         {
+            nowait = true,
+            noremap = true,
             callback = function()
                 M.action.back_secondary()
             end,
@@ -201,6 +203,8 @@ local main_view_keybind = function()
         config.options.pos_keybind.main.hide_secondary,
         "",
         {
+            nowait = true,
+            noremap = true,
             callback = function()
                 M.action.hide_secondary()
             end,
