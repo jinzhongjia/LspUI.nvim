@@ -166,6 +166,9 @@ local default_hover_config = {
 	},
 }
 
+-- for definition, type_definition, declaration, implementation, reference
+-- we define two windows, call left is main view, right is secondary view
+
 --- @type LspUI_definition_config
 local default_definition_config = {
     enable = true,
@@ -199,14 +202,14 @@ local default_reference_config = {
 --- @type LspUI_pos_keybind_config
 local default_pos_keybind_config = {
     main = {
-        back = "q",
-        hide_secondary = "<leader>h",
+        back = "<leader>l", -- back to secondary view
+        hide_secondary = "<leader>h", -- hide secondary view
     },
     secondary = {
-        jump = "o",
-        quit = "q",
-        hide_main = "<leader>h",
-        enter = "<leader>l",
+        jump = "o", -- jump to code location
+        quit = "q", -- close main and secondary veiw
+        hide_main = "<leader>h", -- hide main view
+        enter = "<leader>l", -- enter into main view
     },
 }
 
