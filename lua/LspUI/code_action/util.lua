@@ -474,7 +474,7 @@ end
 -- render the menu for the code actions
 --- @param action_tuples action_tuple[]
 M.render = function(action_tuples)
-    if #action_tuples == 0 then
+    if vim.tbl_isempty(action_tuples) then
         lib_notify.Info("no code action!")
         return
     end

@@ -1,4 +1,4 @@
---- TODO: add register code action
+local lib_notify = require("LspUI.lib.notify")
 
 local M = {}
 
@@ -9,7 +9,16 @@ local list = {}
 --- @param name string
 --- @param callback fun(uri:lsp.URI,range:lsp.Range):{title:string,action:function}[]
 M.register = function(name, callback)
-    list[name] = callback
+    if not list[name] then
+        list[name] = callback
+    else
+        lib_notify.Error(
+            string.format(
+                "the name %s of code action has been registered!",
+                name
+            )
+        )
+    end
 end
 
 --- @param name string
