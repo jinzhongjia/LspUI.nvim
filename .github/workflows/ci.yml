@@ -3,11 +3,11 @@ name: ci
 on:
   push:
     branches:
-      - v2
+      - main
 
   pull_request:
     branches:
-      - v2
+      - main
 
 jobs:
   format:
@@ -16,7 +16,7 @@ jobs:
       - uses: actions/checkout@v3
         with:
           persist-credentials: false
-          ref: v2
+          ref: main
           fetch-depth: 0
       - name: Stylua
         uses: JohnnyMorganz/stylua-action@v1.1.2
