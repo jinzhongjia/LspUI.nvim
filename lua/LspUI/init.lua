@@ -15,7 +15,9 @@ return {
                 module.init()
             end
         else
-            lib_notify.Warn("The version of neovim needs to be at least 0.10!! you can use branch legacy")
+            lib_notify.Warn(
+                "The version of neovim needs to be at least 0.10!! you can use branch legacy"
+            )
         end
     end,
     api = vim.fn.has("nvim-0.10") == 0 and {} or require("LspUI.api"),
