@@ -902,7 +902,7 @@ M.go = function(new_method, buffer_id, window_id, clients, params)
 
     M.lsp_clients_request(buffer_id, clients, params, function(data)
         if not data then
-            lib_notify.Info("no valid definition")
+            lib_notify.Info(string.format("no valid %s", method.name))
             return
         end
 
