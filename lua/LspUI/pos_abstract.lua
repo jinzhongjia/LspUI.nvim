@@ -888,7 +888,7 @@ local find_position_from_params = function(params)
         end
     end
 
-    return 2
+    return 1
 end
 
 --- @param buffer_id integer which buffer do method
