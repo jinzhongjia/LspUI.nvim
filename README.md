@@ -42,9 +42,9 @@ A plugin which wraps Neovim LSP operations with a nicer UI.
 use {
         "jinzhongjia/LspUI.nvim",
 	    branch = 'main',
-        config = function()
+	    config = function()
             require("LspUI").setup({
-		    -- config options go here
+	        -- config options go here
 	    })
         end
     }
@@ -71,6 +71,8 @@ more about [here](https://github.com/jinzhongjia/LspUI.nvim/wiki/Config)
 -   `LspUI declaration`: Open the declaration
 -   `LspUI reference`: Open the reference
 -   `LspUI implementation`: Open the implementation
+
+## [Screen Shot](https://github.com/jinzhongjia/LspUI.nvim/wiki/Screen-Shot)
 
 ## Current Goals / Roadmap
 
