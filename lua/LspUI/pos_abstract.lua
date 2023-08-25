@@ -887,8 +887,10 @@ local find_position_from_params = function(params)
             end
         end
     end
-
-    return 1
+    if method.fold then
+        return 1
+    end
+    return 2
 end
 
 --- @param buffer_id integer which buffer do method

@@ -27,7 +27,7 @@ A plugin which wraps Neovim LSP operations with a nicer UI.
 ```lua
 {
     "jinzhongjia/LspUI.nvim",
-    branch = "v2",
+    branch = "main",
     config = function()
         require("LspUI").setup({
 	    -- config options go here
@@ -41,10 +41,10 @@ A plugin which wraps Neovim LSP operations with a nicer UI.
 ```lua
 use {
         "jinzhongjia/LspUI.nvim",
-	branch = 'v2',
+	    branch = 'main',
         config = function()
             require("LspUI").setup({
-		-- config options go here
+		    -- config options go here
 	    })
         end
     }
