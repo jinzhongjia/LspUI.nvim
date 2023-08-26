@@ -32,4 +32,16 @@ M.run = function()
     lib_notify.Info("lightbulb has no run func")
 end
 
+-- deinit for lightbulb
+M.deinit = function()
+    if not is_initialized then
+        return
+    end
+
+    util.unregister_sign()
+    util.un_autocmd()
+
+    is_initialized = false
+end
+
 return M
