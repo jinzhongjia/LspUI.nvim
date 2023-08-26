@@ -113,9 +113,15 @@ M.render = function(clients, buffer_id, current_win, old_name)
         --- @cast old_name string
         old_name,
     })
-    api.nvim_buf_set_option(new_buffer, "filetype", "LspUI-rename")
-    api.nvim_buf_set_option(new_buffer, "modifiable", true)
-    api.nvim_buf_set_option(new_buffer, "bufhidden", "wipe")
+    api.nvim_set_option_value("filetype", "LspUI-rename", {
+        buf = new_buffer,
+    })
+    api.nvim_set_option_value("modifiable", true, {
+        buf = new_buffer,
+    })
+    api.nvim_set_option_value("bufhidden", "wipe", {
+        buf = new_buffer,
+    })
 
     local new_window_wrap = lib_windows.new_window(new_buffer)
 
@@ -143,7 +149,9 @@ M.render = function(clients, buffer_id, current_win, old_name)
 
     local window_id = lib_windows.display_window(new_window_wrap)
 
-    api.nvim_win_set_option(window_id, "winhighlight", "Normal:Normal")
+    api.nvim_set_option_value("winhighlight", "Normal:Normal", {
+        win = window_id,
+    })
 
     if config.options.rename.auto_select then
         vim.cmd([[normal! V]])

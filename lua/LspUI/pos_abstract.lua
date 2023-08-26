@@ -229,6 +229,9 @@ local main_view_autocmd = function()
                 main_clear_hl()
                 lib_windows.close_window(M.secondary_view_window())
                 pcall(api.nvim_del_autocmd, secondary_cmd.CursorMoved)
+                for _, value in pairs(buffer_history) do
+                    main_view_clear_keybind(value)
+                end
             end
         end,
     })
@@ -312,9 +315,9 @@ local secondary_view_autocmd = function()
             if not M.secondary_view_hide() then
                 main_clear_hl()
                 lib_windows.close_window(M.main_view_window())
-            end
-            for _, value in pairs(buffer_history) do
-                main_view_clear_keybind(value)
+                for _, value in pairs(buffer_history) do
+                    main_view_clear_keybind(value)
+                end
             end
         end,
         desc = lib_util.command_desc(" secondary view winclose"),
@@ -395,8 +398,9 @@ M.main_view_buffer = function(buffer_id)
         -- TODO: why we must do `BufRead`
         api.nvim_buf_call(M.main_view_buffer(), function()
             if
-                vim.api.nvim_buf_get_option(M.main_view_buffer(), "filetype")
-                == ""
+                api.nvim_get_option_value("filetype", {
+                    buf = M.main_view_buffer(),
+                }) == ""
             then
                 vim.cmd("do BufRead")
             end
@@ -564,7 +568,9 @@ local generate_secondary_view = function()
     end
 
     -- enable change for this buffer
-    api.nvim_buf_set_option(M.secondary_view_buffer(), "modifiable", true)
+    api.nvim_set_option_value("modifiable", true, {
+        buf = M.secondary_view_buffer(),
+    })
 
     -- hl_num for highlight lnum recording
     local hl_num = 0
@@ -636,7 +642,9 @@ local generate_secondary_view = function()
     secondary_set_hl(hl)
 
     -- disable change for this buffer
-    api.nvim_buf_set_option(M.secondary_view_buffer(), "modifiable", false)
+    api.nvim_set_option_value("modifiable", false, {
+        buf = M.secondary_view_buffer(),
+    })
 
     -- For aesthetics, increase the width
     return max_width + 2 > 30 and 30 or max_width + 2, height + 1
@@ -688,20 +696,20 @@ M.main_view_render = function()
         M.main_view_window(lib_windows.display_window(main_window_wrap))
 
         -- prevent extra shadows
-        api.nvim_win_set_option(
-            M.main_view_window(),
+        api.nvim_set_option_value(
             "winhighlight",
-            "Normal:Normal,WinBar:Comment"
+            "Normal:Normal,WinBar:Comment",
+            {
+                win = M.main_view_window(),
+            }
         )
     end
     do
         local fname = vim.uri_to_fname(current_item.uri)
         local filepath = vim.fn.fnamemodify(fname, ":p:~:h")
-        api.nvim_win_set_option(
-            M.main_view_window(),
-            "winbar",
-            string.format(" %s", filepath)
-        )
+        api.nvim_set_option_value("winbar", string.format(" %s", filepath), {
+            win = M.main_view_window(),
+        })
     end
     main_view_autocmd()
 end
@@ -745,11 +753,9 @@ M.secondary_view_render = function()
         M.secondary_view_window(lib_windows.display_window(second_window_wrap))
 
         -- prevent extra shadows
-        api.nvim_win_set_option(
-            M.secondary_view_window(),
-            "winhighlight",
-            "Normal:Normal"
-        )
+        api.nvim_set_option_value("winhighlight", "Normal:Normal", {
+            win = M.secondary_view_window(),
+        })
     end
     secondary_view_autocmd()
 end
@@ -757,7 +763,9 @@ end
 --- @param cmd string?
 local action_jump = function(cmd)
     if current_item.range then
-        api.nvim_win_set_option(M.main_view_window(), "winbar", "")
+        api.nvim_set_option_value("winbar", "", {
+            win = M.main_view_window(),
+        })
         lib_windows.close_window(M.secondary_view_window())
 
         push_tagstack()

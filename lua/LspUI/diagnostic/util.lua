@@ -216,9 +216,15 @@ M.render = function(action)
     -- create a new buffer
     local new_buffer = api.nvim_create_buf(false, true)
     api.nvim_buf_set_lines(new_buffer, 0, -1, false, content)
-    api.nvim_buf_set_option(new_buffer, "filetype", "LspUI-diagnostic")
-    api.nvim_buf_set_option(new_buffer, "modifiable", false)
-    api.nvim_buf_set_option(new_buffer, "bufhidden", "wipe")
+    api.nvim_set_option_value("filetype", "LspUI-diagnostic", {
+        buf = new_buffer,
+    })
+    api.nvim_set_option_value("modifiable", false, {
+        buf = new_buffer,
+    })
+    api.nvim_set_option_value("bufhidden", "wipe", {
+        buf = new_buffer,
+    })
 
     -- highlight buffer
     for _, highlight_group in pairs(highlight_groups) do
@@ -257,12 +263,19 @@ M.render = function(action)
     api.nvim_win_set_cursor(current_window, { next_row + 1, next_col })
     local window_id = lib_windows.display_window(new_window_wrap)
 
-    api.nvim_win_set_option(window_id, "winhighlight", "Normal:Normal")
-    api.nvim_win_set_option(window_id, "wrap", true)
-
+    api.nvim_set_option_value("winhighlight", "Normal:Normal", {
+        win = window_id,
+    })
+    api.nvim_set_option_value("wrap", true, {
+        win = window_id,
+    })
     -- this is very very important, because it will hide highlight group
-    api.nvim_win_set_option(window_id, "conceallevel", 2)
-    api.nvim_win_set_option(window_id, "concealcursor", "n")
+    api.nvim_set_option_value("conceallevel", 2, {
+        win = window_id,
+    })
+    api.nvim_set_option_value("concealcursor", "n", {
+        win = window_id,
+    })
 
     vim.schedule(function()
         M.autocmd(current_buffer, window_id)
