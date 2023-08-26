@@ -229,6 +229,9 @@ local main_view_autocmd = function()
                 main_clear_hl()
                 lib_windows.close_window(M.secondary_view_window())
                 pcall(api.nvim_del_autocmd, secondary_cmd.CursorMoved)
+                for _, value in pairs(buffer_history) do
+                    main_view_clear_keybind(value)
+                end
             end
         end,
     })
@@ -312,9 +315,9 @@ local secondary_view_autocmd = function()
             if not M.secondary_view_hide() then
                 main_clear_hl()
                 lib_windows.close_window(M.main_view_window())
-            end
-            for _, value in pairs(buffer_history) do
-                main_view_clear_keybind(value)
+                for _, value in pairs(buffer_history) do
+                    main_view_clear_keybind(value)
+                end
             end
         end,
         desc = lib_util.command_desc(" secondary view winclose"),
