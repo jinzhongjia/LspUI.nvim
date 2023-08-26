@@ -9,7 +9,7 @@ local lib_util = require("LspUI.lib.util")
 
 local M = {}
 
---- @type integer[]
+local attach_autocmd_id = -1
 local autocmd_list = {}
 
 -- get all valid clients for lightbulb
@@ -163,7 +163,7 @@ M.autocmd = function()
         api.nvim_create_augroup("Lspui_lightBulb", { clear = true })
 
     -- here is just no cache option
-    local attach_autocmd_id = api.nvim_create_autocmd("LspAttach", {
+    attach_autocmd_id = api.nvim_create_autocmd("LspAttach", {
         group = lightbulb_group,
         callback = function()
             -- get current buffer
@@ -172,6 +172,8 @@ M.autocmd = function()
                 "Lspui_lightBulb_" .. tostring(current_buffer),
                 { clear = true }
             )
+
+            autocmd_list[current_buffer] = {}
 
             local new_func = debounce_func(current_buffer)
 
@@ -214,18 +216,19 @@ M.autocmd = function()
                 move_autocmd_id,
                 wipe_autocmd_id,
             }) do
-                table.insert(autocmd_list, autocmd_id)
+                table.insert(autocmd_list[current_buffer], autocmd_id)
             end
         end,
         desc = lib_util.command_desc("Lsp attach lightbulb cmd"),
     })
-
-    table.insert(autocmd_list, attach_autocmd_id)
 end
 
 M.un_autocmd = function()
-    for _, autocmd_id in pairs(autocmd_list) do
-        pcall(api.nvim_del_autocmd, autocmd_id)
+    pcall(api.nvim_del_autocmd, attach_autocmd_id)
+    for _, autocmd_ids in pairs(autocmd_list) do
+        for _, autocmd_id in pairs(autocmd_ids) do
+            pcall(api.nvim_del_autocmd, autocmd_id)
+        end
     end
 end
 
