@@ -9,9 +9,6 @@ local lib_util = require("LspUI.lib.util")
 
 local M = {}
 
-local lightbulb_group =
-    api.nvim_create_augroup("Lspui_lightBulb", { clear = true })
-
 -- get all valid clients for lightbulb
 --- @param buffer_id integer
 --- @return lsp.Client[]|nil clients array or nil
@@ -154,6 +151,9 @@ end
 
 -- auto command for lightbulb
 M.autocmd = function()
+    local lightbulb_group =
+        api.nvim_create_augroup("Lspui_lightBulb", { clear = true })
+
     -- here is just no cache option
     api.nvim_create_autocmd("LspAttach", {
         group = lightbulb_group,

@@ -51,6 +51,11 @@ local default_hover_config = {
     },
 }
 
+--- @type LspUI_inlay_hint_config
+local default_inlay_hint_config = {
+    enable = true,
+}
+
 --- @type LspUI_definition_config
 local default_definition_config = {
     enable = true,
@@ -103,6 +108,7 @@ local default_config = {
     code_action = default_code_action_config,
     diagnostic = default_diagnostic_config,
     hover = default_hover_config,
+    inlay_hint = default_inlay_hint_config,
     definition = default_definition_config,
     type_definition = default_type_definition_config,
     declaration = default_declaration_config,
@@ -247,6 +253,22 @@ M.pos_keybind = function(pos_keybind_config)
         M.options.pos_keybind or default_pos_keybind_config,
         pos_keybind_config
     )
+end
+
+-- separate function for `inlay_hint` module
+--- @param inlay_hint_config LspUI_inlay_hint_config
+M.inlay_hint = function(inlay_hint_config)
+    local inlay_hint = require("LspUI.inlay_hint")
+    M.options.inlay_hint = vim.tbl_deep_extend(
+        "force",
+        M.options.inlay_hint or default_inlay_hint_config,
+        inlay_hint_config
+    )
+    if inlay_hint_config.enable then
+        inlay_hint.init()
+    else
+        inlay_hint.deinit()
+    end
 end
 
 return M

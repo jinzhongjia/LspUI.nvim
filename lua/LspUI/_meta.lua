@@ -25,6 +25,9 @@
 --- @field command_enable boolean? whether enable command for `hover`
 --- @field key_binding { prev: string?, next: string?, quit: string? }? keybind for `hover`
 
+--- @class LspUI_inlay_hint_config
+--- @field enable boolean? whether enable `inlay_hint` module
+
 -- this is just for some keybind like definition, type definition, declaration, reference, implementation
 --- @alias LspUI_pos_keybind_config { secondary: { jump: string?, quit:string?, hide_main:string?, enter: string? }?, main: { back: string?, hide_secondary: string? }? }
 
@@ -53,7 +56,8 @@
 --- @field lightbulb LspUI_lightbulb_config? `lightbulb` module
 --- @field code_action LspUI_code_action_config? `code_action` module
 --- @field diagnostic LspUI_diagnostic_config? `diagnostic` module
---- @field hover  LspUI_hover_config? `hover` module
+--- @field hover LspUI_hover_config? `hover` module
+--- @field inlay_hint LspUI_inlay_hint_config? `inlay_hint` module
 --- @field definition LspUI_definition_config? `definition` module
 --- @field type_definition LspUI_type_definition_config? `type_definition` module
 --- @field declaration LspUI_declaration_config? `declaration` module
