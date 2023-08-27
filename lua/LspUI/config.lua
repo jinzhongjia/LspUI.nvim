@@ -1,4 +1,3 @@
-local global = require("LspUI.global")
 local lib_notify = require("LspUI.lib.notify")
 
 --- @type LspUI_rename_config
@@ -49,6 +48,11 @@ local default_hover_config = {
         next = "n",
         quit = "q",
     },
+}
+
+--- @type LspUI_inlay_hint_config
+local default_inlay_hint_config = {
+    enable = true,
 }
 
 --- @type LspUI_definition_config
@@ -103,6 +107,7 @@ local default_config = {
     code_action = default_code_action_config,
     diagnostic = default_diagnostic_config,
     hover = default_hover_config,
+    inlay_hint = default_inlay_hint_config,
     definition = default_definition_config,
     type_definition = default_type_definition_config,
     declaration = default_declaration_config,
@@ -153,10 +158,14 @@ M.lightbulb_setup = function(lightbulb_config)
         M.options.lightbulb or default_lightbulb_config,
         lightbulb_config
     )
-    vim.fn.sign_define(
-        global.lightbulb.sign_name,
-        { text = M.options.lightbulb.icon }
-    )
+
+    local lightbulb = require("LspUI.lightbulb")
+
+    if M.options.lightbulb.enable then
+        lightbulb.init()
+    else
+        lightbulb.deinit()
+    end
 end
 
 -- separate function for `code_action` module
@@ -191,7 +200,7 @@ end
 
 -- separate function for `definition` module
 --- @param definition_config LspUI_definition_config
-M.definition = function(definition_config)
+M.definition_setup = function(definition_config)
     M.options.definition = vim.tbl_deep_extend(
         "force",
         M.options.definition or default_definition_config,
@@ -201,7 +210,7 @@ end
 
 -- separate function for `type_definition` module
 --- @param type_definition_config LspUI_type_definition_config
-M.type_definition = function(type_definition_config)
+M.type_definition_setup = function(type_definition_config)
     M.options.type_definition = vim.tbl_deep_extend(
         "force",
         M.options.type_definition or default_type_definition_config,
@@ -211,7 +220,7 @@ end
 
 -- separate function for `declaration` module
 --- @param declaration_config LspUI_declaration_config
-M.declaration = function(declaration_config)
+M.declaration_setup = function(declaration_config)
     M.options.declaration = vim.tbl_deep_extend(
         "force",
         M.options.declaration or default_declaration_config,
@@ -221,7 +230,7 @@ end
 
 -- separate function for `reference` module
 --- @param reference_config LspUI_reference_config
-M.reference = function(reference_config)
+M.reference_setup = function(reference_config)
     M.options.reference = vim.tbl_deep_extend(
         "force",
         M.options.reference or default_reference_config,
@@ -231,7 +240,7 @@ end
 
 -- separate function for `implementation` module
 --- @param implementation_config LspUI_implementation_config
-M.implementation = function(implementation_config)
+M.implementation_setup = function(implementation_config)
     M.options.implementation = vim.tbl_deep_extend(
         "force",
         M.options.implementation or default_implementation_config,
@@ -241,12 +250,30 @@ end
 
 -- separate function for `pos_keybind` module
 --- @param pos_keybind_config LspUI_pos_keybind_config
-M.pos_keybind = function(pos_keybind_config)
+M.pos_keybind_setup = function(pos_keybind_config)
     M.options.pos_keybind = vim.tbl_deep_extend(
         "force",
         M.options.pos_keybind or default_pos_keybind_config,
         pos_keybind_config
     )
+end
+
+-- separate function for `inlay_hint` module
+--- @param inlay_hint_config LspUI_inlay_hint_config
+M.inlay_hint_setup = function(inlay_hint_config)
+    M.options.inlay_hint = vim.tbl_deep_extend(
+        "force",
+        M.options.inlay_hint or default_inlay_hint_config,
+        inlay_hint_config
+    )
+
+    local inlay_hint = require("LspUI.inlay_hint")
+
+    if inlay_hint_config.enable then
+        inlay_hint.init()
+    else
+        inlay_hint.deinit()
+    end
 end
 
 return M

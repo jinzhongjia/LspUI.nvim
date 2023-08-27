@@ -9,4 +9,5 @@ return {
     declaration = require("LspUI.declaration"),
     implementation = require("LspUI.implementation"),
     reference = require("LspUI.reference"),
+    inlay_hint = require("LspUI.inlay_hint"),
 }

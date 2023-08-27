@@ -9,8 +9,8 @@ local lib_util = require("LspUI.lib.util")
 
 local M = {}
 
-local lightbulb_group =
-    api.nvim_create_augroup("Lspui_lightBulb", { clear = true })
+local attach_autocmd_id = -1
+local autocmd_list = {}
 
 -- get all valid clients for lightbulb
 --- @param buffer_id integer
@@ -53,6 +53,11 @@ M.register_sign = function()
         global.lightbulb.sign_name,
         { text = config.options.lightbulb.icon }
     )
+end
+
+-- unregister the sign
+M.unregister_sign = function()
+    fn.sign_undefine(global.lightbulb.sign_name)
 end
 
 -- this function will request all lsp clients
@@ -154,8 +159,11 @@ end
 
 -- auto command for lightbulb
 M.autocmd = function()
+    local lightbulb_group =
+        api.nvim_create_augroup("Lspui_lightBulb", { clear = true })
+
     -- here is just no cache option
-    api.nvim_create_autocmd("LspAttach", {
+    attach_autocmd_id = api.nvim_create_autocmd("LspAttach", {
         group = lightbulb_group,
         callback = function()
             -- get current buffer
@@ -165,21 +173,11 @@ M.autocmd = function()
                 { clear = true }
             )
 
-            -- local debounce_func = lib_util.debounce(function()
-            --     M.request(current_buffer, function(result)
-            --         M.clear_render()
-            --         if result then
-            --             local line = fn.line(".")
-            --             if line == nil then
-            --                 return
-            --             end
-            --             M.render(current_buffer, line)
-            --         end
-            --     end)
-            -- end, 250)
+            autocmd_list[current_buffer] = {}
 
             local new_func = debounce_func(current_buffer)
-            api.nvim_create_autocmd({ "CursorHold" }, {
+
+            local hold_autocmd_id = api.nvim_create_autocmd({ "CursorHold" }, {
                 group = group_id,
                 buffer = current_buffer,
                 callback = vim.schedule_wrap(function()
@@ -190,18 +188,21 @@ M.autocmd = function()
                 ),
             })
 
-            api.nvim_create_autocmd({ "InsertEnter", "WinLeave" }, {
-                group = group_id,
-                buffer = current_buffer,
-                callback = function()
-                    M.clear_render()
-                end,
-                desc = lib_util.command_desc(
-                    "Lightbulb update when InsertEnter"
-                ),
-            })
+            local move_autocmd_id = api.nvim_create_autocmd(
+                { "InsertEnter", "WinLeave" },
+                {
+                    group = group_id,
+                    buffer = current_buffer,
+                    callback = function()
+                        M.clear_render()
+                    end,
+                    desc = lib_util.command_desc(
+                        "Lightbulb update when InsertEnter"
+                    ),
+                }
+            )
 
-            api.nvim_create_autocmd({ "BufWipeout" }, {
+            local wipe_autocmd_id = api.nvim_create_autocmd({ "BufWipeout" }, {
                 group = group_id,
                 buffer = current_buffer,
                 callback = function()
@@ -209,9 +210,26 @@ M.autocmd = function()
                 end,
                 desc = lib_util.command_desc("Exec clean cmd when QuitPre"),
             })
+
+            for _, autocmd_id in pairs({
+                hold_autocmd_id,
+                move_autocmd_id,
+                wipe_autocmd_id,
+            }) do
+                table.insert(autocmd_list[current_buffer], autocmd_id)
+            end
         end,
         desc = lib_util.command_desc("Lsp attach lightbulb cmd"),
     })
+end
+
+M.un_autocmd = function()
+    pcall(api.nvim_del_autocmd, attach_autocmd_id)
+    for _, autocmd_ids in pairs(autocmd_list) do
+        for _, autocmd_id in pairs(autocmd_ids) do
+            pcall(api.nvim_del_autocmd, autocmd_id)
+        end
+    end
 end
 
 return M
