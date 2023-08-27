@@ -232,6 +232,7 @@ local main_view_autocmd = function()
                 for _, value in pairs(buffer_history) do
                     main_view_clear_keybind(value)
                 end
+                buffer_history = {}
             end
         end,
     })
@@ -318,6 +319,7 @@ local secondary_view_autocmd = function()
                 for _, value in pairs(buffer_history) do
                     main_view_clear_keybind(value)
                 end
+                buffer_history = {}
             end
         end,
         desc = lib_util.command_desc(" secondary view winclose"),
@@ -426,7 +428,7 @@ end
 --- @param hide boolean?
 --- @return boolean
 M.main_view_hide = function(hide)
-    if hide ~= nil then
+    if hide ~= nil and hide ~= M.main_view_hide() then
         main_view.hide = hide
         if hide then
             main_clear_hl()
@@ -459,7 +461,7 @@ end
 --- @param hide boolean?
 --- @return boolean
 M.secondary_view_hide = function(hide)
-    if hide ~= nil then
+    if hide ~= nil and hide ~= M.secondary_view_hide() then
         secondary_view.hide = hide
     end
     return secondary_view.hide
@@ -711,6 +713,9 @@ M.main_view_render = function()
             win = M.main_view_window(),
         })
     end
+
+    M.main_view_hide(false)
+
     main_view_autocmd()
 end
 
@@ -757,6 +762,9 @@ M.secondary_view_render = function()
             win = M.secondary_view_window(),
         })
     end
+
+    M.secondary_view_hide(false)
+
     secondary_view_autocmd()
 end
 
