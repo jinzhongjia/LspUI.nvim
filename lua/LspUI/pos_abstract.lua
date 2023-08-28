@@ -774,9 +774,12 @@ local action_jump = function(cmd)
         api.nvim_set_option_value("winbar", "", {
             win = M.main_view_window(),
         })
+
+        -- push tagstack must be called before close window
+        push_tagstack()
+
         lib_windows.close_window(M.secondary_view_window())
 
-        push_tagstack()
 
         if cmd then
             vim.cmd(cmd)
