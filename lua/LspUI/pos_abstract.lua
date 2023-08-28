@@ -780,7 +780,6 @@ local action_jump = function(cmd)
 
         lib_windows.close_window(M.secondary_view_window())
 
-
         if cmd then
             vim.cmd(cmd)
         end
