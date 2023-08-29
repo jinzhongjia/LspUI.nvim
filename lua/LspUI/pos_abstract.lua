@@ -696,7 +696,8 @@ M.main_view_render = function()
 
         -- set new main view window
         M.main_view_window(lib_windows.display_window(main_window_wrap))
-
+    end
+    do
         -- prevent extra shadows
         api.nvim_set_option_value(
             "winhighlight",
@@ -706,6 +707,7 @@ M.main_view_render = function()
             }
         )
     end
+
     do
         local fname = vim.uri_to_fname(current_item.uri)
         local filepath = vim.fn.fnamemodify(fname, ":p:~:h")
