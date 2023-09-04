@@ -734,6 +734,9 @@ M.secondary_view_render = function()
         api.nvim_win_set_config(M.secondary_view_window(), {
             width = width,
             height = height,
+            row = 0,
+            col = lib_windows.get_max_width() - width - 2,
+            relative = "editor",
         })
     else
         local second_window_wrap =
