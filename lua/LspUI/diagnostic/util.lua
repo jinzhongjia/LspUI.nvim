@@ -286,7 +286,7 @@ end
 --- @param buffer_id integer original buffer id, not float window's buffer id
 --- @param window_id integer float window's id
 M.autocmd = function(buffer_id, window_id)
-    api.nvim_create_autocmd({ "CursorMoved", "InsertEnter" }, {
+    api.nvim_create_autocmd({ "CursorMoved", "InsertEnter","BufLeave" }, {
         buffer = buffer_id,
         callback = function(arg)
             lib_windows.close_window(window_id)
