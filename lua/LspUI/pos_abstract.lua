@@ -676,7 +676,7 @@ M.main_view_render = function()
         )
         lib_windows.set_height_window(
             main_window_wrap,
-            lib_windows.get_max_height() - 3
+            lib_windows.get_max_height() - 2
         )
 
         -- set whether enter the main_view_window
