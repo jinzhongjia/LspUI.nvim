@@ -210,14 +210,17 @@ end
 --- @param window_id integer  float window's id
 M.autocmd = function(current_buffer, window_id)
     -- autocmd
-    api.nvim_create_autocmd({ "CursorMoved", "InsertEnter", "BufDelete" }, {
-        buffer = current_buffer,
-        callback = function(arg)
-            lib_windows.close_window(window_id)
-            api.nvim_del_autocmd(arg.id)
-        end,
-        desc = lib_util.command_desc("auto close hover when cursor moves"),
-    })
+    api.nvim_create_autocmd(
+        { "CursorMoved", "InsertEnter", "BufDelete", "BufLeave" },
+        {
+            buffer = current_buffer,
+            callback = function(arg)
+                lib_windows.close_window(window_id)
+                api.nvim_del_autocmd(arg.id)
+            end,
+            desc = lib_util.command_desc("auto close hover when cursor moves"),
+        }
+    )
 end
 
 --- @param hover_tuples hover_tuple[]
