@@ -9,6 +9,8 @@ local lib_windows = require("LspUI.lib.windows")
 
 local M = {}
 
+local remove_lock = false
+
 --- @type integer
 local hover_tuple_index
 
@@ -215,6 +217,9 @@ M.autocmd = function(current_buffer, window_id)
         {
             buffer = current_buffer,
             callback = function(arg)
+                if remove_lock then
+                    return
+                end
                 lib_windows.close_window(window_id)
                 api.nvim_del_autocmd(arg.id)
             end,
@@ -280,6 +285,13 @@ M.keybind = function(hover_tuples, window_id, buffer_id)
             desc = lib_util.command_desc("hover, close window"),
         }
     )
+end
+
+--- @param callback function
+M.enter_wrap = function(callback)
+    remove_lock = true
+    callback()
+    remove_lock = false
 end
 
 return M

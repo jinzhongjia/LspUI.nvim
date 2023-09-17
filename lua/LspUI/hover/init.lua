@@ -37,7 +37,9 @@ M.run = function()
         return
     end
     if api.nvim_win_is_valid(window_id) then
-        api.nvim_set_current_win(window_id)
+        util.enter_wrap(function()
+            api.nvim_set_current_win(window_id)
+        end)
         return
     end
     -- get current buffer
