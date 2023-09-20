@@ -19,7 +19,6 @@ M.init = function()
 
     is_initialized = true
 
-    -- TODO: de-comment this
     if config.options.implementation.command_enable then
         command.register_command("implementation", M.run, {})
     end
