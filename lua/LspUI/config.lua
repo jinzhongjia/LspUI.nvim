@@ -129,7 +129,6 @@ M.options = {}
 M.setup = function(config)
     -- check plugin whether has initialized
     if is_already_init then
-        -- TODO:whether retain this
         lib_notify.Warn("you have already initialized the plugin config!")
         return
     end

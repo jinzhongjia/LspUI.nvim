@@ -20,7 +20,6 @@ M.init = function()
 
     is_initialized = true
 
-    -- TODO: de-comment this
     if config.options.declaration.command_enable then
         command.register_command("declaration", M.run, {})
     end

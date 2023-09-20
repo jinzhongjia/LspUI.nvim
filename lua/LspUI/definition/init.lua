@@ -19,7 +19,6 @@ M.init = function()
 
     is_initialized = true
 
-    -- TODO: de-comment this
     if config.options.definition.command_enable then
         command.register_command("definition", M.run, {})
     end
