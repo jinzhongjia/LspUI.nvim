@@ -54,6 +54,10 @@ M.run = function()
         current_buffer,
         --- @param hover_tuples hover_tuple[]
         function(hover_tuples)
+            -- We should detect hover_tuples is empty ?
+            if vim.tbl_isempty(hover_tuples) then
+                return
+            end
             local buffer_id
             window_id, buffer_id =
                 util.base_render(hover_tuples[1], #hover_tuples)
