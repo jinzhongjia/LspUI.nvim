@@ -26,6 +26,7 @@ M.api = {
     declaration = modules.declaration.run,
     reference = modules.reference.run,
     implementation = modules.implementation.run,
+    inlay_hint = modules.inlay_hint.run,
 }
 
 return M
