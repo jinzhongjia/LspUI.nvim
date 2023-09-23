@@ -147,6 +147,14 @@ M.rename_setup = function(rename_config)
         M.options.rename or default_rename_config,
         rename_config
     )
+
+    local rename = require("LspUI.rename")
+
+    if rename_config.enable then
+        rename.init()
+    else
+        rename.deinit()
+    end
 end
 
 -- separate function for `lightbulb` module
@@ -176,6 +184,13 @@ M.code_action_setup = function(code_action_config)
         M.options.code_action or default_code_action_config,
         code_action_config
     )
+
+    local code_action = require("LspUI.code_action")
+    if code_action_config.enable then
+        code_action.init()
+    else
+        code_action.deinit()
+    end
 end
 
 -- separate function for `diagnostic` module
@@ -186,6 +201,14 @@ M.diagnostic_setup = function(diagnostic_config)
         M.options.diagnostic or default_diagnostic_config,
         diagnostic_config
     )
+
+    local diagnostic = require("LspUI.diagnostic")
+
+    if diagnostic_config.enable then
+        diagnostic.init()
+    else
+        diagnostic.deinit()
+    end
 end
 
 -- separate function for `hover` module
@@ -196,6 +219,14 @@ M.hover_setup = function(hover_config)
         M.options.hover or default_hover_config,
         hover_config
     )
+
+    local hover = require("LspUI.hover")
+
+    if hover_config.enable then
+        hover.init()
+    else
+        hover.deinit()
+    end
 end
 
 -- separate function for `definition` module
@@ -206,6 +237,14 @@ M.definition_setup = function(definition_config)
         M.options.definition or default_definition_config,
         definition_config
     )
+
+    local definition = require("LspUI.definition")
+
+    if definition_config.enable then
+        definition.init()
+    else
+        definition.deinit()
+    end
 end
 
 -- separate function for `type_definition` module
@@ -216,6 +255,14 @@ M.type_definition_setup = function(type_definition_config)
         M.options.type_definition or default_type_definition_config,
         type_definition_config
     )
+
+    local type_definition = require("LspUI.type_definition")
+
+    if type_definition_config.enable then
+        type_definition.init()
+    else
+        type_definition.deinit()
+    end
 end
 
 -- separate function for `declaration` module
@@ -226,6 +273,14 @@ M.declaration_setup = function(declaration_config)
         M.options.declaration or default_declaration_config,
         declaration_config
     )
+
+    local declaration = require("LspUI.declaration")
+
+    if declaration.enable then
+        declaration.init()
+    else
+        declaration.deinit()
+    end
 end
 
 -- separate function for `reference` module
@@ -236,6 +291,14 @@ M.reference_setup = function(reference_config)
         M.options.reference or default_reference_config,
         reference_config
     )
+
+    local reference = require("LspUI.reference")
+
+    if reference_config.enable then
+        reference.init()
+    else
+        reference.deinit()
+    end
 end
 
 -- separate function for `implementation` module
@@ -246,6 +309,14 @@ M.implementation_setup = function(implementation_config)
         M.options.implementation or default_implementation_config,
         implementation_config
     )
+
+    local implementation = require("LspUI.implementation")
+
+    if implementation_config.enable then
+        implementation.init()
+    else
+        implementation.deinit()
+    end
 end
 
 -- separate function for `pos_keybind` module
