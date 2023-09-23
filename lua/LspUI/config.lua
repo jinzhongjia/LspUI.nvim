@@ -121,6 +121,7 @@ local is_already_init = false
 
 local M = {}
 
+--- @type LspUI_config
 M.options = {}
 
 -- LspUI plugin init function

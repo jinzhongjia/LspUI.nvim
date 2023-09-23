@@ -9,6 +9,8 @@ local M = {}
 -- whether this module has initialized
 local is_initialized = false
 
+local command_key = "rename"
+
 -- init for the rename
 M.init = function()
     if not config.options.rename.enable then
@@ -23,8 +25,19 @@ M.init = function()
 
     -- register command
     if config.options.rename.command_enable then
-        command.register_command("rename", M.run, {})
+        command.register_command(command_key, M.run, {})
     end
+end
+
+M.deinit = function()
+    if not is_initialized then
+        lib_notify.Info("rename has been deinit")
+        return
+    end
+
+    is_initialized = false
+
+    command.unregister_command(command_key)
 end
 
 -- run of rename

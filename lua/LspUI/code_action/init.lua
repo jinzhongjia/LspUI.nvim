@@ -9,6 +9,8 @@ local M = {}
 -- whether this module is initialized
 local is_initialized = false
 
+local command_key = "code_action"
+
 -- init for code action
 M.init = function()
     if not config.options.code_action.enable then
@@ -22,11 +24,23 @@ M.init = function()
     is_initialized = true
 
     if config.options.code_action.command_enable then
-        command.register_command("code_action", M.run, {})
+        command.register_command(command_key, M.run, {})
     end
 end
 
--- run for acode action
+-- deinit for code action
+M.deinit = function()
+    if not is_initialized then
+        lib_notify.Info("code action has been deinit")
+        return
+    end
+
+    is_initialized = false
+
+    command.unregister_command(command_key)
+end
+
+-- run for a code action
 M.run = function()
     if not config.options.code_action.enable then
         lib_notify.Info("code_sction is not enabled!")

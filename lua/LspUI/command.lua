@@ -66,5 +66,12 @@ M.register_command = function(command_key, run, args)
     command_store[command_key].run = run
     command_store[command_key].args = args
 end
+-- this function unregister command
+--- @param command_key string
+M.unregister_command = function(command_key)
+    if command_store[command_key] then
+        command_store[command_key] = nil
+    end
+end
 
 return M
