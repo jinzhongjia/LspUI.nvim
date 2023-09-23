@@ -17,6 +17,7 @@ A plugin which wraps Neovim LSP operations with a nicer UI.
   - Declaration
   - Reference
   - Implementation
+  - Inlay Hint
 
 ## 📦 Installation
 
@@ -71,6 +72,7 @@ more about [here](https://github.com/jinzhongjia/LspUI.nvim/wiki/Config)
 -   `LspUI declaration`: Open the declaration
 -   `LspUI reference`: Open the reference
 -   `LspUI implementation`: Open the implementation
+-   `LspUI inlay_hint`: Quickly open or close inlay hint
 
 ## [Screen Shot](https://github.com/jinzhongjia/LspUI.nvim/wiki/Screen-Shot)
 
