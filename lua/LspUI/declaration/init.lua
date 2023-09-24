@@ -1,13 +1,16 @@
 local api = vim.api
 local command = require("LspUI.command")
 local config = require("LspUI.config")
-local lib_debug = require("LspUI.lib.debug")
 local lib_notify = require("LspUI.lib.notify")
 local pos_abstract = require("LspUI.pos_abstract")
 local util = require("LspUI.declaration.util")
+
 local M = {}
+
 -- whether this module is initialized
 local is_initialized = false
+
+local command_key = "declaration"
 
 M.init = function()
     if not config.options.declaration.enable then
@@ -21,8 +24,19 @@ M.init = function()
     is_initialized = true
 
     if config.options.declaration.command_enable then
-        command.register_command("declaration", M.run, {})
+        command.register_command(command_key, M.run, {})
     end
+end
+
+M.deinit = function()
+    if not is_initialized then
+        lib_notify.Info("declaration has been deinit")
+        return
+    end
+
+    is_initialized = false
+
+    command.unregister_command(command_key)
 end
 
 M.run = function()

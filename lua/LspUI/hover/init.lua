@@ -8,6 +8,8 @@ local M = {}
 -- whether this module has initialized
 local is_initialized = false
 
+local command_key = "hover"
+
 -- window's id
 --- @type integer
 local window_id = -1
@@ -26,8 +28,19 @@ M.init = function()
 
     -- register command
     if config.options.hover.command_enable then
-        command.register_command("hover", M.run, {})
+        command.register_command(command_key, M.run, {})
     end
+end
+
+M.deinit = function()
+    if not is_initialized then
+        lib_notify.Info("hover has been deinit")
+        return
+    end
+
+    is_initialized = false
+
+    command.unregister_command(command_key)
 end
 
 -- run of hover

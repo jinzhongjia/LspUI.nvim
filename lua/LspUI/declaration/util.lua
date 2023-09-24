@@ -1,6 +1,5 @@
 local lsp = vim.lsp
 local declaration_feature = lsp.protocol.Methods.textDocument_declaration
-local lib_debug = require("LspUI.lib.debug")
 
 local M = {}
 
