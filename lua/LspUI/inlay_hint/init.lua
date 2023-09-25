@@ -43,7 +43,9 @@ M.init = function()
         end
     end
 
-    command.register_command(command_key, M.run, {})
+    if config.options.inlay_hint.command_enable then
+        command.register_command(command_key, M.run, {})
+    end
 
     local inlay_hint_group =
         api.nvim_create_augroup("Lspui_inlay_hint", { clear = true })
@@ -53,6 +55,32 @@ M.init = function()
         callback = function(arg)
             --- @type integer
             local buffer_id = arg.buf
+            ---@type string
+            local filetype = api.nvim_get_option_value("filetype", {
+                buf = buffer_id,
+            })
+
+            if
+                not vim.tbl_isempty(config.options.inlay_hint.filter.whitelist)
+                and not vim.tbl_contains(
+                    config.options.inlay_hint.filter.whitelist,
+                    filetype
+                )
+            then
+                -- when whitelist is not empty, and filetype not exists in whitelist
+                return
+            end
+
+            if
+                not vim.tbl_isempty(config.options.inlay_hint.filter.blacklist)
+                and vim.tbl_contains(
+                    config.options.inlay_hint.filter.blacklist,
+                    filetype
+                )
+            then
+                -- when blacklist is not empty, and filetype exists in blacklist
+                return
+            end
 
             local clients = lsp.get_clients({
                 bufnr = buffer_id,

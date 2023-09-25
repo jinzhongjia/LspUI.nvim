@@ -27,6 +27,8 @@
 
 --- @class LspUI_inlay_hint_config
 --- @field enable boolean? whether enable `inlay_hint` module
+--- @field command_enable boolean? whether enable command for `inlay_hint`
+--- @field filter { whitelist: string[]?, blacklist:string[]? }? the filter of blacklist and whitelist, should be filetype list
 
 -- this is just for some keybind like definition, type definition, declaration, reference, implementation
 --- @alias LspUI_pos_keybind_config { secondary: { jump: string?, quit:string?, hide_main:string?, enter: string? }?, main: { back: string?, hide_secondary: string? }? }
