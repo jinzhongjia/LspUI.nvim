@@ -53,6 +53,11 @@ local default_hover_config = {
 --- @type LspUI_inlay_hint_config
 local default_inlay_hint_config = {
     enable = true,
+    command_enable = true,
+    filter = {
+        whitelist = {},
+        blacklist = {},
+    },
 }
 
 --- @type LspUI_definition_config
