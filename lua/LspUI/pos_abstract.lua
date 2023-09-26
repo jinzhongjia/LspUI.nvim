@@ -224,6 +224,8 @@ local main_view_autocmd = function()
         },
         once = true,
         callback = function()
+            -- note: The judgment here is to prevent the following closing function
+            -- from being executed when the main view is hidden.
             if not M.main_view_hide() then
                 main_clear_hl()
                 lib_windows.close_window(M.secondary_view_window())
@@ -311,6 +313,8 @@ local secondary_view_autocmd = function()
         },
         once = true,
         callback = function()
+            -- note: The judgment here is to prevent the following closing function
+            -- from being executed when the secondary view is hidden.
             pcall(api.nvim_del_autocmd, secondary_cmd.CursorMoved)
             if not M.secondary_view_hide() then
                 main_clear_hl()
