@@ -41,6 +41,14 @@ M.buffer_is_listed = function(buffer_id)
     return fn.buflisted(buffer_id) == 1
 end
 
+-- force to delete buffer
+--- @param buffer_id integer
+M.delete_buffer = function(buffer_id)
+    api.nvim_buf_delete(buffer_id, {
+        force = true,
+    })
+end
+
 -- generate command description
 --- @param desc string
 --- @return string

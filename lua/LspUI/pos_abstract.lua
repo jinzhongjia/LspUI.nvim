@@ -775,20 +775,20 @@ end
 --- @param cmd string?
 local action_jump = function(cmd)
     if current_item.range then
-        api.nvim_set_option_value("winbar", "", {
-            win = M.main_view_window(),
-        })
-
         -- push tagstack must be called before close window
         push_tagstack()
 
         lib_windows.close_window(M.secondary_view_window())
 
+        if not lib_util.buffer_is_listed() then
+            lib_util.delete_buffer(M.main_view_buffer())
+        end
+
         if cmd then
             vim.cmd(cmd)
         end
 
-        if fn.buflisted(current_item.buffer_id) == 1 then
+        if lib_util.buffer_is_listed(current_item.buffer_id) then
             vim.cmd(string.format("buffer %s", current_item.buffer_id))
         else
             vim.cmd(
@@ -819,6 +819,13 @@ end
 
 local action_secondary_quit = function()
     lib_windows.close_window(M.secondary_view_window())
+    -- when main view buffer is valid, delete it
+    if
+        api.nvim_buf_is_valid(M.main_view_buffer())
+        and not lib_util.buffer_is_listed(M.main_view_buffer())
+    then
+        lib_util.delete_buffer(M.main_view_buffer())
+    end
 end
 
 local action_hide_main = function()
