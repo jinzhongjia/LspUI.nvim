@@ -31,7 +31,7 @@
 --- @field filter { whitelist: string[]?, blacklist:string[]? }? the filter of blacklist and whitelist, should be filetype list
 
 -- this is just for some keybind like definition, type definition, declaration, reference, implementation
---- @alias LspUI_pos_keybind_config { secondary: { jump: string?, quit:string?, hide_main:string?, enter: string? }?, main: { back: string?, hide_secondary: string? }? }
+--- @alias LspUI_pos_keybind_config { secondary: { jump: string?, jump_tab: string?, jump_split: string?, jump_vsplit: string?, quit:string?, hide_main:string?, enter: string? }?, main: { back: string?, hide_secondary: string? }? }
 
 --- @class LspUI_definition_config
 --- @field enable boolean? whether enable `definition` module

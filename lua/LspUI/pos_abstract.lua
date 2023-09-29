@@ -256,6 +256,49 @@ local secondary_view_keybind = function()
         }
     )
 
+
+    api.nvim_buf_set_keymap(
+        M.secondary_view_buffer(),
+        "n",
+        config.options.pos_keybind.secondary.jump_tab,
+        "",
+        {
+            nowait = true,
+            noremap = true,
+            callback = function()
+                M.action.jump_tab()
+            end,
+        }
+    )
+
+api.nvim_buf_set_keymap(
+        M.secondary_view_buffer(),
+        "n",
+        config.options.pos_keybind.secondary.jump_split,
+        "",
+        {
+            nowait = true,
+            noremap = true,
+            callback = function()
+                M.action.jump_split()
+            end,
+        }
+    )
+
+api.nvim_buf_set_keymap(
+        M.secondary_view_buffer(),
+        "n",
+        config.options.pos_keybind.secondary.jump_vsplit,
+        "",
+        {
+            nowait = true,
+            noremap = true,
+            callback = function()
+                M.action.jump_vsplit()
+            end,
+        }
+    )
+
     api.nvim_buf_set_keymap(
         M.secondary_view_buffer(),
         "n",
