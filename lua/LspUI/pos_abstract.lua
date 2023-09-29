@@ -846,11 +846,9 @@ local action_jump = function(cmd)
         -- end
 
         if cmd then
-            vim.cmd(string.format(
-                "%s %s",
-                cmd,
-                vim.uri_to_fname(current_item.uri)
-            ))
+            vim.cmd(
+                string.format("%s %s", cmd, vim.uri_to_fname(current_item.uri))
+            )
         else
             vim.cmd(
                 string.format(
