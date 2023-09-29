@@ -818,7 +818,7 @@ M.secondary_view_render = function()
     secondary_view_autocmd()
 end
 
---- @param cmd string?
+--- @param cmd "tabe"|"vsplit"|"split"|?
 local action_jump = function(cmd)
     if current_item.range then
         -- push tagstack must be called before close window
@@ -830,25 +830,16 @@ local action_jump = function(cmd)
             lib_util.delete_buffer(M.main_view_buffer())
         end
 
-        -- if cmd then
-        --     vim.cmd(cmd)
-        -- end
-        --
-        -- if lib_util.buffer_is_listed(current_item.buffer_id) then
-        --     vim.cmd(string.format("buffer %s", current_item.buffer_id))
-        -- else
-        --     vim.cmd(
-        --         string.format(
-        --             "edit %s",
-        --             fn.fnameescape(vim.uri_to_fname(current_item.uri))
-        --         )
-        --     )
-        -- end
-
         if cmd then
-            vim.cmd(
-                string.format("%s %s", cmd, vim.uri_to_fname(current_item.uri))
-            )
+            if cmd == "tabe" then
+                vim.cmd("tab split")
+            else
+                vim.cmd(cmd)
+            end
+        end
+
+        if lib_util.buffer_is_listed(current_item.buffer_id) then
+            vim.cmd(string.format("buffer %s", current_item.buffer_id))
         else
             vim.cmd(
                 string.format(
@@ -857,6 +848,19 @@ local action_jump = function(cmd)
                 )
             )
         end
+
+        -- if cmd then
+        --     vim.cmd(
+        --         string.format("%s %s", cmd, vim.uri_to_fname(current_item.uri))
+        --     )
+        -- else
+        --     vim.cmd(
+        --         string.format(
+        --             "edit %s",
+        --             fn.fnameescape(vim.uri_to_fname(current_item.uri))
+        --         )
+        --     )
+        -- end
 
         api.nvim_win_set_cursor(0, {
             current_item.range.start.line + 1,
