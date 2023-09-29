@@ -98,6 +98,9 @@ local default_pos_keybind_config = {
     },
     secondary = {
         jump = "o",
+        jump_split = "sh",
+        jump_vsplit = "sv",
+        jump_tab = "t",
         quit = "q",
         hide_main = "<leader>h",
         enter = "<leader>l",
