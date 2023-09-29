@@ -256,7 +256,6 @@ local secondary_view_keybind = function()
         }
     )
 
-
     api.nvim_buf_set_keymap(
         M.secondary_view_buffer(),
         "n",
@@ -271,7 +270,7 @@ local secondary_view_keybind = function()
         }
     )
 
-api.nvim_buf_set_keymap(
+    api.nvim_buf_set_keymap(
         M.secondary_view_buffer(),
         "n",
         config.options.pos_keybind.secondary.jump_split,
@@ -285,7 +284,7 @@ api.nvim_buf_set_keymap(
         }
     )
 
-api.nvim_buf_set_keymap(
+    api.nvim_buf_set_keymap(
         M.secondary_view_buffer(),
         "n",
         config.options.pos_keybind.secondary.jump_vsplit,
@@ -827,16 +826,31 @@ local action_jump = function(cmd)
 
         lib_windows.close_window(M.secondary_view_window())
 
-        if not lib_util.buffer_is_listed() then
+        if not lib_util.buffer_is_listed(current_item.buffer_id) then
             lib_util.delete_buffer(M.main_view_buffer())
         end
 
-        if cmd then
-            vim.cmd(cmd)
-        end
+        -- if cmd then
+        --     vim.cmd(cmd)
+        -- end
+        --
+        -- if lib_util.buffer_is_listed(current_item.buffer_id) then
+        --     vim.cmd(string.format("buffer %s", current_item.buffer_id))
+        -- else
+        --     vim.cmd(
+        --         string.format(
+        --             "edit %s",
+        --             fn.fnameescape(vim.uri_to_fname(current_item.uri))
+        --         )
+        --     )
+        -- end
 
-        if lib_util.buffer_is_listed(current_item.buffer_id) then
-            vim.cmd(string.format("buffer %s", current_item.buffer_id))
+        if cmd then
+            vim.cmd(string.format(
+                "%s %s",
+                cmd,
+                vim.uri_to_fname(current_item.uri)
+            ))
         else
             vim.cmd(
                 string.format(
@@ -845,6 +859,7 @@ local action_jump = function(cmd)
                 )
             )
         end
+
         api.nvim_win_set_cursor(0, {
             current_item.range.start.line + 1,
             current_item.range.start.character,
