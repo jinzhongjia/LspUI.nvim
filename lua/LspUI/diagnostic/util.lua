@@ -278,22 +278,47 @@ M.render = function(action)
     })
 
     vim.schedule(function()
-        M.autocmd(current_buffer, window_id)
+        M.autocmd(current_buffer, new_buffer, window_id)
     end)
 end
 
 -- autocmd for diagnostic
 --- @param buffer_id integer original buffer id, not float window's buffer id
+--- @param new_buffer integer new buffer id
 --- @param window_id integer float window's id
-M.autocmd = function(buffer_id, window_id)
-    api.nvim_create_autocmd({ "CursorMoved", "InsertEnter", "BufLeave" }, {
-        buffer = buffer_id,
-        callback = function(arg)
-            lib_windows.close_window(window_id)
-            api.nvim_del_autocmd(arg.id)
+M.autocmd = function(buffer_id, new_buffer, window_id)
+    local id1, id2
+    id1 = api.nvim_create_autocmd("BufEnter", {
+        callback = function()
+            vim.schedule(function()
+                if
+                    vim.list_contains(
+                        { new_buffer, buffer_id },
+                        api.nvim_get_current_buf()
+                    )
+                then
+                    return
+                end
+                lib_windows.close_window(window_id)
+                pcall(api.nvim_del_autocmd, id1)
+                pcall(api.nvim_del_autocmd, id2)
+            end)
         end,
-        desc = lib_util.command_desc("diagnostic, auto close windows"),
     })
+    id2 = api.nvim_create_autocmd(
+        { "CursorMoved", "CursorMovedI", "InsertCharPre" },
+        {
+            buffer = buffer_id,
+            callback = function()
+                vim.schedule(function()
+                    lib_windows.close_window(window_id)
+                    pcall(api.nvim_del_autocmd, id1)
+                    pcall(api.nvim_del_autocmd, id2)
+                end)
+            end,
+            desc = lib_util.command_desc("diagnostic, auto close windows"),
+        }
+    )
 end
 
 return M
