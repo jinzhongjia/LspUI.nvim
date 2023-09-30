@@ -107,6 +107,12 @@ local default_pos_keybind_config = {
     },
 }
 
+--- @type LspUI_call_hierarchy_config
+local default_call_hierarchy_config = {
+    enable = true,
+    command_enable = true,
+}
+
 -- default config
 --- @type LspUI_config
 local default_config = {
@@ -122,6 +128,7 @@ local default_config = {
     implementation = default_implementation_config,
     reference = default_reference_config,
     pos_keybind = default_pos_keybind_config,
+    call_hierarchy = default_call_hierarchy_config,
 }
 
 -- Prevent plugins from being initialized multiple times
@@ -354,5 +361,7 @@ M.inlay_hint_setup = function(inlay_hint_config)
         inlay_hint.deinit()
     end
 end
+
+-- TODO:add separate setup function for call_hierarchy
 
 return M
