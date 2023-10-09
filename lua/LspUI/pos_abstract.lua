@@ -905,6 +905,10 @@ local action_hide_main = function()
                 range.start.line + 1,
                 range.start.character
             )
+            api.nvim_win_call(M.main_view_window(), function()
+                vim.cmd("norm! zv")
+                vim.cmd("norm! zz")
+            end)
         end
     end
 end
