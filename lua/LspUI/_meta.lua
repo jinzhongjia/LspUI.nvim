@@ -38,20 +38,24 @@
 --- @field command_enable boolean? whether enable command for `definition`
 
 --- @class LspUI_type_definition_config
---- @field enable boolean? whether enable `definition` module
+--- @field enable boolean? whether enable `type_definition` module
 --- @field command_enable boolean? whether enable command for `definition`
 
 --- @class LspUI_declaration_config
---- @field enable boolean? whether enable `definition` module
+--- @field enable boolean? whether enable `declaration` module
 --- @field command_enable boolean? whether enable command for `definition`
 
 --- @class LspUI_implementation_config
---- @field enable boolean? whether enable `definition` module
+--- @field enable boolean? whether enable `implementation` module
 --- @field command_enable boolean? whether enable command for `definition`
 
 --- @class LspUI_reference_config
---- @field enable boolean? whether enable `definition` module
+--- @field enable boolean? whether enable `reference` module
 --- @field command_enable boolean? whether enable command for `definition`
+
+--- @class LspUI_call_hierarchy_config
+--- @field enable boolean? whether enable `call_hierarchy` module
+--- @field command_enable boolean? whether enable command for `call_hierarchy`
 
 --- @class LspUI_config config for LspUI
 --- @field rename LspUI_rename_config? `rename` module
@@ -66,3 +70,4 @@
 --- @field implementation LspUI_implementation_config? `implementation` module
 --- @field reference LspUI_reference_config? `reference` module
 --- @field pos_keybind LspUI_pos_keybind_config? keybind for `definition`, `type definition`, `declaration`, `reference`, implementation
+--- @field call_hierarchy LspUI_call_hierarchy_config? `call_hierarchy` module

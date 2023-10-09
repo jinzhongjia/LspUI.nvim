@@ -15,7 +15,10 @@ M.get_clients = function(buffer_id)
     -- note: we need get lsp clients attached to current buffer
     local clients =
         lsp.get_clients({ bufnr = buffer_id, method = rename_feature })
-    return #clients == 0 and nil or clients
+    if vim.tbl_isempty(clients) then
+        return nil
+    end
+    return clients
 end
 
 -- rename

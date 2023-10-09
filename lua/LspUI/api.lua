@@ -27,6 +27,7 @@ M.api = {
     reference = modules.reference.run,
     implementation = modules.implementation.run,
     inlay_hint = modules.inlay_hint.run,
+    call_hierarchy = modules.call_hierarchy.run,
 }
 
 return M
