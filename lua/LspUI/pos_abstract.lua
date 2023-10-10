@@ -876,6 +876,10 @@ end
 local action_enter_main = function()
     if not M.main_view_hide() then
         api.nvim_set_current_win(M.main_view_window())
+        -- clear background
+        api.nvim_set_option_value("winhighlight", "Normal:Normal", {
+            win = M.main_view_window(),
+        })
         main_view_keybind()
         table.insert(buffer_history, M.main_view_buffer())
     end
@@ -916,6 +920,10 @@ end
 local action_back_secondary = function()
     if not M.secondary_view_hide() then
         api.nvim_set_current_win(M.secondary_view_window())
+        -- remove background
+        api.nvim_set_option_value("winhighlight", "Normal:Normal", {
+            win = M.secondary_view_window(),
+        })
         main_view_clear_keybind()
         for key, value in pairs(buffer_history) do
             if value == M.main_view_buffer() then
