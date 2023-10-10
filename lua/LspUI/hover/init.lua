@@ -52,6 +52,9 @@ M.run = function()
     if api.nvim_win_is_valid(window_id) then
         util.enter_wrap(function()
             api.nvim_set_current_win(window_id)
+            api.nvim_set_option_value("winhighlight", "Normal:Normal", {
+                win = window_id,
+            })
         end)
         return
     end
