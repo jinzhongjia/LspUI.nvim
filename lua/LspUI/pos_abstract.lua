@@ -806,13 +806,13 @@ M.secondary_view_render = function()
         lib_windows.set_center_title_window(second_window_wrap, method.name)
 
         M.secondary_view_window(lib_windows.display_window(second_window_wrap))
-
-        -- prevent extra shadows
+    end
+    -- prevent extra shadows
+    vim.schedule(function()
         api.nvim_set_option_value("winhighlight", "Normal:Normal", {
             win = M.secondary_view_window(),
         })
-    end
-
+    end)
     M.secondary_view_hide(false)
 
     secondary_view_autocmd()
