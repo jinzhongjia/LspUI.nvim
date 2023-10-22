@@ -20,6 +20,7 @@ local is_open
 
 -- init for inlay hint
 M.init = function()
+    -- TODO: this logic can be changed to async
     if not config.options.inlay_hint.enable then
         return
     end
