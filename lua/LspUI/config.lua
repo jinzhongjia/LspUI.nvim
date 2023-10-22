@@ -145,7 +145,9 @@ M.options = {}
 M.setup = function(config)
     -- check plugin whether has initialized
     if is_already_init then
-        lib_notify.Warn("you have already initialized the plugin config!")
+        vim.schedule(function()
+            lib_notify.Warn("you have already initialized the plugin config!")
+        end)
         return
     end
 
