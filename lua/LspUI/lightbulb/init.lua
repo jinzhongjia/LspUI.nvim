@@ -21,10 +21,12 @@ M.init = function()
 
     is_initialized = true
 
-    -- register sign, should only be called once
-    util.register_sign()
+    vim.schedule(function()
+        -- register sign, should only be called once
+        util.register_sign()
 
-    util.autocmd()
+        util.autocmd()
+    end)
 end
 
 -- run for lightbulb
