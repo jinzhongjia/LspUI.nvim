@@ -59,7 +59,7 @@ M.run = function()
 
     local old_name = fn.expand("<cword>")
 
-    util.render(clients, current_buffer, current_win, old_name)
+    util.render(clients, current_buffer, current_win, old_name --[[@as string]])
 end
 
 return M
