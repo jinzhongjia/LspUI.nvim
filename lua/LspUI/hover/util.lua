@@ -50,11 +50,19 @@ M.get_hovers = function(clients, buffer_id, callback)
                         table.insert(invalid_clients, client.name)
                     end
                 else
-                    local markdown_lines =
-                        lsp.util.convert_input_to_markdown_lines(
-                            result.contents
+                    local markdown_lines
+                    if result.contents.kind == "plaintext" then
+                        markdown_lines = vim.split(
+                            result.contents.value or "",
+                            "\n",
+                            { trimempty = true }
                         )
-                    markdown_lines = lsp.util.trim_empty_lines(markdown_lines)
+                    else
+                        markdown_lines =
+                            lsp.util.convert_input_to_markdown_lines(
+                                result.contents
+                            )
+                    end
 
                     if vim.tbl_isempty(markdown_lines) then
                         if lsp_config.silent ~= true then
@@ -63,18 +71,24 @@ M.get_hovers = function(clients, buffer_id, callback)
                     else
                         local new_buffer = api.nvim_create_buf(false, true)
 
-                        markdown_lines = lsp.util.stylize_markdown(
-                            new_buffer,
-                            markdown_lines,
-                            {
-                                max_width = math.floor(
+                        -- markdown_lines = lsp.util.stylize_markdown(
+                        --     new_buffer,
+                        --     markdown_lines,
+                        --     {
+                        --         max_width = math.floor(
+                        --             lib_windows.get_max_width() * 0.6
+                        --         ),
+                        --         max_height = math.floor(
+                        --             lib_windows.get_max_height() * 0.8
+                        --         ),
+                        --     }
+                        -- )
+                        markdown_lines =
+                            lsp.util._normalize_markdown(markdown_lines, {
+                                width = math.floor(
                                     lib_windows.get_max_width() * 0.6
                                 ),
-                                max_height = math.floor(
-                                    lib_windows.get_max_height() * 0.8
-                                ),
-                            }
-                        )
+                            })
 
                         local max_width = 0
 
@@ -82,13 +96,26 @@ M.get_hovers = function(clients, buffer_id, callback)
                             max_width =
                                 math.max(fn.strdisplaywidth(line), max_width)
                         end
-                        -- note: don't change filetype, this will cause syntx failing
-                        api.nvim_set_option_value("modifiable", false, {
+
+                        api.nvim_set_option_value("filetype", "markdown", {
                             buf = new_buffer,
                         })
+                        -- note: don't change filetype, this will cause syntx failing
+                        -- api.nvim_set_option_value("modifiable", false, {
+                        --     buf = new_buffer,
+                        -- })
                         api.nvim_set_option_value("bufhidden", "wipe", {
                             buf = new_buffer,
                         })
+
+                        vim.treesitter.start(new_buffer)
+                        api.nvim_buf_set_lines(
+                            new_buffer,
+                            0,
+                            -1,
+                            false,
+                            markdown_lines
+                        )
 
                         local width = math.min(
                             max_width,
@@ -185,6 +212,10 @@ M.base_render = function(hover_tuple, hover_tuple_number)
     })
     api.nvim_set_option_value("concealcursor", "n", {
         win = window_id,
+    })
+
+    api.nvim_set_option_value("modifiable", false, {
+        buf = hover_tuple.buffer_id,
     })
 
     return window_id, hover_tuple.buffer_id
