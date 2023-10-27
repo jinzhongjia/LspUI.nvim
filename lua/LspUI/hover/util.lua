@@ -207,7 +207,7 @@ M.base_render = function(hover_tuple, hover_tuple_number)
         win = window_id,
     })
     -- this is very very important, because it will hide highlight group
-    api.nvim_set_option_value("conceallevel", 2, {
+    api.nvim_set_option_value("conceallevel", 3, {
         win = window_id,
     })
     api.nvim_set_option_value("concealcursor", "n", {
