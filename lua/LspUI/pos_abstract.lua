@@ -1029,4 +1029,13 @@ M.go = function(new_method, buffer_id, window_id, clients, params)
     end)
 end
 
+api.nvim_create_autocmd("VimResized", {
+    callback = function()
+        if not api.nvim_win_is_valid(M.secondary_view_window()) then
+            return
+        end
+        M.secondary_view_render()
+    end,
+})
+
 return M
