@@ -5,6 +5,11 @@ local command = require("LspUI.command")
 local config = require("LspUI.config")
 local lib_util = require("LspUI.lib.util")
 
+-- TODO: this is a patch
+-- when 0.10 release, remove it
+local inlay_hint = type(lsp.inlay_hint) == "table" and lsp.inlay_hint.enable
+    or lsp.inlay_hint
+
 local M = {}
 
 local buffer_list = {}
@@ -43,7 +48,7 @@ M.init = function()
             local all_buffers = api.nvim_list_bufs()
             for _, buffer_id in pairs(all_buffers) do
                 if lib_util.buffer_is_listed(buffer_id) then
-                    lsp.inlay_hint(buffer_id, true)
+                    inlay_hint(buffer_id, true)
                     table.insert(buffer_list, buffer_id)
                 end
             end
@@ -94,7 +99,7 @@ M.init = function()
                 })
                 if not vim.tbl_isempty(clients) then
                     if is_open then
-                        lsp.inlay_hint(buffer_id, true)
+                        inlay_hint(buffer_id, true)
                     end
                     table.insert(buffer_list, buffer_id)
                 end
@@ -113,7 +118,7 @@ M.run = function()
 
         for _, buffer_id in pairs(buffer_list) do
             if api.nvim_buf_is_valid(buffer_id) then
-                lsp.inlay_hint(buffer_id, true)
+                inlay_hint(buffer_id, true)
             end
         end
     else
@@ -121,7 +126,7 @@ M.run = function()
 
         for _, buffer_id in pairs(buffer_list) do
             if api.nvim_buf_is_valid(buffer_id) then
-                lsp.inlay_hint(buffer_id, false)
+                inlay_hint(buffer_id, false)
             end
         end
     end
@@ -137,7 +142,7 @@ M.deinit = function()
 
     for _, buffer_id in pairs(buffer_list) do
         if api.nvim_buf_is_valid(buffer_id) then
-            lsp.inlay_hint(buffer_id, false)
+            inlay_hint(buffer_id, false)
         end
     end
 
