@@ -159,7 +159,7 @@ end
 --- @param params table
 --- @param buffer_id integer
 --- @param is_visual boolean
---- @param callback function
+--- @param callback fun(action_tuples:action_tuple[])
 M.get_action_tuples = function(clients, params, buffer_id, is_visual, callback)
     --- @type action_tuple[]
     local action_tuples = {}
