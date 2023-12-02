@@ -848,6 +848,26 @@ M.secondary_view_render = function()
     secondary_view_autocmd()
 end
 
+--- @param param_uri string
+local cursor_for_item = function(param_uri)
+    local lnum = 0
+    for uri, data in pairs(M.datas()) do
+        lnum = lnum + 1
+        if uri == param_uri then
+            return lnum
+        end
+        if not data.fold then
+            for _, _ in pairs(data.range) do
+                lnum = lnum + 1
+            end
+        end
+    end
+    if method.fold then
+        return 1
+    end
+    return 2
+end
+
 --- @param cmd "tabe"|"vsplit"|"split"|?
 local action_jump = function(cmd)
     if current_item.range then
@@ -974,14 +994,26 @@ end
 
 --- @param param boolean
 local action_fold_all = function(param)
+    local tmp_switch = false
+    local tmp_uri = current_item.uri
     local tmp_datas = M.datas()
     for key, value in pairs(tmp_datas) do
-        tmp_datas[key].fold = param
+        if param ~= value.fold then
+            tmp_switch = true
+            tmp_datas[key].fold = param
+        end
     end
 
+    if not tmp_switch then
+        return
+    end
     M.datas(tmp_datas)
 
     M.secondary_view_render()
+    api.nvim_win_set_cursor(
+        M.secondary_view_window(),
+        { cursor_for_item(tmp_uri), 0 }
+    )
 end
 
 -- define actions
