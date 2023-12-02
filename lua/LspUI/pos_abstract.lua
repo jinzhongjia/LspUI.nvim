@@ -341,6 +341,36 @@ local secondary_view_keybind = function()
             end,
         }
     )
+
+    -- fold all
+    api.nvim_buf_set_keymap(
+        M.secondary_view_buffer(),
+        "n",
+        config.options.pos_keybind.secondary.fold_all,
+        "",
+        {
+            nowait = true,
+            noremap = true,
+            callback = function()
+                M.action.fold_secondary_all()
+            end,
+        }
+    )
+
+    -- expand all
+    api.nvim_buf_set_keymap(
+        M.secondary_view_buffer(),
+        "n",
+        config.options.pos_keybind.secondary.expand_all,
+        "",
+        {
+            nowait = true,
+            noremap = true,
+            callback = function()
+                M.action.expand_secondary_all()
+            end,
+        }
+    )
 end
 
 -- auto cmd for secondary view
@@ -942,6 +972,18 @@ local action_hide_secondary = function()
     end
 end
 
+--- @param param boolean
+local action_fold_all = function(param)
+    local tmp_datas = M.datas()
+    for key, value in pairs(tmp_datas) do
+        tmp_datas[key].fold = param
+    end
+
+    M.datas(tmp_datas)
+
+    M.secondary_view_render()
+end
+
 -- define actions
 M.action = {
     jump = function()
@@ -970,6 +1012,12 @@ M.action = {
     end,
     hide_secondary = function()
         action_hide_secondary()
+    end,
+    fold_secondary_all = function()
+        action_fold_all(true)
+    end,
+    expand_secondary_all = function()
+        action_fold_all(false)
     end,
 }
 

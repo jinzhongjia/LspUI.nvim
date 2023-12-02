@@ -103,6 +103,8 @@ local default_pos_keybind_config = {
         jump_tab = "t",
         quit = "q",
         hide_main = "<leader>h",
+        fold_all = "w",
+        expand_all = "e",
         enter = "<leader>l",
     },
 }
