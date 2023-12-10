@@ -833,7 +833,6 @@ M.secondary_view_render = function()
         lib_windows.set_border_window(second_window_wrap, "single")
         lib_windows.set_zindex_window(second_window_wrap, 11)
         lib_windows.set_anchor_window(second_window_wrap, "NW")
-        lib_windows.set_center_title_window(second_window_wrap, method.name)
 
         M.secondary_view_window(lib_windows.display_window(second_window_wrap))
     end
@@ -843,6 +842,12 @@ M.secondary_view_render = function()
             win = M.secondary_view_window(),
         })
     end)
+
+    api.nvim_win_set_config(M.secondary_view_window(), {
+        title_pos = "center",
+        title = method.name,
+    })
+
     M.secondary_view_hide(false)
 
     secondary_view_autocmd()
@@ -1085,6 +1090,10 @@ end
 
 M.get_current_item = function()
     return current_item
+end
+
+M.get_current_method = function()
+    return method
 end
 
 --- @param buffer_id integer which buffer do method
