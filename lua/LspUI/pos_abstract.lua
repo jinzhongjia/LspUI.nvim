@@ -1078,6 +1078,11 @@ local find_position_from_params = function(params)
     return 2
 end
 
+--- @param buffer_id integer
+M.is_secondary_buffer = function(buffer_id)
+    return M.secondary_view_buffer() == buffer_id
+end
+
 --- @param buffer_id integer which buffer do method
 --- @param window_id integer which window do method
 --- @param clients lsp.Client[]
@@ -1109,6 +1114,7 @@ M.go = function(new_method, buffer_id, window_id, clients, params)
     end)
 end
 
+-- autochange secondary window
 api.nvim_create_autocmd("VimResized", {
     callback = function()
         if not api.nvim_win_is_valid(M.secondary_view_window()) then
