@@ -1083,8 +1083,12 @@ M.is_secondary_buffer = function(buffer_id)
     return M.secondary_view_buffer() == buffer_id
 end
 
+M.get_current_item = function()
+    return current_item
+end
+
 --- @param buffer_id integer which buffer do method
---- @param window_id integer which window do method
+--- @param window_id integer? which window do method
 --- @param clients lsp.Client[]
 --- @param params table
 --- @param new_method { method: string, name: string, fold: boolean }
@@ -1100,7 +1104,9 @@ M.go = function(new_method, buffer_id, window_id, clients, params)
 
         M.datas(data)
 
-        push_tagstack = lib_util.create_push_tagstack(window_id)
+        if window_id then
+            push_tagstack = lib_util.create_push_tagstack(window_id)
+        end
 
         M.secondary_view_render()
 
