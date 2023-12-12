@@ -197,4 +197,14 @@ M.create_push_tagstack = function(window_id)
     end
 end
 
+--- @param buffer_id integer
+---@param key string
+M.get_buf_var = function(buffer_id, key)
+    local status, result = pcall(api.nvim_buf_get_var, buffer_id, key)
+    if status then
+        return result
+    end
+    return nil
+end
+
 return M

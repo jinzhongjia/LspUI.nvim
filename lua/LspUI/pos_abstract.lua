@@ -833,7 +833,6 @@ M.secondary_view_render = function()
         lib_windows.set_border_window(second_window_wrap, "single")
         lib_windows.set_zindex_window(second_window_wrap, 11)
         lib_windows.set_anchor_window(second_window_wrap, "NW")
-        lib_windows.set_center_title_window(second_window_wrap, method.name)
 
         M.secondary_view_window(lib_windows.display_window(second_window_wrap))
     end
@@ -843,6 +842,12 @@ M.secondary_view_render = function()
             win = M.secondary_view_window(),
         })
     end)
+
+    api.nvim_win_set_config(M.secondary_view_window(), {
+        title_pos = "center",
+        title = method.name,
+    })
+
     M.secondary_view_hide(false)
 
     secondary_view_autocmd()
@@ -1078,8 +1083,21 @@ local find_position_from_params = function(params)
     return 2
 end
 
+--- @param buffer_id integer
+M.is_secondary_buffer = function(buffer_id)
+    return M.secondary_view_buffer() == buffer_id
+end
+
+M.get_current_item = function()
+    return current_item
+end
+
+M.get_current_method = function()
+    return method
+end
+
 --- @param buffer_id integer which buffer do method
---- @param window_id integer which window do method
+--- @param window_id integer? which window do method
 --- @param clients lsp.Client[]
 --- @param params table
 --- @param new_method { method: string, name: string, fold: boolean }
@@ -1095,7 +1113,9 @@ M.go = function(new_method, buffer_id, window_id, clients, params)
 
         M.datas(data)
 
-        push_tagstack = lib_util.create_push_tagstack(window_id)
+        if window_id then
+            push_tagstack = lib_util.create_push_tagstack(window_id)
+        end
 
         M.secondary_view_render()
 
@@ -1109,6 +1129,7 @@ M.go = function(new_method, buffer_id, window_id, clients, params)
     end)
 end
 
+-- autochange secondary window
 api.nvim_create_autocmd("VimResized", {
     callback = function()
         if not api.nvim_win_is_valid(M.secondary_view_window()) then

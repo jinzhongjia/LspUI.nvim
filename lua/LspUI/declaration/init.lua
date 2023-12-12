@@ -47,21 +47,59 @@ M.run = function()
     -- get current buffer
     local current_buffer = api.nvim_get_current_buf()
 
-    local clients = util.get_clients(current_buffer)
-    if clients == nil then
-        lib_notify.Warn("no client supports declaration!")
-        return
+    local clients
+
+    local window = nil
+    local params
+
+    if pos_abstract.is_secondary_buffer(current_buffer) then
+        if
+            pos_abstract.get_current_method().name
+            == pos_abstract.method.declaration.name
+        then
+            return
+        end
+        local current_item = pos_abstract.get_current_item()
+
+        current_buffer = vim.uri_to_bufnr(current_item.uri)
+
+        clients = util.get_clients(current_buffer)
+
+        if clients == nil then
+            lib_notify.Warn("no client supports declaration!")
+            return
+        end
+
+        if current_item.range then
+            --- @type lsp.TextDocumentPositionParams
+            params = {
+                textDocument = {
+                    uri = current_item.uri,
+                },
+                position = {
+                    line = current_item.range.start.line,
+                    character = current_item.range.start.character,
+                },
+            }
+        else
+            return
+        end
+    else
+        clients = util.get_clients(current_buffer)
+
+        if clients == nil then
+            lib_notify.Warn("no client supports declaration!")
+            return
+        end
+
+        window = api.nvim_get_current_win()
+        params = util.make_params(window)
     end
-
-    -- get current window
-    local current_window = api.nvim_get_current_win()
-
-    local params = util.make_params(current_window)
 
     pos_abstract.go(
         pos_abstract.method.declaration,
         current_buffer,
-        current_window,
+        window,
         clients,
         params
     )
