@@ -1,4 +1,4 @@
-local api, lsp = vim.api, vim.lsp
+local api, lsp, fn = vim.api, vim.lsp, vim.fn
 local inlay_hint_feature = lsp.protocol.Methods.textDocument_inlayHint
 
 local command = require("LspUI.command")
@@ -47,7 +47,13 @@ M.init = function()
         do
             local all_buffers = api.nvim_list_bufs()
             for _, buffer_id in pairs(all_buffers) do
-                if lib_util.buffer_is_listed(buffer_id) then
+                if
+                    lib_util.buffer_is_listed(buffer_id)
+                    and api.nvim_get_option_value("buftype", {
+                            buf = buffer_id,
+                        })
+                        == "file"
+                then
                     inlay_hint(buffer_id, true)
                     table.insert(buffer_list, buffer_id)
                 end
