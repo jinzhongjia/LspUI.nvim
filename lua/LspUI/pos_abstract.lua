@@ -1,5 +1,6 @@
 local api, fn, lsp = vim.api, vim.fn, vim.lsp
 local config = require("LspUI.config")
+local lib_debug = require("LspUI.lib.debug")
 local lib_notify = require("LspUI.lib.notify")
 local lib_util = require("LspUI.lib.util")
 local lib_windows = require("LspUI.lib.windows")
@@ -17,7 +18,7 @@ local main_namespace = api.nvim_create_namespace("LspUI_main")
 
 local seconday_namespace = api.nvim_create_namespace("LspUI_seconday")
 
--- key is keylhs, value is the map info
+-- key is buffer id, value is the map info
 local buffer_keymap_history = {}
 
 -- function for push tagstack
@@ -168,7 +169,7 @@ local secondary_clear_hl = function()
     end
 end
 
-local main_view_clear_keybind = function(map_infos)
+local main_view_restore_keybind = function(map_infos)
     for _, value in pairs(map_infos) do
         pcall(fn.mapset, "n", 0, value)
     end
@@ -241,8 +242,10 @@ local main_view_autocmd = function()
                 main_clear_hl()
                 lib_windows.close_window(M.secondary_view_window())
                 pcall(api.nvim_del_autocmd, secondary_cmd.CursorMoved)
-                for _, value in pairs(buffer_keymap_history) do
-                    main_view_clear_keybind(value)
+                for buffer_id, value in pairs(buffer_keymap_history) do
+                    api.nvim_buf_call(buffer_id, function()
+                        main_view_restore_keybind(value)
+                    end)
                 end
                 buffer_keymap_history = {}
             end
@@ -402,8 +405,10 @@ local secondary_view_autocmd = function()
             if not M.secondary_view_hide() then
                 main_clear_hl()
                 lib_windows.close_window(M.main_view_window())
-                for _, value in pairs(buffer_keymap_history) do
-                    main_view_clear_keybind(value)
+                for buffer_id, value in pairs(buffer_keymap_history) do
+                    api.nvim_buf_call(buffer_id, function()
+                        main_view_restore_keybind(value)
+                    end)
                 end
                 buffer_keymap_history = {}
             end
@@ -984,14 +989,15 @@ end
 
 local action_back_secondary = function()
     if not M.secondary_view_hide() then
+        local map_infos = buffer_keymap_history[M.main_view_buffer()]
+        main_view_restore_keybind(map_infos)
+        buffer_keymap_history[M.main_view_buffer()] = nil
+
         api.nvim_set_current_win(M.secondary_view_window())
         -- remove background
         api.nvim_set_option_value("winhighlight", "Normal:Normal", {
             win = M.secondary_view_window(),
         })
-        local map_infos = buffer_keymap_history[M.main_view_buffer()]
-        main_view_clear_keybind(map_infos)
-        buffer_keymap_history[M.main_view_buffer()] = nil
     end
 end
 
