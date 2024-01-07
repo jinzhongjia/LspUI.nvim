@@ -194,11 +194,6 @@ local main_view_keybind = function()
         true
     )
 
-    lib_debug.debug(vim.tbl_isempty(vim.empty_dict()))
-
-    lib_debug.debug("back is", back_map)
-    lib_debug.debug("hide is", hide_map)
-
     buffer_keymap_history[M.main_view_buffer()] = {
         [config.options.pos_keybind.main.back] = back_map,
         [config.options.pos_keybind.main.hide_secondary] = hide_map,
