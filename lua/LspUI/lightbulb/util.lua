@@ -64,6 +64,9 @@ end
 --- @param buffer_id integer buffer's id
 --- @param callback function callback is a function, has a param boolean
 M.request = function(buffer_id, callback)
+    if not api.nvim_buf_is_valid(buffer_id) then
+        return
+    end
     local params = lsp.util.make_range_params()
     local context = {
         triggerKind = vim.lsp.protocol.CodeActionTriggerKind.Invoked,
