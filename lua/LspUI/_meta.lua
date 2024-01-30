@@ -3,6 +3,7 @@
 --- @field command_enable boolean? whether enable command for `rename`
 --- @field auto_select boolean? whether select all string in float window
 --- @field key_binding { exec: string?, quit: string? }? keybind for `rename`
+--- @field transparency number? transparency for rename
 
 --- @class LspUI_lightbulb_config
 --- @field enable boolean? whether enable `lightbulb` module
@@ -15,15 +16,18 @@
 --- @field command_enable boolean? whether enable command for `lightbulb`
 --- @field gitsigns boolean? whether enable gitsigns support?
 --- @field key_binding { exec: string?, prev: string?, next: string?, quit: string? }? keybind for `code_action`
+--- @field transparency number? transparency for code action
 
 --- @class LspUI_diagnostic_config
 --- @field enable boolean? whether enable `diagnostic` module
 --- @field command_enable boolean? whether enable command for `diagnostic`
+--- @field transparency number? transparency for diagnostic
 
 --- @class LspUI_hover_config
 --- @field enable boolean? whether enable `hover` module
 --- @field command_enable boolean? whether enable command for `hover`
 --- @field key_binding { prev: string?, next: string?, quit: string? }? keybind for `hover`
+--- @field transparency number? transparency for hover
 
 --- @class LspUI_inlay_hint_config
 --- @field enable boolean? whether enable `inlay_hint` module
@@ -31,7 +35,17 @@
 --- @field filter { whitelist: string[]?, blacklist:string[]? }? the filter of blacklist and whitelist, should be filetype list
 
 -- this is just for some keybind like definition, type definition, declaration, reference, implementation
---- @alias LspUI_pos_keybind_config { secondary: { jump: string?, jump_tab: string?, jump_split: string?, jump_vsplit: string?, quit:string?, hide_main:string?, fold_all:string?, expand_all:string?, enter: string? }?, main: { back: string?, hide_secondary: string? }? }
+--- @alias LspUI_pos_keybind_config { secondary: { jump: string?, jump_tab: string?, jump_split: string?, jump_vsplit: string?, quit:string?, hide_main:string?, fold_all:string?, expand_all:string?, enter: string? }?, main: { back: string?, hide_secondary: string? }? , transparency: number? }
+-- TODO: change this
+
+-- TODO: replace above LspUI_pos_keybind_config with LspUI_pos_config
+-- this will be a refector
+--
+-- this is just some config for definition, type definition, declaration, reference, implementation
+--- @class LspUI_pos_config
+--- @field secondary_keybind  { jump: string?, jump_tab: string?, jump_split: string?, jump_vsplit: string?, quit:string?, hide_main:string?, fold_all:string?, expand_all:string?, enter: string? }?
+--- @field main_keybind { back: string?, hide_secondary: string? }?
+--- @field transparency number
 
 --- @class LspUI_definition_config
 --- @field enable boolean? whether enable `definition` module
@@ -70,4 +84,5 @@
 --- @field implementation LspUI_implementation_config? `implementation` module
 --- @field reference LspUI_reference_config? `reference` module
 --- @field pos_keybind LspUI_pos_keybind_config? keybind for `definition`, `type definition`, `declaration`, `reference`, implementation
+--- @field pos_config LspUI_pos_config? keybind for `definition`, `type definition`, `declaration`, `reference`, implementation
 --- @field call_hierarchy LspUI_call_hierarchy_config? `call_hierarchy` module

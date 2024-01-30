@@ -1,4 +1,5 @@
 local api, fn = vim.api, vim.fn
+local config = require("LspUI.config")
 local lib_notify = require("LspUI.lib.notify")
 local lib_util = require("LspUI.lib.util")
 local lib_windows = require("LspUI.lib.windows")
@@ -276,6 +277,13 @@ M.render = function(action)
     api.nvim_set_option_value("concealcursor", "n", {
         win = window_id,
     })
+    api.nvim_set_option_value(
+        "winblend",
+        config.options.diagnostic.transparency,
+        {
+            win = window_id,
+        }
+    )
 
     vim.schedule(function()
         M.autocmd(current_buffer, new_buffer, window_id)

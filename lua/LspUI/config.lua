@@ -1,5 +1,7 @@
 local lib_notify = require("LspUI.lib.notify")
 
+local default_transparency = 60
+
 --- @type LspUI_rename_config
 local default_rename_config = {
     enable = true,
@@ -9,6 +11,7 @@ local default_rename_config = {
         exec = "<CR>",
         quit = "<ESC>",
     },
+    transparency = default_transparency,
 }
 
 --- @type LspUI_lightbulb_config
@@ -31,12 +34,14 @@ local default_code_action_config = {
         next = "j",
         quit = "q",
     },
+    transparency = default_transparency,
 }
 
 --- @type LspUI_diagnostic_config
 local default_diagnostic_config = {
     enable = true,
     command_enable = true,
+    transparency = default_transparency,
 }
 
 --- @type LspUI_hover_config
@@ -48,6 +53,7 @@ local default_hover_config = {
         next = "n",
         quit = "q",
     },
+    transparency = default_transparency,
 }
 
 --- @type LspUI_inlay_hint_config
@@ -107,6 +113,30 @@ local default_pos_keybind_config = {
         expand_all = "e",
         enter = "<leader>l",
     },
+    transparency = default_transparency,
+}
+
+-- Now, this is not available
+-- TODO: replace pos_keybind_config with pos_config
+--
+--- @type LspUI_pos_config
+local default_pos_config = {
+    main_keybind = {
+        back = "<leader>l",
+        hide_secondary = "<leader>h",
+    },
+    secondary_keybind = {
+        jump = "o",
+        jump_split = "sh",
+        jump_vsplit = "sv",
+        jump_tab = "t",
+        quit = "q",
+        hide_main = "<leader>h",
+        fold_all = "w",
+        expand_all = "e",
+        enter = "<leader>l",
+    },
+    transparency = default_transparency,
 }
 
 --- @type LspUI_call_hierarchy_config
