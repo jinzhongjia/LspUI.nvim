@@ -1,6 +1,6 @@
 local lib_notify = require("LspUI.lib.notify")
 
-local default_transparency = 60
+local default_transparency = 0
 
 --- @type LspUI_rename_config
 local default_rename_config = {
