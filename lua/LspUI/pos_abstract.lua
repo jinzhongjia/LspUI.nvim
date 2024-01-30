@@ -868,7 +868,8 @@ M.secondary_view_render = function()
         M.secondary_view_window(lib_windows.display_window(second_window_wrap))
     end
     -- prevent extra shadows
-    vim.schedule(function()
+    -- vim.schedule(function()
+    api.nvim_win_call(M.secondary_view_window(), function()
         api.nvim_set_option_value("winhighlight", "Normal:Normal", {
             win = M.secondary_view_window(),
         })
@@ -880,6 +881,8 @@ M.secondary_view_render = function()
             }
         )
     end)
+
+    -- end)
 
     api.nvim_win_set_config(M.secondary_view_window(), {
         title_pos = "center",

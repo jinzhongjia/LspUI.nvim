@@ -64,6 +64,7 @@ end
 --- @param buffer_id integer buffer's id
 --- @param callback function callback is a function, has a param boolean
 M.request = function(buffer_id, callback)
+    -- this buffer id maybe invalid
     if not api.nvim_buf_is_valid(buffer_id) then
         return
     end
