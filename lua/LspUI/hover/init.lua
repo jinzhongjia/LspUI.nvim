@@ -70,8 +70,12 @@ M.run = function()
         current_buffer,
         --- @param hover_tuples hover_tuple[]
         function(hover_tuples)
-            -- We should detect hover_tuples is empty ?
+            -- We should detect hover_tuples is empty
             if vim.tbl_isempty(hover_tuples) then
+                return
+            end
+            if api.nvim_get_current_buf() ~= current_buffer then
+                -- Ignore result since buffer changed. This happens for slow language servers.
                 return
             end
             local buffer_id
