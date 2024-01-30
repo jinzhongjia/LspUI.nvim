@@ -804,6 +804,14 @@ M.main_view_render = function()
                 win = M.main_view_window(),
             }
         )
+
+        api.nvim_set_option_value(
+            "winblend",
+            config.options.pos_keybind.transparency,
+            {
+                win = M.main_view_window(),
+            }
+        )
     end
 
     do
@@ -864,6 +872,13 @@ M.secondary_view_render = function()
         api.nvim_set_option_value("winhighlight", "Normal:Normal", {
             win = M.secondary_view_window(),
         })
+        api.nvim_set_option_value(
+            "winblend",
+            config.options.pos_keybind.transparency,
+            {
+                win = M.secondary_view_window(),
+            }
+        )
     end)
 
     api.nvim_win_set_config(M.secondary_view_window(), {

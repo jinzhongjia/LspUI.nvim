@@ -530,6 +530,14 @@ M.render = function(action_tuples)
         win = window_id,
     })
 
+    api.nvim_set_option_value(
+        "winblend",
+        config.options.code_action.transparency,
+        {
+            win = window_id,
+        }
+    )
+
     keybinding_autocmd(new_buffer, window_id, action_tuples)
 end
 

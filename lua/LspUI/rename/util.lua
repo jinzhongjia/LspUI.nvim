@@ -182,6 +182,9 @@ M.render = function(clients, buffer_id, current_win, old_name)
     api.nvim_set_option_value("winhighlight", "Normal:Normal", {
         win = window_id,
     })
+    api.nvim_set_option_value("winblend", config.options.rename.transparency, {
+        win = window_id,
+    })
 
     if config.options.rename.auto_select then
         vim.cmd([[normal! V]])

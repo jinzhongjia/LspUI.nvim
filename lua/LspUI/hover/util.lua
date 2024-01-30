@@ -186,6 +186,9 @@ M.base_render = function(hover_tuple, hover_tuple_number)
     api.nvim_set_option_value("concealcursor", "n", {
         win = window_id,
     })
+    api.nvim_set_option_value("winblend", config.options.hover.transparency, {
+        win = window_id,
+    })
 
     return window_id, hover_tuple.buffer_id
 end
