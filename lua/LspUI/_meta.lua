@@ -43,9 +43,9 @@
 --
 -- this is just some config for definition, type definition, declaration, reference, implementation
 --- @class LspUI_pos_config
---- @field secondary_keybind  { jump: string?, jump_tab: string?, jump_split: string?, jump_vsplit: string?, quit:string?, hide_main:string?, fold_all:string?, expand_all:string?, enter: string? }?
---- @field main_keybind { back: string?, hide_secondary: string? }?
---- @field transparency number
+--- @field secondary_keybind  { jump: string?, jump_tab: string?, jump_split: string?, jump_vsplit: string?, quit:string?, hide_main:string?, fold_all:string?, expand_all:string?, enter: string? }? secondary view keybind
+--- @field main_keybind { back: string?, hide_secondary: string? }? main view keybind
+--- @field transparency number? transparency for pos_config
 
 --- @class LspUI_definition_config
 --- @field enable boolean? whether enable `definition` module
