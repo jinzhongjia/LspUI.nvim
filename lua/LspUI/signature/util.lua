@@ -8,6 +8,73 @@ local lib_util = require("LspUI.lib.util")
 
 local M = {}
 
+--- @class signature_info
+--- @field label string
+--- @field hint integer?
+--- @field parameters {label: string, doc: (string|lsp.MarkupContent)?}[]?
+--- @field doc string?
+
+--- @param help lsp.SignatureHelp
+--- @return signature_info?
+local build_signature_info = function(help)
+    if not help then
+        return nil
+    end
+    if #help.signatures == 0 then
+        return nil
+    end
+
+    local active_signature = help.activeSignature and help.activeSignature + 1
+        or 1
+    local active_parameter = help.activeParameter and help.activeParameter + 1
+        or 1
+
+    --- @type signature_info
+    ---@diagnostic disable-next-line: missing-fields
+    local res = {}
+
+    local signature = help.signatures[active_signature]
+
+    res.label = signature.label
+    ---@diagnostic disable-next-line: assign-type-mismatch
+    res.doc = type(signature.documentation) == "table"
+            and signature.documentation.value
+        or signature.documentation
+
+    if not signature.parameters or (#signature.parameters == 0) then
+        return res
+    end
+
+    --- @type lsp.ParameterInformation[]
+    local parameters = signature.parameters
+
+    --- @type { label: string, doc: (string|lsp.MarkupContent)? }[]
+    local params = {}
+    for _, parameter in ipairs(parameters) do
+        if type(parameter.label) == "string" then
+            table.insert(params, {
+                label = parameter.label,
+                doc = parameter.documentation,
+            })
+        else
+            local str = string.sub(
+                signature.label,
+                parameter.label[1] + 1,
+                parameter.label[2]
+            )
+            table.insert(params, {
+                label = str,
+                doc = parameter.documentation,
+            })
+        end
+    end
+
+    res.parameters = params
+    res.hint = active_parameter
+
+    return res
+end
+
 -- this a list to store those buffers which can use signature
 --- @type {[number]: boolean}
 local buffer_list = {}
@@ -149,65 +216,9 @@ M.deautocmd = function()
     api.nvim_del_augroup_by_id(signature_group)
 end
 
---- @class siganture_info
---- @field label string
---- @field hint integer?
---- @field parameters string[]
---- @field doc string?
-
---- @return siganture_info?
+--- @return signature_info?
 M.status_line = function()
-    local data = backup.data
-    if not data then
-        return nil
-    end
-    if #data.signatures == 0 then
-        return nil
-    end
-
-    local active_signature = data.activeSignature and data.activeSignature + 1
-        or 1
-    local active_parameter = data.activeParameter and data.activeParameter + 1
-        or 1
-
-    --- @type siganture_info
-    ---@diagnostic disable-next-line: missing-fields
-    local res = {}
-
-    local signature = data.signatures[active_signature]
-
-    res.label = signature.label
-    ---@diagnostic disable-next-line: assign-type-mismatch
-    res.doc = type(signature.documentation) == "table"
-            and signature.documentation.value
-        or signature.documentation
-
-    if not signature.parameters or (#signature.parameters == 0) then
-        return res
-    end
-
-    --- @type lsp.ParameterInformation[]
-    local parameters = signature.parameters
-
-    --- @type string[]
-    local params = {}
-    for _, parameter in ipairs(parameters) do
-        if type(parameter.label) == "string" then
-            table.insert(params, parameter.label)
-        else
-            local str = string.sub(
-                signature.label,
-                parameter.label[1] + 1,
-                parameter.label[2]
-            )
-            table.insert(params, str)
-        end
-    end
-
-    res.parameters = params
-    res.hint = active_parameter
-
-    return res
+    return build_signature_info(backup.data)
 end
 
 return M
