@@ -139,7 +139,7 @@ local default_pos_config = {
     transparency = default_transparency,
 }
 
--- TODO: now, this is noe avaiable
+-- TODO: now, this is not avaiable
 --
 --- @type LspUI_call_hierarchy_config
 local default_call_hierarchy_config = {
@@ -149,10 +149,13 @@ local default_call_hierarchy_config = {
 
 --- @type LspUI_signature
 local default_signature_config = {
-    --- NOTE: this is disabled!
-    --- TODO: this should be false
-    enable = true,
+    enable = false,
     command_enable = true,
+    icon = "✨",
+    color = {
+        fg = "#FF8C00",
+        bg = nil,
+    },
     debounce = 300,
 }
 

@@ -1,12 +1,15 @@
-local api, lsp = vim.api, vim.lsp
+local api, lsp, fn = vim.api, vim.lsp, vim.fn
 local signature_feature = lsp.protocol.Methods.textDocument_signatureHelp
 
 local config = require("LspUI.config")
-local lib_debug = require("LspUI.lib.debug")
 local lib_notify = require("LspUI.lib.notify")
 local lib_util = require("LspUI.lib.util")
 
 local M = {}
+
+-- this variable records whether there is a virtual_text
+--- @type boolean
+local is_there_virtual_text = false
 
 --- @class signature_info
 --- @field label string
@@ -14,8 +17,8 @@ local M = {}
 --- @field parameters {label: string, doc: (string|lsp.MarkupContent)?}[]?
 --- @field doc string?
 
---- @param help lsp.SignatureHelp
---- @return signature_info?
+--- @param help lsp.SignatureHelp|nil
+--- @return signature_info? res len will not be zero
 local build_signature_info = function(help)
     if not help then
         return nil
@@ -34,6 +37,9 @@ local build_signature_info = function(help)
     local res = {}
 
     local signature = help.signatures[active_signature]
+    if signature.activeParameter then
+        active_parameter = signature.activeParameter + 1
+    end
 
     res.label = signature.label
     ---@diagnostic disable-next-line: assign-type-mismatch
@@ -79,8 +85,10 @@ end
 --- @type {[number]: boolean}
 local buffer_list = {}
 
-local signature_group =
-    api.nvim_create_augroup("Lspui_signature", { clear = true })
+--- @type integer
+local signature_group
+
+local signature_namespace = api.nvim_create_namespace("LspUI_signature")
 
 --- @type { data: lsp.SignatureHelp?, }
 local backup = {}
@@ -147,7 +155,24 @@ local signature_handle = function()
     end
     M.request(current_buffer, function(result)
         backup.data = result
-        -- TODO: add render to here
+
+        local mode_info = vim.api.nvim_get_mode()
+        local mode = mode_info["mode"]
+        local is_insert = mode:find("i") ~= nil or mode:find("ic") ~= nil
+        if not is_insert then
+            return
+        end
+
+        M.clean_render(current_buffer)
+
+        local callback_current_buffer = api.nvim_get_current_buf()
+        -- when call current buffer is not equal to current buffer, return
+        if callback_current_buffer ~= current_buffer then
+            return
+        end
+
+        local current_window = api.nvim_get_current_win()
+        M.render(result, current_buffer, current_window)
     end)
 end
 
@@ -166,12 +191,58 @@ local build_func = function()
     func = lib_util.debounce(signature_handle, time)
 end
 
-M.render = function() end
+--- @param data lsp.SignatureHelp|nil
+--- @param buffer_id integer
+--- @param windows_id integer
+M.render = function(data, buffer_id, windows_id)
+    local info = build_signature_info(data)
+    if not info then
+        return
+    end
 
-M.clean_render = function() end
+    if not info.hint then
+        return
+    end
+
+    --- @type integer
+    ---@diagnostic disable-next-line: assign-type-mismatch
+    local row = fn.line(".") == 1 and 1 or fn.line(".") - 2
+    --- @type integer
+    local col = fn.virtcol(".") - 1
+
+    api.nvim_buf_set_extmark(buffer_id, signature_namespace, row, 0, {
+        virt_text = {
+            {
+                string.format(
+                    "%s %s",
+                    config.options.signature.icon,
+                    info.parameters[info.hint].label
+                ),
+                "LspUI_Signature",
+            },
+        },
+        virt_text_win_col = col,
+        hl_mode = "blend",
+    })
+    is_there_virtual_text = true
+end
+
+-- clean signature virtual text
+--- @param buffer_id integer
+M.clean_render = function(buffer_id)
+    if not is_there_virtual_text then
+        return
+    end
+
+    api.nvim_buf_clear_namespace(buffer_id, signature_namespace, 0, -1)
+    is_there_virtual_text = false
+end
 
 -- this is autocmd init for signature
 M.autocmd = function()
+    signature_group =
+        api.nvim_create_augroup("Lspui_signature", { clear = true })
+
     -- build debounce function
     build_func()
 
@@ -193,7 +264,7 @@ M.autocmd = function()
     })
 
     -- maybe this can also use CurosrHold
-    api.nvim_create_autocmd({ "CursorMovedI", "CursorMoved" }, {
+    api.nvim_create_autocmd({ "CursorMovedI", "InsertEnter" }, {
         group = signature_group,
         callback = vim.schedule_wrap(func),
         desc = lib_util.command_desc("Signature update when CursorHoldI"),
@@ -204,11 +275,23 @@ M.autocmd = function()
         group = signature_group,
         callback = function()
             local current_buffer = api.nvim_get_current_buf()
+            M.clean_render(current_buffer)
             if buffer_list[current_buffer] then
                 buffer_list[current_buffer] = false
             end
         end,
         desc = lib_util.command_desc("Exec signature clean cmd when QuitPre"),
+    })
+
+    api.nvim_create_autocmd({ "InsertLeave", "WinLeave" }, {
+        group = signature_group,
+        callback = function()
+            local current_buffer = api.nvim_get_current_buf()
+            M.clean_render(current_buffer)
+        end,
+        desc = lib_util.command_desc(
+            "Exec signature virtual text clean cmd when InsertLeave or WinLeave"
+        ),
     })
 end
 

@@ -432,10 +432,10 @@ local secondary_view_autocmd = function()
         buffer = M.secondary_view_buffer(),
         callback = function()
             -- get current cursor position
-            local cursor_position =
-                api.nvim_win_get_cursor(M.secondary_view_window())
 
-            local lnum = cursor_position[1]
+            --- @type integer
+            ---@diagnostic disable-next-line: assign-type-mismatch
+            local lnum = fn.line(".")
 
             local uri, range = get_lsp_position_by_lnum(lnum)
             if not uri then

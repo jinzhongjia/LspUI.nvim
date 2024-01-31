@@ -1,5 +1,4 @@
 local api, fn = vim.api, vim.fn
-local command = require("LspUI.command")
 local config = require("LspUI.config")
 local lib_notify = require("LspUI.lib.notify")
 local util = require("LspUI.signature.util")
@@ -18,6 +17,18 @@ M.init = function()
     end
 
     is_initialized = true
+
+    local hl_val = {
+        fg = config.options.signature.color.fg,
+        italic = true,
+        -- standout = true,
+        undercurl = true,
+    }
+
+    if config.options.signature.color.bg then
+        hl_val.fg = config.options.signature.color.bg
+    end
+    api.nvim_set_hl(0, "LspUI_Signature", hl_val)
 
     -- init autocmd
     util.autocmd()
