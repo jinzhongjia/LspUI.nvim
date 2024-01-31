@@ -71,6 +71,11 @@
 --- @field enable boolean? whether enable `call_hierarchy` module
 --- @field command_enable boolean? whether enable command for `call_hierarchy`
 
+--- @class LspUI_signature
+--- @field enable boolean? whether enable `signature` module
+--- @field command_enable boolean? whether enable command for `signature`
+--- @field debounce (integer|boolean)?  whether enable debounce for signature ? defalt is 250 milliseconds, this will reduce calculations when you move the cursor frequently, but it will cause the delay of signature, false will diable it
+
 --- @class LspUI_config config for LspUI
 --- @field rename LspUI_rename_config? `rename` module
 --- @field lightbulb LspUI_lightbulb_config? `lightbulb` module
@@ -86,3 +91,4 @@
 --- @field pos_keybind LspUI_pos_keybind_config? keybind for `definition`, `type definition`, `declaration`, `reference`, implementation
 --- @field pos_config LspUI_pos_config? keybind for `definition`, `type definition`, `declaration`, `reference`, implementation
 --- @field call_hierarchy LspUI_call_hierarchy_config? `call_hierarchy` module
+--- @field signature LspUI_signature? `signature` module
