@@ -28,6 +28,7 @@ M.api = {
     implementation = modules.implementation.run,
     inlay_hint = modules.inlay_hint.run,
     call_hierarchy = modules.call_hierarchy.run,
+    signature = modules.signature.status_line,
 }
 
-return M
+return M.api
