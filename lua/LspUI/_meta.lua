@@ -43,9 +43,9 @@
 --
 -- this is just some config for definition, type definition, declaration, reference, implementation
 --- @class LspUI_pos_config
---- @field secondary_keybind  { jump: string?, jump_tab: string?, jump_split: string?, jump_vsplit: string?, quit:string?, hide_main:string?, fold_all:string?, expand_all:string?, enter: string? }?
---- @field main_keybind { back: string?, hide_secondary: string? }?
---- @field transparency number
+--- @field secondary_keybind  { jump: string?, jump_tab: string?, jump_split: string?, jump_vsplit: string?, quit:string?, hide_main:string?, fold_all:string?, expand_all:string?, enter: string? }? secondary view keybind
+--- @field main_keybind { back: string?, hide_secondary: string? }? main view keybind
+--- @field transparency number? transparency for pos_config
 
 --- @class LspUI_definition_config
 --- @field enable boolean? whether enable `definition` module
@@ -71,6 +71,13 @@
 --- @field enable boolean? whether enable `call_hierarchy` module
 --- @field command_enable boolean? whether enable command for `call_hierarchy`
 
+--- @class LspUI_signature
+--- @field enable boolean? whether enable `signature` module
+--- @field command_enable boolean? whether enable command for `signature`
+--- @field icon string? the icon for float signature
+--- @field color {fg: string?, bg: string?}? the color for signature
+--- @field debounce (integer|boolean)?  whether enable debounce for signature ? defalt is 250 milliseconds, this will reduce calculations when you move the cursor frequently, but it will cause the delay of signature, false will diable it
+
 --- @class LspUI_config config for LspUI
 --- @field rename LspUI_rename_config? `rename` module
 --- @field lightbulb LspUI_lightbulb_config? `lightbulb` module
@@ -86,3 +93,4 @@
 --- @field pos_keybind LspUI_pos_keybind_config? keybind for `definition`, `type definition`, `declaration`, `reference`, implementation
 --- @field pos_config LspUI_pos_config? keybind for `definition`, `type definition`, `declaration`, `reference`, implementation
 --- @field call_hierarchy LspUI_call_hierarchy_config? `call_hierarchy` module
+--- @field signature LspUI_signature? `signature` module

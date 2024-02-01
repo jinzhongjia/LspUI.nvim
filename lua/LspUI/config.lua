@@ -139,10 +139,24 @@ local default_pos_config = {
     transparency = default_transparency,
 }
 
+-- TODO: now, this is not avaiable
+--
 --- @type LspUI_call_hierarchy_config
 local default_call_hierarchy_config = {
     enable = true,
     command_enable = true,
+}
+
+--- @type LspUI_signature
+local default_signature_config = {
+    enable = false,
+    command_enable = true,
+    icon = "✨",
+    color = {
+        fg = "#FF8C00",
+        bg = nil,
+    },
+    debounce = 300,
 }
 
 -- default config
@@ -161,6 +175,7 @@ local default_config = {
     reference = default_reference_config,
     pos_keybind = default_pos_keybind_config,
     call_hierarchy = default_call_hierarchy_config,
+    signature = default_signature_config,
 }
 
 -- Prevent plugins from being initialized multiple times
@@ -393,6 +408,24 @@ M.inlay_hint_setup = function(inlay_hint_config)
         inlay_hint.init()
     else
         inlay_hint.deinit()
+    end
+end
+
+-- separate function for `signature` module
+--- @param signature_config LspUI_signature
+M.signature_setup = function(signature_config)
+    M.options.signature = vim.tbl_deep_extend(
+        "force",
+        M.options.signature or default_signature_config,
+        signature_config
+    )
+
+    local signature = require("LspUI.signature")
+
+    if signature_config.enable then
+        signature.init()
+    else
+        signature.deinit()
     end
 end
 

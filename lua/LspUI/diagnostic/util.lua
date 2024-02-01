@@ -38,13 +38,13 @@ local diagnostic_severity_to_hightlight = function(severity)
     return arr[severity] or nil
 end
 
---- @param diagnostics Diagnostic[]
---- @return Diagnostic[][][]
+--- @param diagnostics vim.Diagnostic[]
+--- @return vim.Diagnostic[][][]
 local sort_diagnostics = function(diagnostics)
     local sorted_diagnostics = {}
 
     for _, diagnostic in pairs(diagnostics) do
-        --- @type Diagnostic[][]?
+        --- @type vim.Diagnostic[][]?
         local lnum_diagnostics = sorted_diagnostics[diagnostic.lnum]
         if lnum_diagnostics == nil then
             lnum_diagnostics = {}
@@ -64,12 +64,12 @@ local sort_diagnostics = function(diagnostics)
 end
 
 -- get next position diagnostics
---- @param sorted_diagnostics Diagnostic[][][]
+--- @param sorted_diagnostics vim.Diagnostic[][][]
 --- @param row integer (row,col) is a tuple, get from `nvim_win_get_cursor`, 1 based
 --- @param col integer (row,col) is a tuple, get from `nvim_win_get_cursor`, 0 based
 --- @param search_forward boolean true is down, false is up
 --- @param buffer_id integer
---- @return Diagnostic[]?
+--- @return vim.Diagnostic[]?
 local next_position_diagnostics = function(
     sorted_diagnostics,
     row,
