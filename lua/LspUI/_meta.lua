@@ -73,7 +73,6 @@
 
 --- @class LspUI_signature
 --- @field enable boolean? whether enable `signature` module
---- @field command_enable boolean? whether enable command for `signature`
 --- @field icon string? the icon for float signature
 --- @field color {fg: string?, bg: string?}? the color for signature
 --- @field debounce (integer|boolean)?  whether enable debounce for signature ? defalt is 250 milliseconds, this will reduce calculations when you move the cursor frequently, but it will cause the delay of signature, false will diable it

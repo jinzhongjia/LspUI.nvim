@@ -7,7 +7,7 @@ A plugin which wraps Neovim LSP operations with a nicer UI.
 - Custom implementations of common LSP functions
 - Great out of the box UI
 - Due to reimplementation of builtins, potentially better performance than builtin neovim functions.
-- Commands:
+- Supported features:
   - Code Action (nvim plugin can register code_action)
   - Rename
   - Hover
@@ -18,6 +18,7 @@ A plugin which wraps Neovim LSP operations with a nicer UI.
   - Reference
   - Implementation
   - Inlay Hint
+  - Signature Help
 
 ## 📦 Installation
 

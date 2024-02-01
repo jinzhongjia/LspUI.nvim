@@ -150,7 +150,6 @@ local default_call_hierarchy_config = {
 --- @type LspUI_signature
 local default_signature_config = {
     enable = false,
-    command_enable = true,
     icon = "✨",
     color = {
         fg = "#FF8C00",
