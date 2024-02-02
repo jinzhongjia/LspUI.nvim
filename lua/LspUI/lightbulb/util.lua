@@ -5,6 +5,7 @@ local code_action_register = require("LspUI.code_action.register")
 local config = require("LspUI.config")
 local global = require("LspUI.global")
 local lib_lsp = require("LspUI.lib.lsp")
+local lib_notify = require("LspUI.lib.notify")
 local lib_util = require("LspUI.lib.util")
 
 local M = {}
@@ -120,12 +121,28 @@ M.request = function(buffer_id, callback)
     local clients = M.get_clients(buffer_id)
     local tmp_number = 0
     for _, client in pairs(clients or {}) do
-        client.request(code_action_feature, params, function(_, result, _, _)
+        client.request(code_action_feature, params, function(err, result, _, _)
             tmp_number = tmp_number + 1
-            if result and type(result) == "table" and next(result) ~= nil then
-                new_callback(true)
-                return
+            if err ~= nil then
+                lib_notify.Warn(
+                    string.format(
+                        "lightbulb meet error, server %s, error code is %d, msg is %s",
+                        client.name,
+                        err.code,
+                        err.message
+                    )
+                )
+            else
+                if
+                    result
+                    and type(result) == "table"
+                    and next(result) ~= nil
+                then
+                    new_callback(true)
+                    return
+                end
             end
+
             if tmp_number == #clients then
                 new_callback(false)
             end

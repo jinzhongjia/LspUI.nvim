@@ -77,6 +77,7 @@ M.debounce = function(func, delay)
         local args = { ... }
         if timer then
             timer:stop()
+            timer:close()
             timer = nil
         end
 
@@ -161,6 +162,7 @@ M.get_uri_lines = function(buffer_id, uri, rows)
     local found = 0
     local lnum = 0
 
+    ---@diagnostic disable-next-line: param-type-mismatch
     for line in string.gmatch(data, "([^\n]*)\n?") do
         if lines[lnum] == true then
             lines[lnum] = line

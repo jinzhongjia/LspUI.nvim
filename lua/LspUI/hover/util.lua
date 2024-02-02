@@ -33,7 +33,7 @@ M.get_hovers = function(clients, buffer_id, callback)
     local params = lsp.util.make_position_params()
     local tmp_number = 0
 
-    --- @type string[]
+    --- @type {name:string, err:lsp.ResponseError}[]
     local invalid_clients = {}
 
     for _, client in pairs(clients) do
@@ -42,12 +42,15 @@ M.get_hovers = function(clients, buffer_id, callback)
             params,
             ---@param result lsp.Hover
             ---@param lsp_config any
-            function(_, result, _, lsp_config)
+            function(err, result, _, lsp_config)
                 lsp_config = lsp_config or {}
 
-                if not (result and result.contents) then
+                if err ~= nil then
                     if lsp_config.silent ~= true then
-                        table.insert(invalid_clients, client.name)
+                        table.insert(
+                            invalid_clients,
+                            { name = client.name, err = err }
+                        )
                     end
                 else
                     local markdown_lines =
@@ -124,12 +127,23 @@ M.get_hovers = function(clients, buffer_id, callback)
                 if tmp_number == #clients then
                     if not vim.tbl_isempty(invalid_clients) then
                         local names = ""
-                        for index, client_name in pairs(invalid_clients) do
-                            if index == 1 then
-                                names = names .. client_name
+                        for index, val in pairs(invalid_clients) do
+                            if index == #invalid_clients then
+                                names = names
+                                    .. string.format(
+                                        "server %s, err code is %d, err code is %s",
+                                        val.name,
+                                        val.err.code,
+                                        val.err.message
+                                    )
                             else
                                 names = names
-                                    .. string.format(", %s", client_name)
+                                    .. string.format(
+                                        "server %s, err code is %d, err code is %s, ",
+                                        val.name,
+                                        val.err.code,
+                                        val.err.message
+                                    )
                             end
                         end
                         lib_notify.Info(

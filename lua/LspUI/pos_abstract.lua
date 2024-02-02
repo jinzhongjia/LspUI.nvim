@@ -599,7 +599,12 @@ M.lsp_clients_request = function(buffer_id, clients, params, callback)
 
             if err ~= nil then
                 lib_notify.Warn(
-                    string.format("when %s, err: %s", method.name, err)
+                    string.format(
+                        "method %s meet error, error code is %d, msg is %s",
+                        method.name,
+                        err.code,
+                        err.message
+                    )
                 )
             else
                 if result and not vim.tbl_isempty(result) then
