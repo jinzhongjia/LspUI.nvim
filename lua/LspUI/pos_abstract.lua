@@ -635,12 +635,20 @@ M.lsp_clients_request = function(buffer_id, clients, params, callback)
                             if data[uri] == nil then
                                 data[uri] = {
                                     buffer_id = uri_buffer,
+                                    -- fold = method.fold
+                                    --         and (origin_uri ~= uri and true or false)
+                                    --     or false,
                                     fold = method.fold
-                                            and (origin_uri ~= uri and true or false)
-                                        or false,
+                                        and not lib_util.compare_uri(origin_uri, uri),
                                     range = {},
                                 }
                             end
+                            -- lib_debug.debug(
+                            --     "origin",
+                            --     vim.uri_to_fname(origin_uri),
+                            --     "new",
+                            --     vim.uri_to_fname(uri)
+                            -- )
                             table.insert(data[uri].range, {
                                 start = range.start,
                                 finish = range["end"],
