@@ -19,6 +19,7 @@ local main_namespace = api.nvim_create_namespace("LspUI_main")
 local seconday_namespace = api.nvim_create_namespace("LspUI_seconday")
 
 -- key is buffer id, value is the map info
+--- @type { [integer]: { [string]: any } } the any should be the result of maparg
 local buffer_keymap_history = {}
 
 -- function for push tagstack
@@ -194,10 +195,12 @@ local main_view_keybind = function()
         true
     )
 
-    buffer_keymap_history[M.main_view_buffer()] = {
-        [config.options.pos_keybind.main.back] = back_map,
-        [config.options.pos_keybind.main.hide_secondary] = hide_map,
-    }
+    if not buffer_keymap_history[M.main_view_buffer()] then
+        buffer_keymap_history[M.main_view_buffer()] = {
+            [config.options.pos_keybind.main.back] = back_map,
+            [config.options.pos_keybind.main.hide_secondary] = hide_map,
+        }
+    end
 
     -- back keybind
     api.nvim_buf_set_keymap(
@@ -1120,6 +1123,7 @@ local find_position_from_params = function(params)
     local file_lnum = nil
     local code_lnum = nil
 
+    --- @type integer|nil
     local tmp = nil
 
     for uri, data in pairs(M.datas()) do
@@ -1147,7 +1151,9 @@ local find_position_from_params = function(params)
                                 code_lnum = lnum
                             end
                         else
-                            tmp = val
+                            tmp = math.abs(
+                                val.start.character - params.position.character
+                            )
                             code_lnum = lnum
                         end
                     end
