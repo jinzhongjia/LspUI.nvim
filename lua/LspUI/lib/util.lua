@@ -209,4 +209,17 @@ M.get_buf_var = function(buffer_id, key)
     return nil
 end
 
+--- @param uri_1 lsp.URI
+--- @param uri_2 lsp.URI
+--- @return boolean
+M.compare_uri = function(uri_1, uri_2)
+    local path_1 = vim.uri_to_fname(uri_1)
+    local path_2 = vim.uri_to_fname(uri_2)
+    if vim.fn.has("win32") then
+        path_1 = string.lower(path_1)
+        path_2 = string.lower(path_2)
+    end
+    return path_1 == path_2
+end
+
 return M

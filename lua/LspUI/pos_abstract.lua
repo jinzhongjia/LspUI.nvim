@@ -635,12 +635,23 @@ M.lsp_clients_request = function(buffer_id, clients, params, callback)
                             if data[uri] == nil then
                                 data[uri] = {
                                     buffer_id = uri_buffer,
+                                    -- fold = method.fold
+                                    --         and (origin_uri ~= uri and true or false)
+                                    --     or false,
                                     fold = method.fold
-                                            and (origin_uri ~= uri and true or false)
-                                        or false,
+                                        and not lib_util.compare_uri(
+                                            origin_uri,
+                                            uri
+                                        ),
                                     range = {},
                                 }
                             end
+                            -- lib_debug.debug(
+                            --     "origin",
+                            --     vim.uri_to_fname(origin_uri),
+                            --     "new",
+                            --     vim.uri_to_fname(uri)
+                            -- )
                             table.insert(data[uri].range, {
                                 start = range.start,
                                 finish = range["end"],
@@ -1106,19 +1117,49 @@ local find_position_from_params = function(params)
     local lnum = 0
     local param_uri = params.textDocument.uri
 
+    local file_lnum = nil
+    local code_lnum = nil
+
+    local tmp = nil
+
     for uri, data in pairs(M.datas()) do
         lnum = lnum + 1
         if not data.fold then
             for _, val in pairs(data.range) do
                 lnum = lnum + 1
-                if
-                    uri == param_uri
-                    and val.start.line == params.position.line
-                then
-                    return lnum
+                if lib_util.compare_uri(uri, param_uri) then
+                    if not file_lnum then
+                        file_lnum = lnum
+                    end
+                    if val.start.line == params.position.line then
+                        if tmp then
+                            if
+                                math.abs(
+                                    val.start.character
+                                        - params.position.character
+                                )
+                                < tmp
+                            then
+                                tmp = math.abs(
+                                    val.start.character
+                                        - params.position.character
+                                )
+                                code_lnum = lnum
+                            end
+                        else
+                            tmp = val
+                            code_lnum = lnum
+                        end
+                    end
                 end
             end
         end
+    end
+    if code_lnum then
+        return code_lnum
+    end
+    if file_lnum then
+        return file_lnum
     end
     if method.fold then
         return 1
@@ -1139,6 +1180,16 @@ M.get_current_method = function()
     return method
 end
 
+--- @param buffer_id integer
+--- @param params table
+M.set_secondary_view_cursor = function(buffer_id, params)
+    -- set the cursor position
+    api.nvim_win_set_cursor(
+        M.secondary_view_window(),
+        { find_position_from_params(params), 0 }
+    )
+end
+
 --- @param buffer_id integer which buffer do method
 --- @param window_id integer? which window do method
 --- @param clients lsp.Client[]
@@ -1149,6 +1200,11 @@ M.go = function(new_method, buffer_id, window_id, clients, params)
     method = new_method
 
     M.lsp_clients_request(buffer_id, clients, params, function(data)
+        -- if the buffer_id is not valid, just return
+        if not api.nvim_buf_is_valid(buffer_id) then
+            return
+        end
+
         if not data then
             lib_notify.Info(string.format("no valid %s", method.name))
             return
@@ -1164,11 +1220,9 @@ M.go = function(new_method, buffer_id, window_id, clients, params)
 
         -- set current window
         api.nvim_set_current_win(M.secondary_view_window())
-        -- set the cursor position
-        api.nvim_win_set_cursor(
-            M.secondary_view_window(),
-            { find_position_from_params(params), 0 }
-        )
+
+        -- set secondary view cursor
+        M.set_secondary_view_cursor(buffer_id, params)
     end)
 end
 
