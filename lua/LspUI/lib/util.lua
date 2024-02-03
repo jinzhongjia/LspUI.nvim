@@ -219,8 +219,6 @@ M.compare_uri = function(uri_1, uri_2)
         path_1 = string.lower(path_1)
         path_2 = string.lower(path_2)
     end
-    print("1",path_1)
-    print("2",path_2)
     return path_1 == path_2
 end
 
