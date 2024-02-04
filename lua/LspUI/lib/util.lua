@@ -77,7 +77,6 @@ M.debounce = function(func, delay)
         local args = { ... }
         if timer then
             timer:stop()
-            timer:close()
             timer = nil
         end
 
