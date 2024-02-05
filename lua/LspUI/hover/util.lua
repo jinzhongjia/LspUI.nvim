@@ -33,7 +33,7 @@ M.get_hovers = function(clients, buffer_id, callback)
     local params = lsp.util.make_position_params()
     local tmp_number = 0
 
-    --- @type {name:string, err:lsp.ResponseError}[]
+    --- @type string[]
     local invalid_clients = {}
 
     for _, client in pairs(clients) do
@@ -47,78 +47,92 @@ M.get_hovers = function(clients, buffer_id, callback)
 
                 if err ~= nil then
                     if lsp_config.silent ~= true then
-                        table.insert(
-                            invalid_clients,
-                            { name = client.name, err = err }
+                        lib_notify.Warn(
+                            string.format(
+                                "server %s, err code is %d, err code is %s",
+                                client.name,
+                                err.code,
+                                err.message
+                            )
                         )
                     end
                 else
-                    local markdown_lines =
-                        lsp.util.convert_input_to_markdown_lines(
-                            result.contents
-                        )
-                    markdown_lines = lsp.util.trim_empty_lines(markdown_lines)
-
-                    if vim.tbl_isempty(markdown_lines) then
+                    if not (result and result.contents) then
                         if lsp_config.silent ~= true then
                             table.insert(invalid_clients, client.name)
                         end
                     else
-                        local new_buffer = api.nvim_create_buf(false, true)
+                        local markdown_lines =
+                            lsp.util.convert_input_to_markdown_lines(
+                                result.contents
+                            )
+                        markdown_lines =
+                            lsp.util.trim_empty_lines(markdown_lines)
 
-                        markdown_lines = lsp.util.stylize_markdown(
-                            new_buffer,
-                            markdown_lines,
-                            {
-                                max_width = math.floor(
-                                    lib_windows.get_max_width() * 0.6
-                                ),
-                                max_height = math.floor(
-                                    lib_windows.get_max_height() * 0.8
-                                ),
-                            }
-                        )
+                        if vim.tbl_isempty(markdown_lines) then
+                            if lsp_config.silent ~= true then
+                                table.insert(invalid_clients, client.name)
+                            end
+                        else
+                            local new_buffer = api.nvim_create_buf(false, true)
 
-                        local max_width = 0
-
-                        for _, line in pairs(markdown_lines) do
-                            max_width =
-                                math.max(fn.strdisplaywidth(line), max_width)
-                        end
-                        -- note: don't change filetype, this will cause syntx failing
-                        api.nvim_set_option_value("modifiable", false, {
-                            buf = new_buffer,
-                        })
-                        api.nvim_set_option_value("bufhidden", "wipe", {
-                            buf = new_buffer,
-                        })
-
-                        local width = math.min(
-                            max_width,
-                            math.floor(lib_windows.get_max_width() * 0.6)
-                        )
-
-                        local height = lib_windows.compute_height_for_windows(
-                            markdown_lines,
-                            width
-                        )
-
-                        table.insert(
-                            hover_tuples,
-                            --- @type hover_tuple
-                            {
-                                client = client,
-                                buffer_id = new_buffer,
-                                contents = markdown_lines,
-                                width = width,
-                                height = math.min(
-                                    height,
-                                    math.floor(
+                            markdown_lines = lsp.util.stylize_markdown(
+                                new_buffer,
+                                markdown_lines,
+                                {
+                                    max_width = math.floor(
+                                        lib_windows.get_max_width() * 0.6
+                                    ),
+                                    max_height = math.floor(
                                         lib_windows.get_max_height() * 0.8
-                                    )
-                                ),
-                            }
-                        )
+                                    ),
+                                }
+                            )
+
+                            local max_width = 0
+
+                            for _, line in pairs(markdown_lines) do
+                                max_width = math.max(
+                                    fn.strdisplaywidth(line),
+                                    max_width
+                                )
+                            end
+                            -- note: don't change filetype, this will cause syntx failing
+                            api.nvim_set_option_value("modifiable", false, {
+                                buf = new_buffer,
+                            })
+                            api.nvim_set_option_value("bufhidden", "wipe", {
+                                buf = new_buffer,
+                            })
+
+                            local width = math.min(
+                                max_width,
+                                math.floor(lib_windows.get_max_width() * 0.6)
+                            )
+
+                            local height =
+                                lib_windows.compute_height_for_windows(
+                                    markdown_lines,
+                                    width
+                                )
+
+                            table.insert(
+                                hover_tuples,
+                                --- @type hover_tuple
+                                {
+                                    client = client,
+                                    buffer_id = new_buffer,
+                                    contents = markdown_lines,
+                                    width = width,
+                                    height = math.min(
+                                        height,
+                                        math.floor(
+                                            lib_windows.get_max_height() * 0.8
+                                        )
+                                    ),
+                                }
+                            )
+                        end
                     end
                 end
 
@@ -127,23 +141,12 @@ M.get_hovers = function(clients, buffer_id, callback)
                 if tmp_number == #clients then
                     if not vim.tbl_isempty(invalid_clients) then
                         local names = ""
-                        for index, val in pairs(invalid_clients) do
-                            if index == #invalid_clients then
-                                names = names
-                                    .. string.format(
-                                        "server %s, err code is %d, err code is %s",
-                                        val.name,
-                                        val.err.code,
-                                        val.err.message
-                                    )
+                        for index, client_name in pairs(invalid_clients) do
+                            if index == 1 then
+                                names = names .. client_name
                             else
                                 names = names
-                                    .. string.format(
-                                        "server %s, err code is %d, err code is %s, ",
-                                        val.name,
-                                        val.err.code,
-                                        val.err.message
-                                    )
+                                    .. string.format(", %s", client_name)
                             end
                         end
                         lib_notify.Info(
