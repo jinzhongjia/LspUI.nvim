@@ -19,7 +19,10 @@ local autocmd_list = {}
 M.get_clients = function(buffer_id)
     local clients =
         lsp.get_clients({ bufnr = buffer_id, method = code_action_feature })
-    return #clients == 0 and nil or clients
+    if vim.tbl_isempty(clients) then
+        return nil
+    end
+    return clients
 end
 
 -- render sign

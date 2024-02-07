@@ -140,7 +140,10 @@ end
 M.get_clients = function(buffer_id)
     local clients =
         lsp.get_clients({ bufnr = buffer_id, method = signature_feature })
-    return #clients == 0 and nil or clients
+    if vim.tbl_isempty(clients) then
+        return nil
+    end
+    return clients
 end
 
 --- @type function
