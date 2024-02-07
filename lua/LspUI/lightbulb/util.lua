@@ -69,6 +69,11 @@ M.request = function(buffer_id, callback)
     if not api.nvim_buf_is_valid(buffer_id) then
         return
     end
+    -- when switch buffer too quickly, window will be not correct
+    -- maybe this problem is caused by neovim event loop
+    if buffer_id ~= api.nvim_win_get_buf(api.nvim_get_current_win()) then
+        return
+    end
     local params = lsp.util.make_range_params()
     local context = {
         triggerKind = vim.lsp.protocol.CodeActionTriggerKind.Invoked,
