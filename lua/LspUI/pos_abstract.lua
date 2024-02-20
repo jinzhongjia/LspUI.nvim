@@ -31,6 +31,7 @@ local push_tagstack = nil
 --- @alias lsp_position  { buffer_id: integer, fold: boolean, range: lsp_range[]}
 --- @alias Lsp_position_wrap  { [lsp.URI]: lsp_position}
 
+-- more info, see M.method
 --- @type { method: string, name: string, fold: boolean }
 local method = nil
 
@@ -63,7 +64,7 @@ M.method = {
     },
     type_definition = {
         method = lsp.protocol.Methods.textDocument_typeDefinition,
-        name = "type definition",
+        name = "type_definition",
         fold = false,
     },
     declaration = {
@@ -690,6 +691,15 @@ local generate_secondary_view = function()
     api.nvim_set_option_value("modifiable", true, {
         buf = M.secondary_view_buffer(),
     })
+
+    -- set the secondary buffer filetype
+    api.nvim_set_option_value(
+        "filetype",
+        string.format("LspUI-%s", method.name),
+        {
+            buf = M.secondary_view_buffer(),
+        }
+    )
 
     -- hl_num for highlight lnum recording
     local hl_num = 0
