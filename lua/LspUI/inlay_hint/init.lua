@@ -54,7 +54,9 @@ M.init = function()
                         })
                         == "file"
                 then
-                    inlay_hint(buffer_id, true)
+                    inlay_hint(true, {
+                        bufnr = buffer_id,
+                    })
                     table.insert(buffer_list, buffer_id)
                 end
             end
@@ -105,7 +107,9 @@ M.init = function()
                 })
                 if not vim.tbl_isempty(clients) then
                     if is_open then
-                        inlay_hint(buffer_id, true)
+                        inlay_hint(true, {
+                            bufnr = buffer_id,
+                        })
                     end
                     table.insert(buffer_list, buffer_id)
                 end
@@ -124,7 +128,9 @@ M.run = function()
 
         for _, buffer_id in pairs(buffer_list) do
             if api.nvim_buf_is_valid(buffer_id) then
-                inlay_hint(buffer_id, true)
+                inlay_hint(true, {
+                    bufnr = buffer_id,
+                })
             end
         end
     else
@@ -132,7 +138,9 @@ M.run = function()
 
         for _, buffer_id in pairs(buffer_list) do
             if api.nvim_buf_is_valid(buffer_id) then
-                inlay_hint(buffer_id, false)
+                inlay_hint(false, {
+                    bufnr = buffer_id,
+                })
             end
         end
     end
@@ -148,7 +156,9 @@ M.deinit = function()
 
     for _, buffer_id in pairs(buffer_list) do
         if api.nvim_buf_is_valid(buffer_id) then
-            inlay_hint(buffer_id, false)
+            inlay_hint(false, {
+                bufnr = buffer_id,
+            })
         end
     end
 
