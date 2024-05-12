@@ -1,3 +1,4 @@
 lua/.luarc.json
 lua/LspUI/.luarc.json
 .vim
+.direnv
