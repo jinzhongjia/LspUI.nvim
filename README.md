@@ -22,19 +22,19 @@ A plugin which wraps Neovim LSP operations with a nicer UI.
 
 ## 📦 Installation
 
-- Requires neovim `nightly`
+- Requires neovim `0.10`
 
 ### [lazy.nvim](https://github.com/folke/lazy.nvim)
 
 ```lua
 {
-    "jinzhongjia/LspUI.nvim",
-    branch = "main",
-    config = function()
-        require("LspUI").setup({
-	    -- config options go here
-	})
-    end
+  "jinzhongjia/LspUI.nvim",
+  branch = "main",
+  config = function()
+    require("LspUI").setup({
+	  -- config options go here
+	  })
+  end
 }
 ```
 
@@ -42,14 +42,14 @@ A plugin which wraps Neovim LSP operations with a nicer UI.
 
 ```lua
 use {
-        "jinzhongjia/LspUI.nvim",
-	    branch = 'main',
-	    config = function()
-            require("LspUI").setup({
-	        -- config options go here
-	    })
-        end
-    }
+  "jinzhongjia/LspUI.nvim",
+	branch = 'main',
+	config = function()
+    require("LspUI").setup({
+	  -- config options go here
+	  })
+  end
+}
 ```
 
 ## ⚙️ Configuration
