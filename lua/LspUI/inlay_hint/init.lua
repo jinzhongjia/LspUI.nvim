@@ -1,14 +1,11 @@
-local api, lsp, fn = vim.api, vim.lsp, vim.fn
+local api, lsp = vim.api, vim.lsp
 local inlay_hint_feature = lsp.protocol.Methods.textDocument_inlayHint
 
 local command = require("LspUI.command")
 local config = require("LspUI.config")
 local lib_util = require("LspUI.lib.util")
 
--- TODO: this is a patch
--- when 0.10 release, remove it
-local inlay_hint = type(lsp.inlay_hint) == "table" and lsp.inlay_hint.enable
-    or lsp.inlay_hint
+local inlay_hint = lsp.inlay_hint.enable
 
 local M = {}
 
@@ -25,7 +22,6 @@ local is_open
 
 -- init for inlay hint
 M.init = function()
-    -- TODO: this logic can be changed to async
     if not config.options.inlay_hint.enable then
         return
     end
@@ -36,14 +32,16 @@ M.init = function()
 
     is_initialized = true
 
+    -- when init the inlay_hint, open is true
     is_open = true
 
+    -- whether register the inlay_hint command
     if config.options.inlay_hint.command_enable then
         command.register_command(command_key, M.run, {})
     end
 
     vim.schedule(function()
-        -- init for existed buffers
+        -- init for existed buffers (linked file)
         do
             local all_buffers = api.nvim_list_bufs()
             for _, buffer_id in pairs(all_buffers) do
@@ -123,9 +121,8 @@ end
 M.run = function()
     is_open = not is_open
 
+    -- open
     if is_open then
-        -- open
-
         for _, buffer_id in pairs(buffer_list) do
             if api.nvim_buf_is_valid(buffer_id) then
                 inlay_hint(true, {
@@ -133,15 +130,15 @@ M.run = function()
                 })
             end
         end
-    else
-        -- close
+        return
+    end
 
-        for _, buffer_id in pairs(buffer_list) do
-            if api.nvim_buf_is_valid(buffer_id) then
-                inlay_hint(false, {
-                    bufnr = buffer_id,
-                })
-            end
+    -- close
+    for _, buffer_id in pairs(buffer_list) do
+        if api.nvim_buf_is_valid(buffer_id) then
+            inlay_hint(false, {
+                bufnr = buffer_id,
+            })
         end
     end
 end
