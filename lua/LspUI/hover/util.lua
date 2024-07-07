@@ -5,7 +5,7 @@ local lib_notify = require("LspUI.lib.notify")
 local lib_util = require("LspUI.lib.util")
 local lib_windows = require("LspUI.lib.windows")
 
---- @alias hover_tuple { client: lsp.Client, buffer_id: integer, contents: string[], width: integer, height: integer }
+--- @alias hover_tuple { client: vim.lsp.Client, buffer_id: integer, contents: string[], width: integer, height: integer }
 
 local M = {}
 
@@ -16,7 +16,7 @@ local hover_tuple_index
 
 -- get all valid clients for hover
 --- @param buffer_id integer
---- @return lsp.Client[]|nil clients array or nil
+--- @return vim.lsp.Client[]|nil clients array or nil
 M.get_clients = function(buffer_id)
     local clients =
         lsp.get_clients({ bufnr = buffer_id, method = hover_feature })
@@ -27,7 +27,7 @@ M.get_clients = function(buffer_id)
 end
 
 -- get hovers from lsp
---- @param clients lsp.Client[]
+--- @param clients vim.lsp.Client[]
 --- @param buffer_id integer
 --- @param callback function this callback has a param is hover_tuples[]
 M.get_hovers = function(clients, buffer_id, callback)
@@ -70,7 +70,7 @@ M.get_hovers = function(clients, buffer_id, callback)
                                 result.contents
                             )
                         markdown_lines =
-                            lsp.util.trim_empty_lines(markdown_lines)
+                            lib_util.trim_empty_lines(markdown_lines)
 
                         if vim.tbl_isempty(markdown_lines) then
                             if lsp_config.silent ~= true then

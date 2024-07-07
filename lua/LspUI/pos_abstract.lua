@@ -1,6 +1,5 @@
 local api, fn, lsp = vim.api, vim.fn, vim.lsp
 local config = require("LspUI.config")
-local lib_debug = require("LspUI.lib.debug")
 local lib_notify = require("LspUI.lib.notify")
 local lib_util = require("LspUI.lib.util")
 local lib_windows = require("LspUI.lib.windows")
@@ -582,7 +581,7 @@ end
 -- this function only can be called by `definition` or `declaration`
 -- or `type definition` or `reference` or `implementation`
 --- @param buffer_id integer which buffer do method
---- @param clients lsp.Client[]
+--- @param clients vim.lsp.Client[]
 --- @param params table
 --- @param callback fun(datas: Lsp_position_wrap|nil)
 M.lsp_clients_request = function(buffer_id, clients, params, callback)
@@ -947,6 +946,7 @@ end
 local action_jump = function(cmd)
     if current_item.range then
         -- push tagstack must be called before close window
+        ---@diagnostic disable-next-line: need-check-nil
         push_tagstack()
 
         lib_windows.close_window(M.secondary_view_window())
@@ -1208,7 +1208,7 @@ end
 
 --- @param buffer_id integer which buffer do method
 --- @param window_id integer? which window do method
---- @param clients lsp.Client[]
+--- @param clients vim.lsp.Client[]
 --- @param params table
 --- @param new_method { method: string, name: string, fold: boolean }
 M.go = function(new_method, buffer_id, window_id, clients, params)

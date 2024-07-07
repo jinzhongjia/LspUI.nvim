@@ -220,5 +220,25 @@ M.compare_uri = function(uri_1, uri_2)
     end
     return path_1 == path_2
 end
+--- Removes empty lines from the beginning and end.
+---@param lines table list of lines to trim
+---@return table trimmed list of lines
+function M.trim_empty_lines(lines)
+    local start = 1
+    for i = 1, #lines do
+        if lines[i] ~= nil and #lines[i] > 0 then
+            start = i
+            break
+        end
+    end
+    local finish = 1
+    for i = #lines, 1, -1 do
+        if lines[i] ~= nil and #lines[i] > 0 then
+            finish = i
+            break
+        end
+    end
+    return vim.list_extend({}, lines, start, finish)
+end
 
 return M

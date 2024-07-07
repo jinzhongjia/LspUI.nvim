@@ -37,7 +37,7 @@ end
 M.diagnostic_vim_to_lsp = function(diagnostics)
     ---@diagnostic disable-next-line:no-unknown
     return vim.tbl_map(function(diagnostic)
-        ---@cast diagnostic Diagnostic
+        ---@cast diagnostic vim.Diagnostic
         return vim.tbl_extend("keep", {
             -- "keep" the below fields over any duplicate fields
             -- in diagnostic.user_data.lsp

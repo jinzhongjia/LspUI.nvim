@@ -10,13 +10,13 @@ local lib_util = require("LspUI.lib.util")
 local lib_windows = require("LspUI.lib.windows")
 local register = require("LspUI.code_action.register")
 
---- @alias action_tuple { action: lsp.CodeAction|lsp.Command, client: lsp.Client?, buffer_id: integer, callback: function? }
+--- @alias action_tuple { action: lsp.CodeAction|lsp.Command, client: vim.lsp.Client?, buffer_id: integer, callback: function? }
 
 local M = {}
 
 -- get all valid clients for lightbulb
 --- @param buffer_id integer
---- @return lsp.Client[]|nil clients array or nil
+--- @return vim.lsp.Client[]|nil clients array or nil
 M.get_clients = function(buffer_id)
     local clients =
         lsp.get_clients({ bufnr = buffer_id, method = code_action_feature })
@@ -158,7 +158,7 @@ local get_register_actions = function(action_tuples, buffer_id, uri, range)
 end
 
 -- get action tuples
---- @param clients lsp.Client[]
+--- @param clients vim.lsp.Client[]
 --- @param params table
 --- @param buffer_id integer
 --- @param is_visual boolean
@@ -216,10 +216,10 @@ end
 -- execute a lsp command, either via client command function (if available)
 -- or via workspace/executeCommand (if supported by the server)
 -- this func is referred from https://github.com/neovim/neovim/blob/master/runtime/lua/vim/lsp.lua#L1666-L1697C6
---- @param client lsp.Client
+--- @param client vim.lsp.Client
 --- @param command lsp.Command
 --- @param buffer_id integer
---- @param handler? lsp-handler only called if a server command
+--- @param handler ?lsp.Handler only called if a server command
 local exec_command = function(client, command, buffer_id, handler)
     local cmdname = command.command
     local func = client.commands[cmdname] or lsp.commands[cmdname]
@@ -254,7 +254,7 @@ local exec_command = function(client, command, buffer_id, handler)
 end
 
 --- @param action lsp.CodeAction|lsp.Command
---- @param client lsp.Client
+--- @param client vim.lsp.Client
 --- @param buffer_id integer
 local apply_action = function(action, client, buffer_id)
     if action.edit then

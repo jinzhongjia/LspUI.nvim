@@ -1,6 +1,6 @@
 local api, fn = vim.api, vim.fn
 
---- @alias window_wrap { buffer: integer, enter: boolean, config: vim.api.keyset.float_config } wrap for windows
+--- @alias window_wrap { buffer: integer, enter: boolean, config: vim.api.keyset.win_config } wrap for windows
 
 local M = {}
 
