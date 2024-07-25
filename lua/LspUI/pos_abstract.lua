@@ -1211,7 +1211,8 @@ end
 --- @param clients vim.lsp.Client[]
 --- @param params table
 --- @param new_method { method: string, name: string, fold: boolean }
-M.go = function(new_method, buffer_id, window_id, clients, params)
+--- @param callback fun(Lsp_position_wrap?)?
+M.go = function(new_method, buffer_id, window_id, clients, params, callback)
     -- set method
     method = new_method
 
@@ -1222,8 +1223,16 @@ M.go = function(new_method, buffer_id, window_id, clients, params)
         end
 
         if not data then
-            lib_notify.Info(string.format("no valid %s", method.name))
+            if callback then
+                callback()
+            else
+                lib_notify.Info(string.format("no valid %s", method.name))
+            end
             return
+        end
+
+        if callback then
+            callback(data)
         end
 
         M.datas(data)

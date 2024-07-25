@@ -39,7 +39,8 @@ M.deinit = function()
     command.unregister_command(command_key)
 end
 
-M.run = function()
+--- @param callback fun(Lsp_position_wrap?)?
+M.run = function(callback)
     if not config.options.declaration.enable then
         lib_notify.Info("declaration is not enabled!")
         return
@@ -63,13 +64,6 @@ M.run = function()
 
         current_buffer = vim.uri_to_bufnr(current_item.uri)
 
-        clients = util.get_clients(current_buffer)
-
-        if clients == nil then
-            lib_notify.Warn("no client supports declaration!")
-            return
-        end
-
         if current_item.range then
             --- @type lsp.TextDocumentPositionParams
             params = {
@@ -85,15 +79,19 @@ M.run = function()
             return
         end
     else
-        clients = util.get_clients(current_buffer)
-
-        if clients == nil then
-            lib_notify.Warn("no client supports declaration!")
-            return
-        end
-
         window = api.nvim_get_current_win()
         params = util.make_params(window)
+    end
+
+    clients = util.get_clients(current_buffer)
+
+    if clients == nil then
+        if callback then
+            callback()
+        else
+            lib_notify.Warn("no client supports declaration!")
+        end
+        return
     end
 
     pos_abstract.go(
@@ -101,7 +99,8 @@ M.run = function()
         current_buffer,
         window,
         clients,
-        params
+        params,
+        callback
     )
 end
 
