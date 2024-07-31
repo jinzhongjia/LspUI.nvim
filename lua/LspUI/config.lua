@@ -107,6 +107,7 @@ local default_pos_keybind_config = {
         jump_split = "sh",
         jump_vsplit = "sv",
         jump_tab = "t",
+        toggle_fold = "<Cr>",
         quit = "q",
         hide_main = "<leader>h",
         fold_all = "w",

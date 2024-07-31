@@ -325,6 +325,20 @@ local secondary_view_keybind = function()
     api.nvim_buf_set_keymap(
         M.secondary_view_buffer(),
         "n",
+        config.options.pos_keybind.secondary.toggle_fold,
+        "",
+        {
+            nowait = true,
+            noremap = true,
+            callback = function()
+                M.action.toggle_fold()
+            end,
+        }
+    )
+
+    api.nvim_buf_set_keymap(
+        M.secondary_view_buffer(),
+        "n",
         config.options.pos_keybind.secondary.enter,
         "",
         {
@@ -998,6 +1012,11 @@ local action_jump = function(cmd)
     end
 end
 
+local action_toggle_fold = function()
+    datas[current_item.uri].fold = not M.datas()[current_item.uri].fold
+    M.secondary_view_render()
+end
+
 local action_enter_main = function()
     if not M.main_view_hide() then
         api.nvim_set_current_win(M.main_view_window())
@@ -1101,6 +1120,9 @@ M.action = {
     end,
     jump_tab = function()
         action_jump("tabe")
+    end,
+    toggle_fold = function()
+        action_toggle_fold()
     end,
     enter_main = function()
         action_enter_main()
