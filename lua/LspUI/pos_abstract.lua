@@ -339,6 +339,34 @@ local secondary_view_keybind = function()
     api.nvim_buf_set_keymap(
         M.secondary_view_buffer(),
         "n",
+        config.options.pos_keybind.secondary.next_file_entry,
+        "",
+        {
+            nowait = true,
+            noremap = true,
+            callback = function()
+                M.action.next_file_entry()
+            end,
+        }
+    )
+
+    api.nvim_buf_set_keymap(
+        M.secondary_view_buffer(),
+        "n",
+        config.options.pos_keybind.secondary.prev_file_entry,
+        "",
+        {
+            nowait = true,
+            noremap = true,
+            callback = function()
+                M.action.prev_file_entry()
+            end,
+        }
+    )
+
+    api.nvim_buf_set_keymap(
+        M.secondary_view_buffer(),
+        "n",
         config.options.pos_keybind.secondary.enter,
         "",
         {
@@ -1017,6 +1045,64 @@ local action_toggle_fold = function()
     M.secondary_view_render()
 end
 
+-- next file entry
+local action_next_file_entry = function()
+    -- when current_item not exist, just return
+    if not current_item.uri then
+        return
+    end
+    local current_uri = current_item.uri
+    local line = 1
+    local has_seen_current = false
+    for uri, val in pairs(M.datas()) do
+        if has_seen_current then
+            api.nvim_win_set_cursor(M.secondary_view_window(), { line, 0 })
+            break
+        end
+        line = line + 1
+        if not val.fold then
+            line = line + #val.range
+        end
+
+        if uri == current_uri then
+            has_seen_current = true
+        end
+    end
+end
+
+-- prev file entry
+local action_prev_file_entry = function()
+    -- when current_item not exist, just return
+    if not current_item.uri then
+        return
+    end
+    local current_uri = current_item.uri
+    local line = 1
+    local prev_range_nums = 0
+    for uri, val in pairs(M.datas()) do
+        if uri == current_uri then
+            line = line - prev_range_nums
+            if line > 1 then
+                line = line - 1
+            end
+            api.nvim_win_set_cursor(M.secondary_view_window(), { line, 0 })
+            break
+        end
+
+        line = line + 1
+        if not val.fold then
+            prev_range_nums = #val.range
+            line = line + prev_range_nums
+        else
+            prev_range_nums = 0
+        end
+    end
+
+    print(string.format("prev file is %d", line))
+
+    -- api.nvim_win_set_cursor(M.secondary_view_window(), { line, 0 })
+end
+
 local action_enter_main = function()
     if not M.main_view_hide() then
         api.nvim_set_current_win(M.main_view_window())
@@ -1123,6 +1209,12 @@ M.action = {
     end,
     toggle_fold = function()
         action_toggle_fold()
+    end,
+    next_file_entry = function()
+        action_next_file_entry()
+    end,
+    prev_file_entry = function()
+        action_prev_file_entry()
     end,
     enter_main = function()
         action_enter_main()
