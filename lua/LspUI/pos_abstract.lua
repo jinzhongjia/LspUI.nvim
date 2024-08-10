@@ -339,13 +339,13 @@ local secondary_view_keybind = function()
     api.nvim_buf_set_keymap(
         M.secondary_view_buffer(),
         "n",
-        config.options.pos_keybind.secondary.next_file_entry,
+        config.options.pos_keybind.secondary.next_entry,
         "",
         {
             nowait = true,
             noremap = true,
             callback = function()
-                M.action.next_file_entry()
+                M.action.next_entry()
             end,
         }
     )
@@ -353,13 +353,13 @@ local secondary_view_keybind = function()
     api.nvim_buf_set_keymap(
         M.secondary_view_buffer(),
         "n",
-        config.options.pos_keybind.secondary.prev_file_entry,
+        config.options.pos_keybind.secondary.prev_entry,
         "",
         {
             nowait = true,
             noremap = true,
             callback = function()
-                M.action.prev_file_entry()
+                M.action.prev_entry()
             end,
         }
     )
@@ -1046,7 +1046,7 @@ local action_toggle_fold = function()
 end
 
 -- next file entry
-local action_next_file_entry = function()
+local action_next_entry = function()
     -- when current_item not exist, just return
     if not current_item.uri then
         return
@@ -1071,7 +1071,7 @@ local action_next_file_entry = function()
 end
 
 -- prev file entry
-local action_prev_file_entry = function()
+local action_prev_entry = function()
     -- when current_item not exist, just return
     if not current_item.uri then
         return
@@ -1210,11 +1210,11 @@ M.action = {
     toggle_fold = function()
         action_toggle_fold()
     end,
-    next_file_entry = function()
-        action_next_file_entry()
+    next_entry = function()
+        action_next_entry()
     end,
-    prev_file_entry = function()
-        action_prev_file_entry()
+    prev_entry = function()
+        action_prev_entry()
     end,
     enter_main = function()
         action_enter_main()
