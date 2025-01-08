@@ -29,23 +29,21 @@ local build_signature_info = function(help, client_name)
     end
 
     -- TODO: this is some debug info, maybe remove
-    -- write_message_to_file(
+    -- lib_util.write_message_to_file(
     --     vim.inspect(help),
     --     "C:\\Users\\jin\\Downloads\\log.txt"
     -- )
 
     local active_signature, active_parameter
     -- this logic is in order to handle certain lsp specification implementations that are not standard
-    if client_name == "basedpyright" then
-        active_signature = help.activeSignature and help.activeSignature + 1
-            or 1
-        active_parameter = help.activeParameter and help.activeParameter or 1
-    else
-        active_signature = help.activeSignature and help.activeSignature + 1
-            or 1
-        active_parameter = help.activeParameter and help.activeParameter + 1
-            or 1
-    end
+    -- if client_name == "basedpyright" then
+    --     active_signature = help.activeSignature and help.activeSignature + 1
+    --         or 1
+    --     active_parameter = help.activeParameter and help.activeParameter or 1
+    -- else
+    active_signature = help.activeSignature and help.activeSignature + 1 or 1
+    active_parameter = help.activeParameter and help.activeParameter + 1 or 1
+    -- end
     --- @type signature_info
     ---@diagnostic disable-next-line: missing-fields
     local res = {}
@@ -53,6 +51,8 @@ local build_signature_info = function(help, client_name)
     local signature = help.signatures[active_signature]
     if signature.activeParameter then
         active_parameter = signature.activeParameter + 1
+    elseif active_parameter > #signature - 1 then
+        active_parameter = 1
     end
 
     res.label = signature.label
@@ -121,6 +121,12 @@ M.request = function(buffer_id, callback)
     end
 
     local params = lsp.util.make_position_params()
+    -- TODO: this is debug info should be removed
+    -- lib_util.write_message_to_file(
+    --     vim.inspect(params),
+    --     "C:\\Users\\jin\\Downloads\\log1.txt"
+    -- )
+
     -- NOTE: we just use one client to get the lsp signature
     local client = clients[1]
     -- for _, client in pairs(clients or {}) do
