@@ -28,10 +28,17 @@ local build_signature_info = function(help, client_name)
         return nil
     end
 
+    -- TODO: this is some debug info, maybe remove
+    -- write_message_to_file(
+    --     vim.inspect(help),
+    --     "C:\\Users\\jin\\Downloads\\log.txt"
+    -- )
+
     local active_signature, active_parameter
     -- this logic is in order to handle certain lsp specification implementations that are not standard
     if client_name == "basedpyright" then
-        active_signature = help.activeSignature and help.activeSignature or 1
+        active_signature = help.activeSignature and help.activeSignature + 1
+            or 1
         active_parameter = help.activeParameter and help.activeParameter or 1
     else
         active_signature = help.activeSignature and help.activeSignature + 1
