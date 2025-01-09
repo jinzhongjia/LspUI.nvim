@@ -241,4 +241,20 @@ function M.trim_empty_lines(lines)
     return vim.list_extend({}, lines, start, finish)
 end
 
+-- 定义一个函数，将消息写入文件
+--- @param message any
+---@param file_path string
+function M.write_message_to_file(message, file_path)
+    local fd = uv.fs_open(file_path, "a", 438) -- 438 是文件权限，等同于 0666
+    if not fd then
+        print("无法打开文件: " .. file_path)
+        return
+    end
+
+    local stat = uv.fs_fstat(fd)
+    ---@diagnostic disable-next-line: need-check-nil
+    uv.fs_write(fd, message .. "\n", stat.size)
+    uv.fs_close(fd)
+end
+
 return M
