@@ -679,7 +679,7 @@ local function csharp_ls_handle(_client, uri)
             end
         end
 
-        local bufnr = vim.api.nvim_create_buf(true, true)
+        local bufnr = vim.api.nvim_create_buf(false, true)
         vim.api.nvim_buf_set_name(bufnr, name)
         return bufnr
     end
@@ -689,13 +689,12 @@ local function csharp_ls_handle(_client, uri)
     vim.api.nvim_set_option_value("modifiable", true, { buf = bufnr })
     vim.api.nvim_set_option_value("readonly", false, { buf = bufnr })
     vim.api.nvim_buf_set_lines(bufnr, 0, -1, true, source_lines)
-    vim.api.nvim_set_option_value("modifiable", false, { buf = bufnr })
-    vim.api.nvim_set_option_value("readonly", true, { buf = bufnr })
     vim.api.nvim_set_option_value("filetype", "cs", { buf = bufnr })
+    vim.api.nvim_set_option_value("readonly", true, { buf = bufnr })
     vim.api.nvim_set_option_value("modified", false, { buf = bufnr })
 
     -- attach lsp client ??
-    vim.lsp.buf_attach_client(bufnr, _client.id)
+    -- vim.lsp.buf_attach_client(bufnr, _client.id)
     return vim.uri_from_bufnr(bufnr)
 end
 
