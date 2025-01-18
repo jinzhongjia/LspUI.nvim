@@ -31,7 +31,7 @@ local push_tagstack = nil
 --- @alias Lsp_position_wrap  { [lsp.URI]: lsp_position}
 
 -- more info, see M.method
---- @type { method: string, name: string, fold: boolean }
+--- @type { method: string, name: "definition"|"type_definition"|"declaration"|"reference"|"implementation", fold: boolean }
 local method = nil
 
 --- @type Lsp_position_wrap
@@ -619,6 +619,85 @@ M.datas = function(param)
     return datas
 end
 
+-- this is for handle csharp_ls decompile
+-- https://github.com/razzmatazz/csharp-language-server#decompile-for-your-editor--with-the-example-of-neovim
+-- this code is from https://github.com/Decodetalkers/csharpls-extended-lsp.nvim, thanks
+--- @param uri lsp.URI
+--- @param _client vim.lsp.Client
+--- @return lsp.URI
+local function csharp_ls_handle(_client, uri)
+    if _client.name ~= "csharp_ls" then
+        return uri
+    end
+    local csharp_host = "csharp:/metadata"
+
+    -- check whether need to decompile
+    if string.sub(uri, 1, string.len(csharp_host)) ~= csharp_host then
+        return uri
+    end
+
+    local _params = {
+        timeout = 5000,
+        textDocument = {
+            uri = uri,
+        },
+    }
+    local _res, _ = _client.request_sync("csharp/metadata", _params, 10000, 0)
+
+    ---@diagnostic disable-next-line: need-check-nil
+    local _result = _res.result
+
+    ---@diagnostic disable-next-line: need-check-nil, undefined-field
+    local normalized = string.gsub(_result.source, "\r\n", "\n")
+    local source_lines = vim.split(normalized, "\n")
+
+    ---@diagnostic disable-next-line: need-check-nil, undefined-field
+    local normalized_source_name = string.gsub(_result.assemblyName, "\\", "/")
+    local file_name = "/" .. normalized_source_name
+
+    local get_or_create_buf = function(name)
+        local buffers = vim.api.nvim_list_bufs()
+        for _, buf in pairs(buffers) do
+            local bufname = vim.api.nvim_buf_get_name(buf)
+
+            -- if we are looking for $metadata$ buffer, search for entire string anywhere
+            -- in buffer name. On Windows nvim_buf_set_name might change the buffer name and include some stuff before.
+            if string.find(name, "^/%$metadata%$/.*$") then
+                local normalized_bufname = string.gsub(bufname, "\\", "/")
+                if string.find(normalized_bufname, name) then
+                    return buf
+                end
+            else
+                if bufname == name then
+                    return buf
+                    -- Match a bufname like C:\System.Console
+                elseif
+                    string.find(string.gsub(bufname, "%u:\\", "/"), name)
+                then
+                    return buf
+                end
+            end
+        end
+
+        local bufnr = vim.api.nvim_create_buf(false, true)
+        vim.api.nvim_buf_set_name(bufnr, name)
+        return bufnr
+    end
+    -- this will be /$metadata$/...
+    local bufnr = get_or_create_buf(file_name)
+    -- TODO: check if bufnr == 0 -> error
+    vim.api.nvim_set_option_value("modifiable", true, { buf = bufnr })
+    vim.api.nvim_set_option_value("readonly", false, { buf = bufnr })
+    vim.api.nvim_buf_set_lines(bufnr, 0, -1, true, source_lines)
+    vim.api.nvim_set_option_value("filetype", "cs", { buf = bufnr })
+    vim.api.nvim_set_option_value("readonly", true, { buf = bufnr })
+    vim.api.nvim_set_option_value("modified", false, { buf = bufnr })
+
+    -- attach lsp client ??
+    -- vim.lsp.buf_attach_client(bufnr, _client.id)
+    return vim.uri_from_bufnr(bufnr)
+end
+
 -- abstruct lsp request, this will request all clients which are passed
 -- this function only can be called by `definition` or `declaration`
 -- or `type definition` or `reference` or `implementation`
@@ -652,55 +731,36 @@ M.lsp_clients_request = function(buffer_id, clients, params, callback)
                     )
                 )
             else
+                local function _handle_result(_result)
+                    -- response is a position
+                    local uri = _result.uri or _result.targetUri
+                    local range = _result.range or _result.targetRange
+
+                    if method.name == "definition" then
+                        uri = csharp_ls_handle(client, uri)
+                    end
+
+                    local uri_buffer = vim.uri_to_bufnr(uri)
+                    if data[uri] == nil then
+                        data[uri] = {
+                            buffer_id = uri_buffer,
+                            fold = method.fold
+                                and not lib_util.compare_uri(origin_uri, uri),
+                            range = {},
+                        }
+                    end
+
+                    table.insert(data[uri].range, {
+                        start = range.start,
+                        finish = range["end"],
+                    })
+                end
                 if result and not vim.tbl_isempty(result) then
                     if result.uri then
-                        -- response is a position
-                        local uri = result.uri
-                        local range = result.range
-                        local uri_buffer = vim.uri_to_bufnr(uri)
-                        if data[uri] == nil then
-                            data[uri] = {
-                                buffer_id = uri_buffer,
-                                fold = method.fold
-                                        and (origin_uri ~= uri and true or false)
-                                    or false,
-                                range = {},
-                            }
-                        end
-
-                        table.insert(data[uri].range, {
-                            start = range.start,
-                            finish = range["end"],
-                        })
+                        _handle_result(result)
                     else
                         for _, response in ipairs(result) do
-                            local uri = response.uri or response.targetUri
-                            local range = response.range or response.targetRange
-                            local uri_buffer = vim.uri_to_bufnr(uri)
-                            if data[uri] == nil then
-                                data[uri] = {
-                                    buffer_id = uri_buffer,
-                                    -- fold = method.fold
-                                    --         and (origin_uri ~= uri and true or false)
-                                    --     or false,
-                                    fold = method.fold
-                                        and not lib_util.compare_uri(
-                                            origin_uri,
-                                            uri
-                                        ),
-                                    range = {},
-                                }
-                            end
-                            -- lib_debug.debug(
-                            --     "origin",
-                            --     vim.uri_to_fname(origin_uri),
-                            --     "new",
-                            --     vim.uri_to_fname(uri)
-                            -- )
-                            table.insert(data[uri].range, {
-                                start = range.start,
-                                finish = range["end"],
-                            })
+                            _handle_result(response)
                         end
                     end
                 end
@@ -887,9 +947,16 @@ M.main_view_render = function()
     do
         local fname = vim.uri_to_fname(current_item.uri)
         local filepath = vim.fn.fnamemodify(fname, ":p:~:h")
-        api.nvim_set_option_value("winbar", string.format(" %s", filepath), {
-            win = M.main_view_window(),
-        })
+        local stat = vim.uv.fs_stat(filepath)
+        if stat and stat.type == "file" then
+            api.nvim_set_option_value(
+                "winbar",
+                string.format(" %s", filepath),
+                {
+                    win = M.main_view_window(),
+                }
+            )
+        end
     end
 
     M.main_view_hide(false)
@@ -1310,9 +1377,8 @@ M.get_current_method = function()
     return method
 end
 
---- @param buffer_id integer
 --- @param params table
-M.set_secondary_view_cursor = function(buffer_id, params)
+M.set_secondary_view_cursor = function(params)
     -- set the cursor position
     api.nvim_win_set_cursor(
         M.secondary_view_window(),
@@ -1361,7 +1427,7 @@ M.go = function(new_method, buffer_id, window_id, clients, params, callback)
         api.nvim_set_current_win(M.secondary_view_window())
 
         -- set secondary view cursor
-        M.set_secondary_view_cursor(buffer_id, params)
+        M.set_secondary_view_cursor(params)
     end)
 end
 
