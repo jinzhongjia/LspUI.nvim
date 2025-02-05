@@ -28,8 +28,10 @@ local build_signature_info = function(help, client_name)
         return nil
     end
 
-    local active_signature = help.activeSignature and help.activeSignature + 1 or 1
-    local active_parameter = help.activeParameter and help.activeParameter + 1 or 1
+    local active_signature = help.activeSignature and help.activeSignature + 1
+        or 1
+    local active_parameter = help.activeParameter and help.activeParameter + 1
+        or 1
 
     --- @type signature_info
     ---@diagnostic disable-next-line: missing-fields
