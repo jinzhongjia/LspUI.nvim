@@ -45,7 +45,7 @@ end
 --- @param buffer_id integer
 M.delete_buffer = function(buffer_id)
     api.nvim_buf_delete(buffer_id, {
-        force = true,
+        unload = true,
     })
 end
 
