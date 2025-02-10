@@ -944,13 +944,13 @@ M.main_view_render = function()
         )
     end
 
-    do
-        local fname = vim.uri_to_fname(current_item.uri)
-        local filepath = vim.fs.normalize(vim.fn.fnamemodify(fname, ":p:~:h"))
-        api.nvim_set_option_value("winbar", string.format(" %s", filepath), {
-            win = M.main_view_window(),
-        })
-    end
+    -- do
+    --     local fname = vim.uri_to_fname(current_item.uri)
+    --     local filepath = vim.fs.normalize(vim.fn.fnamemodify(fname, ":p:~:h"))
+    --     api.nvim_set_option_value("winbar", string.format(" %s", filepath), {
+    --         win = M.main_view_window(),
+    --     })
+    -- end
 
     M.main_view_hide(false)
 
