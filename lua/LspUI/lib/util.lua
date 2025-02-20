@@ -58,20 +58,21 @@ end
 
 -- execute once
 --- @param callback function
-M.exec_once = function(callback)
+function M.exec_once(callback)
     local is_exec = false
     return function(...)
-        if not is_exec then
-            callback(...)
-            is_exec = true
+        if is_exec then
+            return
         end
+        callback(...)
+        is_exec = true
     end
 end
 
 -- debounce
 --- @param func function
 ---@param delay integer
-M.debounce = function(func, delay)
+function M.debounce(func, delay)
     local timer = nil
     return function(...)
         local args = { ... }
