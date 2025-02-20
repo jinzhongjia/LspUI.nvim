@@ -275,7 +275,9 @@ M.autocmd = function()
     api.nvim_create_autocmd({ "CursorMovedI", "InsertEnter" }, {
         group = signature_group,
         callback = vim.schedule_wrap(func),
-        desc = lib_util.command_desc("Signature update when CursorHoldI"),
+        desc = lib_util.command_desc(
+            "Signature update when CursorHoldI or InsertEnter"
+        ),
     })
 
     -- when buffer is deleted, disable buffer siganture

@@ -10,12 +10,8 @@ local M = {}
 local is_initialized = false
 
 -- init for lightbulb
-M.init = function()
-    if not config.options.lightbulb.enable then
-        return
-    end
-
-    if is_initialized then
+function M.init()
+    if (not config.options.lightbulb.enable) or is_initialized then
         return
     end
 
@@ -30,12 +26,12 @@ M.init = function()
 end
 
 -- run for lightbulb
-M.run = function()
+function M.run()
     lib_notify.Info("lightbulb has no run func")
 end
 
 -- deinit for lightbulb
-M.deinit = function()
+function M.deinit()
     if not is_initialized then
         return
     end
