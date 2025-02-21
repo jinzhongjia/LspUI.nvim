@@ -9,8 +9,9 @@ local inlay_hint = lsp.inlay_hint.enable
 
 local M = {}
 
+--- @type integer[]
 local buffer_list = {}
-local autocmd_id = -1
+local autocmd_group = "Lspui_inlay_hint"
 
 -- whether this module has initialized
 local is_initialized = false
@@ -21,7 +22,7 @@ local command_key = "inlay_hint"
 local is_open
 
 -- init for inlay hint
-M.init = function()
+function M.init()
     if not config.options.inlay_hint.enable then
         return
     end
@@ -40,85 +41,81 @@ M.init = function()
         command.register_command(command_key, M.run, {})
     end
 
-    vim.schedule(function()
+    local function _tmp()
         -- init for existed buffers (linked file)
-        do
-            local all_buffers = api.nvim_list_bufs()
-            for _, buffer_id in pairs(all_buffers) do
-                if
-                    lib_util.buffer_is_listed(buffer_id)
-                    and api.nvim_get_option_value("buftype", {
-                            buf = buffer_id,
-                        })
-                        == "file"
-                then
-                    inlay_hint(true, {
-                        bufnr = buffer_id,
-                    })
-                    table.insert(buffer_list, buffer_id)
-                end
+        local all_buffers = api.nvim_list_bufs()
+        for _, buffer_id in pairs(all_buffers) do
+            -- stylua: ignore
+            local buftype = api.nvim_get_option_value("buftype", { buf = buffer_id })
+
+            if lib_util.buffer_is_listed(buffer_id) and buftype == "file" then
+                inlay_hint(true, {
+                    bufnr = buffer_id,
+                })
+                table.insert(buffer_list, buffer_id)
             end
         end
 
         local inlay_hint_group =
-            api.nvim_create_augroup("Lspui_inlay_hint", { clear = true })
+            api.nvim_create_augroup(autocmd_group, { clear = true })
 
-        autocmd_id = api.nvim_create_autocmd("LspAttach", {
-            group = inlay_hint_group,
-            callback = function(arg)
-                --- @type integer
-                local buffer_id = arg.buf
-                ---@type string
-                local filetype = api.nvim_get_option_value("filetype", {
-                    buf = buffer_id,
-                })
+        local function _cb(arg)
+            --- @type integer
+            local buffer_id = arg.buf
+            ---@type string
+            local filetype = api.nvim_get_option_value("filetype", {
+                buf = buffer_id,
+            })
 
-                if
-                    not vim.tbl_isempty(
-                        config.options.inlay_hint.filter.whitelist
-                    )
-                    and not vim.tbl_contains(
-                        config.options.inlay_hint.filter.whitelist,
-                        filetype
-                    )
-                then
-                    -- when whitelist is not empty, and filetype not exists in whitelist
+            if
+                not vim.tbl_isempty(config.options.inlay_hint.filter.whitelist)
+                and not vim.tbl_contains(
+                    config.options.inlay_hint.filter.whitelist,
+                    filetype
+                )
+            then
+                -- when whitelist is not empty, and filetype not exists in whitelist
+                return
+            end
+
+            if
+                not vim.tbl_isempty(config.options.inlay_hint.filter.blacklist)
+                and vim.tbl_contains(
+                    config.options.inlay_hint.filter.blacklist,
+                    filetype
+                )
+            then
+                -- when blacklist is not empty, and filetype exists in blacklist
+                return
+            end
+
+            local clients = lsp.get_clients({
+                bufnr = buffer_id,
+                method = inlay_hint_feature,
+            })
+            if not vim.tbl_isempty(clients) then
+                table.insert(buffer_list, buffer_id)
+                if not is_open then
                     return
                 end
-
-                if
-                    not vim.tbl_isempty(
-                        config.options.inlay_hint.filter.blacklist
-                    )
-                    and vim.tbl_contains(
-                        config.options.inlay_hint.filter.blacklist,
-                        filetype
-                    )
-                then
-                    -- when blacklist is not empty, and filetype exists in blacklist
-                    return
-                end
-
-                local clients = lsp.get_clients({
+                inlay_hint(true, {
                     bufnr = buffer_id,
-                    method = inlay_hint_feature,
                 })
-                if not vim.tbl_isempty(clients) then
-                    if is_open then
-                        inlay_hint(true, {
-                            bufnr = buffer_id,
-                        })
-                    end
-                    table.insert(buffer_list, buffer_id)
-                end
-            end,
+            end
+        end
+
+        api.nvim_create_autocmd("LspAttach", {
+            group = inlay_hint_group,
+            callback = _cb,
             desc = lib_util.command_desc("inlay hint"),
         })
-    end)
+    end
+
+    vim.schedule(_tmp)
 end
 
 -- run for inlay_hint
-M.run = function()
+function M.run()
     is_open = not is_open
 
     -- open
@@ -144,7 +141,7 @@ M.run = function()
 end
 
 -- deinit for inlay_hint
-M.deinit = function()
+function M.deinit()
     if not is_initialized then
         return
     end
@@ -161,7 +158,7 @@ M.deinit = function()
 
     buffer_list = {}
 
-    pcall(api.nvim_del_autocmd, autocmd_id)
+    api.nvim_del_augroup_by_name(autocmd_group)
 
     command.unregister_command(command_key)
 end
