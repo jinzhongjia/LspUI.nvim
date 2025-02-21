@@ -1,4 +1,4 @@
-local api, fn = vim.api, vim.fn
+local api = vim.api
 local config = require("LspUI.config")
 local lib_notify = require("LspUI.lib.notify")
 local util = require("LspUI.signature.util")
@@ -7,7 +7,7 @@ local M = {}
 
 local is_initialized = false
 
-M.init = function()
+function M.init()
     if not config.options.signature.enable then
         return
     end
@@ -34,7 +34,7 @@ M.init = function()
     util.autocmd()
 end
 
-M.deinit = function()
+function M.deinit()
     if not is_initialized then
         lib_notify.Info("signature has been deinit")
     end
@@ -45,7 +45,7 @@ M.deinit = function()
     util.deautocmd()
 end
 
-M.run = function()
+function M.run()
     lib_notify.Info("signature has no run func")
 end
 
