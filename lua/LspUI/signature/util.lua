@@ -18,9 +18,9 @@ local is_there_virtual_text = false
 --- @field doc string?
 
 --- @param help lsp.SignatureHelp|nil
---- @param client_name string|nil
+--- @param _ string|nil client name
 --- @return signature_info? res len will not be zero
-local build_signature_info = function(help, client_name)
+local function build_signature_info(help, _)
     if not help then
         return nil
     end
@@ -98,7 +98,7 @@ local backup = {}
 
 --- @param buffer_id number buffer's id
 --- @param callback fun(result: lsp.SignatureHelp|nil,client_name:string|nil)  callback function
-M.request = function(buffer_id, callback)
+function M.request(buffer_id, callback)
     -- this buffer id maybe invalid
     if not api.nvim_buf_is_valid(buffer_id) then
         return
@@ -140,7 +140,7 @@ end
 -- get all valid clients for lightbulb
 --- @param buffer_id integer
 --- @return vim.lsp.Client[]|nil clients array or nil
-M.get_clients = function(buffer_id)
+function M.get_clients(buffer_id)
     local clients =
         lsp.get_clients({ bufnr = buffer_id, method = signature_feature })
     if vim.tbl_isempty(clients) then
@@ -152,7 +152,7 @@ end
 --- @type function
 local func
 
-local signature_handle = function()
+local function signature_handle()
     local current_buffer = api.nvim_get_current_buf()
     -- when current buffer can not use signature
     if not buffer_list[current_buffer] then
@@ -183,7 +183,7 @@ local signature_handle = function()
     end)
 end
 
-local build_func = function()
+local function build_func()
     if not config.options.signature.debounce then
         func = signature_handle
         return
@@ -200,9 +200,9 @@ end
 
 --- @param data lsp.SignatureHelp|nil
 --- @param buffer_id integer
---- @param windows_id integer
+--- @param _ integer window id
 --- @param client_name string|nil
-M.render = function(data, buffer_id, windows_id, client_name)
+function M.render(data, buffer_id, _, client_name)
     local info = build_signature_info(data, client_name)
     if not info then
         return
@@ -237,7 +237,7 @@ end
 
 -- clean signature virtual text
 --- @param buffer_id integer
-M.clean_render = function(buffer_id)
+function M.clean_render(buffer_id)
     if not is_there_virtual_text then
         return
     end
@@ -247,7 +247,7 @@ M.clean_render = function(buffer_id)
 end
 
 -- this is autocmd init for signature
-M.autocmd = function()
+function M.autocmd()
     signature_group =
         api.nvim_create_augroup("Lspui_signature", { clear = true })
 
