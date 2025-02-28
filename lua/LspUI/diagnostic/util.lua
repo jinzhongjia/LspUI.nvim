@@ -30,7 +30,7 @@ end
 -- convert severity to highlight
 --- @param severity integer
 --- @return string
-local function diagnostic_severity_to_hightlight(severity)
+local function diagnostic_severity_to_highlight(severity)
     local arr = {
         "DiagnosticError",
         "DiagnosticWarn",
@@ -119,7 +119,7 @@ function M.render(action)
             new_buffer,
             -1,
             --- @type string
-            diagnostic_severity_to_hightlight(highlight_group.severity),
+            diagnostic_severity_to_highlight(highlight_group.severity),
             highlight_group.lnum,
             highlight_group.col,
             highlight_group.end_col
@@ -163,14 +163,15 @@ function M.render(action)
 
     -- Forced delay of autocmd mounting
     vim.schedule(function()
-        M.autocmd(current_buffer, new_buffer)
+        M.autocmd(current_buffer, new_buffer, diagnostic_window)
     end)
 end
 
 -- autocmd for diagnostic
 --- @param buffer_id integer original buffer id, not float window's buffer id
 --- @param new_buffer integer new buffer id
-function M.autocmd(buffer_id, new_buffer)
+--- @param window_id integer new window id
+function M.autocmd(buffer_id, new_buffer, window_id)
     local group = api.nvim_create_augroup(autocmd_group, { clear = true })
     api.nvim_create_autocmd("BufEnter", {
         group = group,
@@ -179,7 +180,7 @@ function M.autocmd(buffer_id, new_buffer)
             if current_buffer == new_buffer then
                 return
             end
-            lib_windows.close_window(diagnostic_window)
+            lib_windows.close_window(window_id)
             api.nvim_del_augroup_by_name(autocmd_group)
         end,
     })
@@ -189,7 +190,7 @@ function M.autocmd(buffer_id, new_buffer)
             buffer = buffer_id,
             group = autocmd_group,
             callback = function()
-                lib_windows.close_window(diagnostic_window)
+                lib_windows.close_window(window_id)
                 api.nvim_del_augroup_by_name(autocmd_group)
             end,
             desc = lib_util.command_desc("diagnostic, auto close windows"),
