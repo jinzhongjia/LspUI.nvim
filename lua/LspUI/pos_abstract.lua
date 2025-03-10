@@ -12,6 +12,8 @@ local lib_windows = require("LspUI.lib.windows")
 
 local M = {}
 
+local winbar_map = {}
+
 -- create a namespace
 local main_namespace = api.nvim_create_namespace("LspUI_main")
 
@@ -235,10 +237,10 @@ end
 
 local secondary_cmd = {}
 
-local function main_view_autocmd(previous_winbar)
+local function main_view_autocmd()
     local main_group =
         api.nvim_create_augroup("Lspui_main_view", { clear = true })
-
+    local main_win = M.main_view_window()
     api.nvim_create_autocmd("WinClosed", {
         group = main_group,
         pattern = {
@@ -250,9 +252,11 @@ local function main_view_autocmd(previous_winbar)
             -- from being executed when the main view is hidden.
             if not M.main_view_hide() then
                 main_clear_hl()
-                api.nvim_set_option_value("winbar", previous_winbar, {
-                    win = M.main_view_window(),
-                })
+                api.nvim_set_option_value(
+                    "winbar",
+                    winbar_map[main_win] or "",
+                    { win = main_win }
+                )
                 lib_windows.close_window(M.secondary_view_window())
                 pcall(api.nvim_del_autocmd, secondary_cmd.CursorMoved)
                 for buffer_id, value in pairs(buffer_keymap_history) do
@@ -946,9 +950,9 @@ M.main_view_render = function()
             }
         )
     end
-
-    local previous_winbar = api.nvim_get_option_value("winbar", {
-        win = M.main_view_window(),
+    local window_id = M.main_view_window()
+    winbar_map[window_id] = api.nvim_get_option_value("winbar", {
+        win = window_id,
     })
     local fname = vim.uri_to_fname(current_item.uri)
     local filepath = vim.fs.normalize(vim.fn.fnamemodify(fname, ":p:~:h"))
@@ -958,7 +962,7 @@ M.main_view_render = function()
 
     M.main_view_hide(false)
 
-    main_view_autocmd(previous_winbar)
+    main_view_autocmd()
 end
 
 -- render secondary view
@@ -1054,6 +1058,13 @@ local action_jump = function(cmd)
         -- push tagstack must be called before close window
         ---@diagnostic disable-next-line: need-check-nil
         push_tagstack()
+
+        local main_win = M.main_view_window()
+        api.nvim_set_option_value(
+            "winbar",
+            winbar_map[main_win] or "",
+            { win = main_win }
+        )
 
         lib_windows.close_window(M.secondary_view_window())
 
