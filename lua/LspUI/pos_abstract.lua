@@ -15,7 +15,7 @@ local M = {}
 -- create a namespace
 local main_namespace = api.nvim_create_namespace("LspUI_main")
 
-local seconday_namespace = api.nvim_create_namespace("LspUI_seconday")
+local secondary_namespace = api.nvim_create_namespace("LspUI_secondary")
 
 -- key is buffer id, value is the map info
 --- @type { [integer]: { [string]: any } } the any should be the result of maparg
@@ -137,7 +137,7 @@ local secondary_set_hl = function(hl)
     for _, lnum in pairs(hl) do
         api.nvim_buf_add_highlight(
             M.secondary_view_buffer(),
-            seconday_namespace,
+            secondary_namespace,
             "Directory",
             lnum - 1,
             3,
@@ -163,7 +163,7 @@ local secondary_clear_hl = function()
     if api.nvim_buf_is_valid(M.secondary_view_buffer()) then
         vim.api.nvim_buf_clear_namespace(
             M.secondary_view_buffer(),
-            seconday_namespace,
+            secondary_namespace,
             0,
             -1
         )
@@ -235,7 +235,7 @@ end
 
 local secondary_cmd = {}
 
-local main_view_autocmd = function()
+local function main_view_autocmd(previous_winbar)
     local main_group =
         api.nvim_create_augroup("Lspui_main_view", { clear = true })
 
@@ -250,6 +250,9 @@ local main_view_autocmd = function()
             -- from being executed when the main view is hidden.
             if not M.main_view_hide() then
                 main_clear_hl()
+                api.nvim_set_option_value("winbar", previous_winbar, {
+                    win = M.main_view_window(),
+                })
                 lib_windows.close_window(M.secondary_view_window())
                 pcall(api.nvim_del_autocmd, secondary_cmd.CursorMoved)
                 for buffer_id, value in pairs(buffer_keymap_history) do
@@ -944,17 +947,18 @@ M.main_view_render = function()
         )
     end
 
-    -- do
-    --     local fname = vim.uri_to_fname(current_item.uri)
-    --     local filepath = vim.fs.normalize(vim.fn.fnamemodify(fname, ":p:~:h"))
-    --     api.nvim_set_option_value("winbar", string.format(" %s", filepath), {
-    --         win = M.main_view_window(),
-    --     })
-    -- end
+    local previous_winbar = api.nvim_get_option_value("winbar", {
+        win = M.main_view_window(),
+    })
+    local fname = vim.uri_to_fname(current_item.uri)
+    local filepath = vim.fs.normalize(vim.fn.fnamemodify(fname, ":p:~:h"))
+    api.nvim_set_option_value("winbar", string.format(" %s", filepath), {
+        win = M.main_view_window(),
+    })
 
     M.main_view_hide(false)
 
-    main_view_autocmd()
+    main_view_autocmd(previous_winbar)
 end
 
 -- render secondary view
