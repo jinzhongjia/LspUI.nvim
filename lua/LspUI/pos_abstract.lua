@@ -244,7 +244,7 @@ local function main_view_autocmd()
     api.nvim_create_autocmd("WinClosed", {
         group = main_group,
         pattern = {
-            tostring(M.main_view_window()),
+            tostring(main_win),
         },
         once = true,
         callback = function()
@@ -957,7 +957,7 @@ M.main_view_render = function()
     local fname = vim.uri_to_fname(current_item.uri)
     local filepath = vim.fs.normalize(vim.fn.fnamemodify(fname, ":p:~:h"))
     api.nvim_set_option_value("winbar", string.format(" %s", filepath), {
-        win = M.main_view_window(),
+        win = window_id,
     })
 
     M.main_view_hide(false)
