@@ -912,6 +912,11 @@ M.main_view_render = function()
     end
 
     if lib_windows.is_valid_window(M.main_view_window()) then
+        api.nvim_set_option_value(
+            "winbar",
+            winbar_map[M.main_view_window()] or "",
+            { win = M.main_view_window() }
+        )
         -- if now windows is valid, just set buffer
         api.nvim_win_set_buf(M.main_view_window(), M.main_view_buffer())
     else
