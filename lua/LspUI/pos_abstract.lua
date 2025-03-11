@@ -888,8 +888,17 @@ local generate_secondary_view = function()
         buf = M.secondary_view_buffer(),
     })
 
+    local res_width = max_width + 2 > 30 and 30 or max_width + 2
+
+    local max_columns =
+        math.floor(api.nvim_get_option_value("columns", {}) * 0.3)
+
+    if max_columns > res_width then
+        res_width = max_columns
+    end
+
     -- For aesthetics, increase the width
-    return max_width + 2 > 30 and 30 or max_width + 2, height + 1
+    return res_width, height + 1
 end
 
 -- render main view
