@@ -12,8 +12,6 @@ local lib_windows = require("LspUI.lib.windows")
 
 local M = {}
 
-local winbar_map = {}
-
 -- create a namespace
 local main_namespace = api.nvim_create_namespace("LspUI_main")
 
@@ -248,15 +246,24 @@ local function main_view_autocmd()
         },
         once = true,
         callback = function()
+            print("close main")
             -- note: The judgment here is to prevent the following closing function
             -- from being executed when the main view is hidden.
             if not M.main_view_hide() then
                 main_clear_hl()
                 api.nvim_set_option_value(
                     "winbar",
-                    winbar_map[main_win] or "",
+                    vim.wo.winbar or "",
                     { win = main_win }
                 )
+                api.nvim_set_option_value(
+                    "winhighlight",
+                    vim.wo.winhighlight or "",
+                    {
+                        win = main_win,
+                    }
+                )
+
                 lib_windows.close_window(M.secondary_view_window())
                 pcall(api.nvim_del_autocmd, secondary_cmd.CursorMoved)
                 for buffer_id, value in pairs(buffer_keymap_history) do
@@ -463,7 +470,18 @@ local secondary_view_autocmd = function()
             pcall(api.nvim_del_autocmd, secondary_cmd.CursorMoved)
             if not M.secondary_view_hide() then
                 main_clear_hl()
-                lib_windows.close_window(M.main_view_window())
+                local main_win = M.main_view_window()
+                api.nvim_set_option_value(
+                    "winbar",
+                    vim.wo.winbar or "",
+                    { win = main_win }
+                )
+                api.nvim_set_option_value(
+                    "winhighlight",
+                    vim.wo.winhighlight or "",
+                    { win = main_win }
+                )
+                lib_windows.close_window(main_win)
                 for buffer_id, value in pairs(buffer_keymap_history) do
                     api.nvim_buf_call(buffer_id, function()
                         main_view_restore_keybind(value, buffer_id)
@@ -911,14 +929,10 @@ M.main_view_render = function()
         return
     end
 
-    if lib_windows.is_valid_window(M.main_view_window()) then
-        api.nvim_set_option_value(
-            "winbar",
-            winbar_map[M.main_view_window()] or "",
-            { win = M.main_view_window() }
-        )
+    local main_win = M.main_view_window()
+    if lib_windows.is_valid_window(main_win) then
         -- if now windows is valid, just set buffer
-        api.nvim_win_set_buf(M.main_view_window(), M.main_view_buffer())
+        api.nvim_win_set_buf(main_win, M.main_view_buffer())
     else
         -- window is not valid, create a new window
         local main_window_wrap = lib_windows.new_window(M.main_view_buffer())
@@ -970,9 +984,6 @@ M.main_view_render = function()
         )
     end
     local window_id = M.main_view_window()
-    winbar_map[window_id] = api.nvim_get_option_value("winbar", {
-        win = window_id,
-    })
     local fname = vim.uri_to_fname(current_item.uri)
     local filepath = vim.fs.normalize(vim.fn.fnamemodify(fname, ":p:~:h"))
     api.nvim_set_option_value("winbar", string.format(" %s", filepath), {
@@ -1081,10 +1092,12 @@ local action_jump = function(cmd)
         local main_win = M.main_view_window()
         api.nvim_set_option_value(
             "winbar",
-            winbar_map[main_win] or "",
+            vim.wo.winbar or "",
             { win = main_win }
         )
-
+        api.nvim_set_option_value("winhighlight", vim.wo.winhighlight or "", {
+            win = main_win,
+        })
         lib_windows.close_window(M.secondary_view_window())
 
         if not lib_util.buffer_is_listed(current_item.buffer_id) then
