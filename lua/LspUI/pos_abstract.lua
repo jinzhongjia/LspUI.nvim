@@ -474,6 +474,54 @@ local secondary_view_autocmd = function()
         end,
         desc = lib_util.command_desc(" secondary view winclose"),
     })
+
+    local _tmp = function()
+        -- get current cursor position
+
+        --- @type integer
+        ---@diagnostic disable-next-line: assign-type-mismatch
+        local lnum = fn.line(".")
+
+        local uri, range = get_lsp_position_by_lnum(lnum)
+        if not uri then
+            return
+        end
+
+        -- set current cursorhold
+        current_item = {
+            uri = uri,
+            buffer_id = M.datas()[uri].buffer_id,
+            range = range,
+        }
+
+        if range then
+            local uri_buffer = M.datas()[uri].buffer_id
+
+            -- change main view buffer
+            M.main_view_buffer(uri_buffer)
+
+            if not M.main_view_hide() then
+                -- render main vie
+                M.main_view_render()
+
+                -- set cursor
+                lib_windows.window_set_cursor(
+                    M.main_view_window(),
+                    range.start.line + 1,
+                    range.start.character
+                )
+
+                -- move center
+                api.nvim_win_call(M.main_view_window(), function()
+                    vim.cmd("norm! zv")
+                    vim.cmd("norm! zz")
+                end)
+            end
+        end
+    end
+
+    local cursor_moved_cb = lib_util.debounce(_tmp, 100)
+
     secondary_cmd.CursorMoved = api.nvim_create_autocmd("CursorMoved", {
         group = secondary_group,
         -- pattern = {
@@ -482,50 +530,7 @@ local secondary_view_autocmd = function()
         -- note: we can't use buffer and pattern together
         -- CursorMoved can't effect on pattern
         buffer = M.secondary_view_buffer(),
-        callback = function()
-            -- get current cursor position
-
-            --- @type integer
-            ---@diagnostic disable-next-line: assign-type-mismatch
-            local lnum = fn.line(".")
-
-            local uri, range = get_lsp_position_by_lnum(lnum)
-            if not uri then
-                return
-            end
-
-            -- set current cursorhold
-            current_item = {
-                uri = uri,
-                buffer_id = M.datas()[uri].buffer_id,
-                range = range,
-            }
-
-            if range then
-                local uri_buffer = M.datas()[uri].buffer_id
-
-                -- change main view buffer
-                M.main_view_buffer(uri_buffer)
-
-                if not M.main_view_hide() then
-                    -- render main vie
-                    M.main_view_render()
-
-                    -- set cursor
-                    lib_windows.window_set_cursor(
-                        M.main_view_window(),
-                        range.start.line + 1,
-                        range.start.character
-                    )
-
-                    -- move center
-                    api.nvim_win_call(M.main_view_window(), function()
-                        vim.cmd("norm! zv")
-                        vim.cmd("norm! zz")
-                    end)
-                end
-            end
-        end,
+        callback = cursor_moved_cb,
     })
 end
 
