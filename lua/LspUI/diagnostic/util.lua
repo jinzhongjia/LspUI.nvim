@@ -185,7 +185,7 @@ function M.autocmd(buffer_id, new_buffer, window_id)
         end,
     })
     api.nvim_create_autocmd(
-        { "CursorMoved", "CursorMovedI", "InsertCharPre" },
+        { "CursorMoved", "CursorMovedI", "InsertEnter" },
         {
             buffer = buffer_id,
             group = autocmd_group,

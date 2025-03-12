@@ -15,7 +15,7 @@ local M = {}
 -- create a namespace
 local main_namespace = api.nvim_create_namespace("LspUI_main")
 
-local seconday_namespace = api.nvim_create_namespace("LspUI_seconday")
+local secondary_namespace = api.nvim_create_namespace("LspUI_secondary")
 
 -- key is buffer id, value is the map info
 --- @type { [integer]: { [string]: any } } the any should be the result of maparg
@@ -137,7 +137,7 @@ local secondary_set_hl = function(hl)
     for _, lnum in pairs(hl) do
         api.nvim_buf_add_highlight(
             M.secondary_view_buffer(),
-            seconday_namespace,
+            secondary_namespace,
             "Directory",
             lnum - 1,
             3,
@@ -163,7 +163,7 @@ local secondary_clear_hl = function()
     if api.nvim_buf_is_valid(M.secondary_view_buffer()) then
         vim.api.nvim_buf_clear_namespace(
             M.secondary_view_buffer(),
-            seconday_namespace,
+            secondary_namespace,
             0,
             -1
         )
@@ -235,21 +235,35 @@ end
 
 local secondary_cmd = {}
 
-local main_view_autocmd = function()
+local function main_view_autocmd()
     local main_group =
         api.nvim_create_augroup("Lspui_main_view", { clear = true })
-
+    local main_win = M.main_view_window()
     api.nvim_create_autocmd("WinClosed", {
         group = main_group,
         pattern = {
-            tostring(M.main_view_window()),
+            tostring(main_win),
         },
         once = true,
         callback = function()
+            print("close main")
             -- note: The judgment here is to prevent the following closing function
             -- from being executed when the main view is hidden.
             if not M.main_view_hide() then
                 main_clear_hl()
+                api.nvim_set_option_value(
+                    "winbar",
+                    vim.wo.winbar or "",
+                    { win = main_win }
+                )
+                api.nvim_set_option_value(
+                    "winhighlight",
+                    vim.wo.winhighlight or "",
+                    {
+                        win = main_win,
+                    }
+                )
+
                 lib_windows.close_window(M.secondary_view_window())
                 pcall(api.nvim_del_autocmd, secondary_cmd.CursorMoved)
                 for buffer_id, value in pairs(buffer_keymap_history) do
@@ -456,7 +470,18 @@ local secondary_view_autocmd = function()
             pcall(api.nvim_del_autocmd, secondary_cmd.CursorMoved)
             if not M.secondary_view_hide() then
                 main_clear_hl()
-                lib_windows.close_window(M.main_view_window())
+                local main_win = M.main_view_window()
+                api.nvim_set_option_value(
+                    "winbar",
+                    vim.wo.winbar or "",
+                    { win = main_win }
+                )
+                api.nvim_set_option_value(
+                    "winhighlight",
+                    vim.wo.winhighlight or "",
+                    { win = main_win }
+                )
+                lib_windows.close_window(main_win)
                 for buffer_id, value in pairs(buffer_keymap_history) do
                     api.nvim_buf_call(buffer_id, function()
                         main_view_restore_keybind(value, buffer_id)
@@ -467,6 +492,54 @@ local secondary_view_autocmd = function()
         end,
         desc = lib_util.command_desc(" secondary view winclose"),
     })
+
+    local _tmp = function()
+        -- get current cursor position
+
+        --- @type integer
+        ---@diagnostic disable-next-line: assign-type-mismatch
+        local lnum = fn.line(".")
+
+        local uri, range = get_lsp_position_by_lnum(lnum)
+        if not uri then
+            return
+        end
+
+        -- set current cursorhold
+        current_item = {
+            uri = uri,
+            buffer_id = M.datas()[uri].buffer_id,
+            range = range,
+        }
+
+        if range then
+            local uri_buffer = M.datas()[uri].buffer_id
+
+            -- change main view buffer
+            M.main_view_buffer(uri_buffer)
+
+            if not M.main_view_hide() then
+                -- render main vie
+                M.main_view_render()
+
+                -- set cursor
+                lib_windows.window_set_cursor(
+                    M.main_view_window(),
+                    range.start.line + 1,
+                    range.start.character
+                )
+
+                -- move center
+                api.nvim_win_call(M.main_view_window(), function()
+                    vim.cmd("norm! zv")
+                    vim.cmd("norm! zz")
+                end)
+            end
+        end
+    end
+
+    local cursor_moved_cb = lib_util.debounce(_tmp, 100)
+
     secondary_cmd.CursorMoved = api.nvim_create_autocmd("CursorMoved", {
         group = secondary_group,
         -- pattern = {
@@ -475,50 +548,7 @@ local secondary_view_autocmd = function()
         -- note: we can't use buffer and pattern together
         -- CursorMoved can't effect on pattern
         buffer = M.secondary_view_buffer(),
-        callback = function()
-            -- get current cursor position
-
-            --- @type integer
-            ---@diagnostic disable-next-line: assign-type-mismatch
-            local lnum = fn.line(".")
-
-            local uri, range = get_lsp_position_by_lnum(lnum)
-            if not uri then
-                return
-            end
-
-            -- set current cursorhold
-            current_item = {
-                uri = uri,
-                buffer_id = M.datas()[uri].buffer_id,
-                range = range,
-            }
-
-            if range then
-                local uri_buffer = M.datas()[uri].buffer_id
-
-                -- change main view buffer
-                M.main_view_buffer(uri_buffer)
-
-                if not M.main_view_hide() then
-                    -- render main vie
-                    M.main_view_render()
-
-                    -- set cursor
-                    lib_windows.window_set_cursor(
-                        M.main_view_window(),
-                        range.start.line + 1,
-                        range.start.character
-                    )
-
-                    -- move center
-                    api.nvim_win_call(M.main_view_window(), function()
-                        vim.cmd("norm! zv")
-                        vim.cmd("norm! zz")
-                    end)
-                end
-            end
-        end,
+        callback = cursor_moved_cb,
     })
 end
 
@@ -876,8 +906,17 @@ local generate_secondary_view = function()
         buf = M.secondary_view_buffer(),
     })
 
+    local res_width = max_width + 2 > 30 and 30 or max_width + 2
+
+    local max_columns =
+        math.floor(api.nvim_get_option_value("columns", {}) * 0.3)
+
+    if max_columns > res_width then
+        res_width = max_columns
+    end
+
     -- For aesthetics, increase the width
-    return max_width + 2 > 30 and 30 or max_width + 2, height + 1
+    return res_width, height + 1
 end
 
 -- render main view
@@ -890,9 +929,10 @@ M.main_view_render = function()
         return
     end
 
-    if lib_windows.is_valid_window(M.main_view_window()) then
+    local main_win = M.main_view_window()
+    if lib_windows.is_valid_window(main_win) then
         -- if now windows is valid, just set buffer
-        api.nvim_win_set_buf(M.main_view_window(), M.main_view_buffer())
+        api.nvim_win_set_buf(main_win, M.main_view_buffer())
     else
         -- window is not valid, create a new window
         local main_window_wrap = lib_windows.new_window(M.main_view_buffer())
@@ -943,14 +983,12 @@ M.main_view_render = function()
             }
         )
     end
-
-    -- do
-    --     local fname = vim.uri_to_fname(current_item.uri)
-    --     local filepath = vim.fs.normalize(vim.fn.fnamemodify(fname, ":p:~:h"))
-    --     api.nvim_set_option_value("winbar", string.format(" %s", filepath), {
-    --         win = M.main_view_window(),
-    --     })
-    -- end
+    local window_id = M.main_view_window()
+    local fname = vim.uri_to_fname(current_item.uri)
+    local filepath = vim.fs.normalize(vim.fn.fnamemodify(fname, ":p:~:h"))
+    api.nvim_set_option_value("winbar", string.format(" %s", filepath), {
+        win = window_id,
+    })
 
     M.main_view_hide(false)
 
@@ -1051,6 +1089,15 @@ local action_jump = function(cmd)
         ---@diagnostic disable-next-line: need-check-nil
         push_tagstack()
 
+        local main_win = M.main_view_window()
+        api.nvim_set_option_value(
+            "winbar",
+            vim.wo.winbar or "",
+            { win = main_win }
+        )
+        api.nvim_set_option_value("winhighlight", vim.wo.winhighlight or "", {
+            win = main_win,
+        })
         lib_windows.close_window(M.secondary_view_window())
 
         if not lib_util.buffer_is_listed(current_item.buffer_id) then
