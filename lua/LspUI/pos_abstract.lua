@@ -251,7 +251,19 @@ local function main_view_autocmd()
             -- from being executed when the main view is hidden.
             if not M.main_view_hide() then
                 main_clear_hl()
-                M.winbar_reset(main_win)
+                api.nvim_set_option_value(
+                    "winbar",
+                    vim.wo.winbar or "",
+                    { win = main_win }
+                )
+                api.nvim_set_option_value(
+                    "winhighlight",
+                    vim.wo.winhighlight or "",
+                    {
+                        win = main_win,
+                    }
+                )
+
                 lib_windows.close_window(M.secondary_view_window())
                 pcall(api.nvim_del_autocmd, secondary_cmd.CursorMoved)
                 for buffer_id, value in pairs(buffer_keymap_history) do
@@ -459,7 +471,16 @@ local secondary_view_autocmd = function()
             if not M.secondary_view_hide() then
                 main_clear_hl()
                 local main_win = M.main_view_window()
-                M.winbar_reset(main_win)
+                api.nvim_set_option_value(
+                    "winbar",
+                    vim.wo.winbar or "",
+                    { win = main_win }
+                )
+                api.nvim_set_option_value(
+                    "winhighlight",
+                    vim.wo.winhighlight or "",
+                    { win = main_win }
+                )
                 lib_windows.close_window(main_win)
                 for buffer_id, value in pairs(buffer_keymap_history) do
                     api.nvim_buf_call(buffer_id, function()
@@ -519,7 +540,7 @@ local secondary_view_autocmd = function()
 
     local cursor_moved_cb = lib_util.debounce(_tmp, 100)
 
-    secondary_cmd.CursorMoved = api.nvim_create_autocmd("CursorHold", {
+    secondary_cmd.CursorMoved = api.nvim_create_autocmd("CursorMoved", {
         group = secondary_group,
         -- pattern = {
         --     tostring(M.secondary_view_window()),
@@ -898,17 +919,6 @@ local generate_secondary_view = function()
     return res_width, height + 1
 end
 
---- @param main_win integer
-M.winbar_reset = function(main_win)
-    api.nvim_set_option_value("winbar", vim.wo.winbar or "", { win = main_win })
-    api.nvim_set_option_value("winhighlight", vim.wo.winhighlight or "", {
-        win = main_win,
-    })
-    api.nvim_set_option_value("winblend", vim.wo.winblend or "", {
-        win = main_win,
-    })
-end
-
 -- render main view
 M.main_view_render = function()
     -- detect the buffer is valid
@@ -921,7 +931,6 @@ M.main_view_render = function()
 
     local main_win = M.main_view_window()
     if lib_windows.is_valid_window(main_win) then
-        M.winbar_reset(main_win)
         -- if now windows is valid, just set buffer
         api.nvim_win_set_buf(main_win, M.main_view_buffer())
     else
@@ -1081,9 +1090,14 @@ local action_jump = function(cmd)
         push_tagstack()
 
         local main_win = M.main_view_window()
-
-        M.winbar_reset(main_win)
-
+        api.nvim_set_option_value(
+            "winbar",
+            vim.wo.winbar or "",
+            { win = main_win }
+        )
+        api.nvim_set_option_value("winhighlight", vim.wo.winhighlight or "", {
+            win = main_win,
+        })
         lib_windows.close_window(M.secondary_view_window())
 
         if not lib_util.buffer_is_listed(current_item.buffer_id) then
