@@ -147,6 +147,7 @@ function M.render(action)
     lib_windows.set_right_title_window(new_window_wrap, "diagnostic")
 
     api.nvim_win_set_cursor(current_window, { next_row + 1, next_col })
+    vim.cmd("normal! m'")
 
     -- try to cloase the old window
     lib_windows.close_window(diagnostic_window)
