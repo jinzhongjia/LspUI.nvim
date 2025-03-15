@@ -37,7 +37,7 @@ end
 -- check buffer is listed ?
 --- @param buffer_id integer
 --- @return boolean
-M.buffer_is_listed = function(buffer_id)
+function M.buffer_is_listed(buffer_id)
     return fn.buflisted(buffer_id) == 1
 end
 
