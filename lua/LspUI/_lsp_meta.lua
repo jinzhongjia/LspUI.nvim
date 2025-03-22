@@ -1,0 +1,6 @@
+--- @class LspUI_LspContext
+--- @field method string
+--- @field client_id integer
+--- @field bufnr integer
+--- @field params table|nil
+--- @field version number

@@ -5,163 +5,191 @@ local lib_notify = require("LspUI.lib.notify")
 local lib_util = require("LspUI.lib.util")
 local lib_windows = require("LspUI.lib.windows")
 
---- @alias hover_tuple { client: vim.lsp.Client, buffer_id: integer, contents: string[], width: integer, height: integer }
+--- @alias hover_tuple { client: vim.lsp.Client, buffer_id: integer, width: integer, height: integer }
 
 local M = {}
 
-local remove_lock = false
+local markview = nil
+
+-- for hover enter lock
+local enter_lock = false
+
+--- @type hover_tuple[]
+local hover_tuples = {}
 
 --- @type integer
-local hover_tuple_index
+local hover_tuple_current_index
 
 -- get all valid clients for hover
 --- @param buffer_id integer
 --- @return vim.lsp.Client[]|nil clients array or nil
-M.get_clients = function(buffer_id)
-    local clients =
-        lsp.get_clients({ bufnr = buffer_id, method = hover_feature })
-    if vim.tbl_isempty(clients) then
-        return nil
-    end
+function M.get_clients(buffer_id)
+    local clients = lsp.get_clients({
+        bufnr = buffer_id,
+        method = hover_feature,
+    })
     return clients
+end
+
+--- @class LspUI_hover_ctx
+--- @field clients vim.lsp.Client[]
+--- @field requested_client_count integer
+--- @field invalid_clients string[]
+--- @field callback fun(hover_tuples: hover_tuple[])
+
+local function starts_with_backticks(str)
+    return string.find(str, "^```") ~= nil
+end
+
+local function is_only_whitespace(str)
+    return str:match("^%s*$") ~= nil
+end
+
+--- @param markdown_lines string[]
+local function markdown_lines_handle(markdown_lines)
+    if #markdown_lines <= 3 then
+        return markdown_lines
+    end
+    --- @type string[]
+    local res = {}
+
+    local i = 2
+    local prev_is_added = false
+    while i <= #markdown_lines - 1 do
+        local prev_whitespace = is_only_whitespace(markdown_lines[i - 1])
+        local current_backticks = starts_with_backticks(markdown_lines[i])
+        local next_whitespace = is_only_whitespace(markdown_lines[i + 1])
+        if
+            not (prev_whitespace and current_backticks) and not prev_is_added
+        then
+            table.insert(res, markdown_lines[i - 1])
+        end
+        table.insert(res, markdown_lines[i])
+        if next_whitespace and current_backticks then
+            i = i + 2
+            prev_is_added = false
+        else
+            i = i + 1
+            prev_is_added = true
+        end
+    end
+    return res
+end
+
+--- @param client vim.lsp.Client
+--- @param hover_ctx LspUI_hover_ctx
+local function hover_req_cb(client, hover_ctx)
+    --- @param err lsp.ResponseError
+    --- @param result lsp.Hover
+    --- @param _ LspUI_LspContext
+    --- @param lsp_config table
+    return function(err, result, _, lsp_config)
+        lsp_config = lsp_config or {}
+
+        -- this is for detecting error
+        local is_err = err ~= nil and lsp_config.silent ~= true
+        if is_err then
+            local _err_msg = string.format(
+                "server %s, err code is %d, err code is %s",
+                client.name,
+                err.code,
+                err.message
+            )
+            lib_notify.Warn(_err_msg)
+        end
+
+        if err == nil then
+            if not (result and result.contents) then
+                if lsp_config.silent ~= true then
+                    table.insert(hover_ctx.invalid_clients, client.name)
+                end
+            else
+                -- stylua: ignore
+                local markdown_lines = lsp.util.convert_input_to_markdown_lines(result.contents)
+
+                -- create a new buffer
+                local new_buffer = api.nvim_create_buf(false, true)
+
+                -- stylua: ignore
+                api.nvim_buf_set_lines(new_buffer, 0, -1, true, markdown_lines)
+
+                -- stylua: ignore
+                -- note: don't change filetype, this will cause syntx failing
+                api.nvim_set_option_value("bufhidden", "wipe", { buf = new_buffer })
+                -- stylua: ignore
+                -- stylua: ignore
+                api.nvim_set_option_value("modifiable", false, { buf = new_buffer })
+
+                local width = 0
+                for _, str in pairs(markdown_lines) do
+                    local _tmp_width = fn.strdisplaywidth(str)
+                    width = math.max(width, _tmp_width)
+                end
+
+                -- stylua: ignore
+                width = math.min(width, math.floor(lib_windows.get_max_width() * 0.6))
+
+                local height = #markdown_lines
+
+                table.insert(
+                    hover_tuples,
+                    --- @type hover_tuple
+                    {
+                        client = client,
+                        buffer_id = new_buffer,
+                        -- contents = markdown_lines,
+                        width = width,
+                        -- stylua: ignore
+                        height = math.min(height, math.floor(lib_windows.get_max_height() * 0.8)),
+                    }
+                )
+            end
+        end
+
+        hover_ctx.requested_client_count = hover_ctx.requested_client_count + 1
+
+        if hover_ctx.requested_client_count ~= #hover_ctx.clients then
+            return
+        end
+        if not vim.tbl_isempty(hover_ctx.invalid_clients) then
+            local names = ""
+            for index, client_name in pairs(hover_ctx.invalid_clients) do
+                if index == 1 then
+                    names = names .. client_name
+                else
+                    names = names .. string.format(", %s", client_name)
+                end
+            end
+            lib_notify.Info(string.format("No valid hover, %s", names))
+        end
+
+        hover_ctx.callback(hover_tuples)
+    end
 end
 
 -- get hovers from lsp
 --- @param clients vim.lsp.Client[]
 --- @param buffer_id integer
---- @param callback function this callback has a param is hover_tuples[]
-M.get_hovers = function(clients, buffer_id, callback)
-    --- @type hover_tuple[]
-    local hover_tuples = {}
+--- @param callback fun(hover_tuples: hover_tuple[])
+function M.get_hovers(clients, buffer_id, callback)
+    -- remove past hover
+    hover_tuples = {}
+    -- make hover params
+    -- TODO: inplement workDoneProgreeParam
+    -- https://microsoft.github.io/language-server-protocol/specifications/lsp/3.17/specification/#hoverParams
     local params = lsp.util.make_position_params()
-    local tmp_number = 0
 
-    --- @type string[]
-    local invalid_clients = {}
+    --- @type LspUI_hover_ctx
+    local hover_ctx = {
+        clients = clients,
+        requested_client_count = 0,
+        invalid_clients = {},
+        callback = callback,
+    }
 
     for _, client in pairs(clients) do
-        client.request(
-            hover_feature,
-            params,
-            ---@param result lsp.Hover
-            ---@param lsp_config any
-            function(err, result, _, lsp_config)
-                lsp_config = lsp_config or {}
-
-                if err ~= nil then
-                    if lsp_config.silent ~= true then
-                        lib_notify.Warn(
-                            string.format(
-                                "server %s, err code is %d, err code is %s",
-                                client.name,
-                                err.code,
-                                err.message
-                            )
-                        )
-                    end
-                else
-                    if not (result and result.contents) then
-                        if lsp_config.silent ~= true then
-                            table.insert(invalid_clients, client.name)
-                        end
-                    else
-                        local markdown_lines =
-                            lsp.util.convert_input_to_markdown_lines(
-                                result.contents
-                            )
-                        markdown_lines =
-                            lib_util.trim_empty_lines(markdown_lines)
-
-                        if vim.tbl_isempty(markdown_lines) then
-                            if lsp_config.silent ~= true then
-                                table.insert(invalid_clients, client.name)
-                            end
-                        else
-                            local new_buffer = api.nvim_create_buf(false, true)
-
-                            markdown_lines = lsp.util.stylize_markdown(
-                                new_buffer,
-                                markdown_lines,
-                                {
-                                    max_width = math.floor(
-                                        lib_windows.get_max_width() * 0.6
-                                    ),
-                                    max_height = math.floor(
-                                        lib_windows.get_max_height() * 0.8
-                                    ),
-                                }
-                            )
-
-                            local max_width = 0
-
-                            for _, line in pairs(markdown_lines) do
-                                max_width = math.max(
-                                    fn.strdisplaywidth(line),
-                                    max_width
-                                )
-                            end
-                            -- note: don't change filetype, this will cause syntx failing
-                            api.nvim_set_option_value("modifiable", false, {
-                                buf = new_buffer,
-                            })
-                            api.nvim_set_option_value("bufhidden", "wipe", {
-                                buf = new_buffer,
-                            })
-
-                            local width = math.min(
-                                max_width,
-                                math.floor(lib_windows.get_max_width() * 0.6)
-                            )
-
-                            local height =
-                                lib_windows.compute_height_for_windows(
-                                    markdown_lines,
-                                    width
-                                )
-
-                            table.insert(
-                                hover_tuples,
-                                --- @type hover_tuple
-                                {
-                                    client = client,
-                                    buffer_id = new_buffer,
-                                    contents = markdown_lines,
-                                    width = width,
-                                    height = math.min(
-                                        height,
-                                        math.floor(
-                                            lib_windows.get_max_height() * 0.8
-                                        )
-                                    ),
-                                }
-                            )
-                        end
-                    end
-                end
-
-                tmp_number = tmp_number + 1
-
-                if tmp_number == #clients then
-                    if not vim.tbl_isempty(invalid_clients) then
-                        local names = ""
-                        for index, client_name in pairs(invalid_clients) do
-                            if index == 1 then
-                                names = names .. client_name
-                            else
-                                names = names
-                                    .. string.format(", %s", client_name)
-                            end
-                        end
-                        lib_notify.Info(
-                            string.format("No valid hover, %s", names)
-                        )
-                    end
-
-                    callback(hover_tuples)
-                end
-            end,
-            buffer_id
-        )
+        -- stylua: ignore
+        client.request(hover_feature, params, hover_req_cb(clients,hover_ctx), buffer_id)
     end
 end
 
@@ -170,79 +198,89 @@ end
 --- @param hover_tuple_number integer
 --- @return integer window_id window's id
 --- @return integer buffer_id buffer's id
-M.base_render = function(hover_tuple, hover_tuple_number)
+function M.render(hover_tuple, hover_tuple_number)
     local new_window_wrap = lib_windows.new_window(hover_tuple.buffer_id)
 
-    lib_windows.set_width_window(new_window_wrap, hover_tuple.width)
+    -- stylua: ignore
+    local title = hover_tuple_number > 1 and string.format("hover[1/%d]", hover_tuple_number) or "hover"
     lib_windows.set_height_window(new_window_wrap, hover_tuple.height)
+    lib_windows.set_width_window(new_window_wrap, hover_tuple.width)
+    lib_windows.set_right_title_window(new_window_wrap, title)
+    lib_windows.set_relative_window(new_window_wrap, "cursor")
+    lib_windows.set_border_window(new_window_wrap, "rounded")
+    lib_windows.set_style_window(new_window_wrap, "minimal")
+    lib_windows.set_focusable_window(new_window_wrap, true)
     lib_windows.set_enter_window(new_window_wrap, false)
     lib_windows.set_anchor_window(new_window_wrap, "NW")
-    lib_windows.set_border_window(new_window_wrap, "rounded")
-    lib_windows.set_focusable_window(new_window_wrap, true)
-    lib_windows.set_relative_window(new_window_wrap, "cursor")
     lib_windows.set_col_window(new_window_wrap, 1)
     lib_windows.set_row_window(new_window_wrap, 1)
-    lib_windows.set_style_window(new_window_wrap, "minimal")
-    lib_windows.set_right_title_window(
-        new_window_wrap,
-        hover_tuple_number > 1
-                and string.format("hover[1/%d]", hover_tuple_number)
-            or "hover"
-    )
 
     local window_id = lib_windows.display_window(new_window_wrap)
-    hover_tuple_index = 1
+    hover_tuple_current_index = 1
 
-    api.nvim_set_option_value("winhighlight", "Normal:Normal", {
-        win = window_id,
-    })
-    api.nvim_set_option_value("wrap", true, {
-        win = window_id,
-    })
-    -- this is very very important, because it will hide highlight group
-    api.nvim_set_option_value("conceallevel", 2, {
-        win = window_id,
-    })
-    api.nvim_set_option_value("concealcursor", "n", {
-        win = window_id,
-    })
-    api.nvim_set_option_value("winblend", config.options.hover.transparency, {
-        win = window_id,
-    })
+    -- stylua: ignore
+    api.nvim_set_option_value("winhighlight", "Normal:Normal", { win = window_id })
+    -- stylua: ignore
+    api.nvim_set_option_value("wrap", true, { win = window_id })
+    -- stylua: ignore
+    api.nvim_set_option_value("winblend", config.options.hover.transparency, { win = window_id })
+    -- stylua: ignore
+    api.nvim_set_option_value("filetype", "LspUI_hover", { buf = hover_tuple.buffer_id })
+    api.nvim_set_option_value("conceallevel", 3, { win = window_id })
+    api.nvim_set_option_value("concealcursor", "nvic", { win = window_id })
+
+    -- hooks for markview
+    -- render-markdown no need to hook
+    if markview == nil then
+        local status
+        status, markview = pcall(require, "markview")
+        if not status then
+            markview = false
+        end
+    end
+
+    if markview ~= false then
+        markview.render(hover_tuple.buffer_id)
+    end
 
     return window_id, hover_tuple.buffer_id
 end
 
---- @param hover_tuples hover_tuple[]
 --- @param window_id integer float window's id
 --- @param forward boolean true is next, false is prev
 --- @return integer
-local next_render = function(hover_tuples, window_id, forward)
+local function next_render(window_id, forward)
     if forward then
         -- next
-        if hover_tuple_index == #hover_tuples then
-            hover_tuple_index = 1
+        if hover_tuple_current_index == #hover_tuples then
+            hover_tuple_current_index = 1
         else
-            hover_tuple_index = hover_tuple_index + 1
+            hover_tuple_current_index = hover_tuple_current_index + 1
         end
     else
         -- prev
-        if hover_tuple_index == 1 then
-            hover_tuple_index = #hover_tuples
+        if hover_tuple_current_index == 1 then
+            hover_tuple_current_index = #hover_tuples
         else
-            hover_tuple_index = hover_tuple_index - 1
+            hover_tuple_current_index = hover_tuple_current_index - 1
         end
     end
 
     --- @type hover_tuple
-    local hover_tuple = hover_tuples[hover_tuple_index]
+    local hover_tuple = hover_tuples[hover_tuple_current_index]
     api.nvim_win_set_buf(window_id, hover_tuple.buffer_id)
+    -- stylua: ignore
+    api.nvim_set_option_value("filetype", "LspUI_hover", { buf = hover_tuple.buffer_id })
+    if markview ~= false then
+        markview.render(hover_tuple.buffer_id)
+    end
+    local hover_tuple_count = #hover_tuples
+    -- stylua: ignore
+    local title =  string.format("hover[%d/%d]",hover_tuple_current_index, hover_tuple_count)
     api.nvim_win_set_config(window_id, {
         width = hover_tuple.width,
         height = hover_tuple.height,
-        title = #hover_tuples > 1
-                and string.format("hover[1/%d]", #hover_tuples)
-            or "hover",
+        title = title,
         title_pos = "right",
     })
 
@@ -253,16 +291,15 @@ end
 --- this must be called in vim.schedule
 --- @param current_buffer integer current buffer id, not float window's buffer id'
 --- @param window_id integer  float window's id
-M.autocmd = function(current_buffer, window_id)
+function M.autocmd(current_buffer, window_id)
     -- autocmd
     api.nvim_create_autocmd(
         { "CursorMoved", "InsertEnter", "BufDelete", "BufLeave" },
         {
             buffer = current_buffer,
             callback = function(arg)
-                if remove_lock then
-                    return
-                end
+                -- stylua: ignore
+                if enter_lock then return end
                 lib_windows.close_window(window_id)
                 api.nvim_del_autocmd(arg.id)
             end,
@@ -271,70 +308,57 @@ M.autocmd = function(current_buffer, window_id)
     )
 end
 
---- @param hover_tuples hover_tuple[]
 --- @param window_id integer window's id
 --- @param buffer_id integer buffer's id
-M.keybind = function(hover_tuples, window_id, buffer_id)
-    -- next
-    api.nvim_buf_set_keymap(
-        buffer_id,
-        "n",
-        config.options.hover.key_binding.next,
-        "",
+function M.keybind(window_id, buffer_id)
+    local mapping_list = {
         {
-            nowait = true,
-            noremap = true,
-            callback = function()
+            key = config.options.hover.key_binding.next,
+            cb = function()
                 if #hover_tuples == 1 then
                     return
                 end
-                local next_buffer = next_render(hover_tuples, window_id, true)
-                M.keybind(hover_tuples, window_id, next_buffer)
+                local next_buffer = next_render(window_id, true)
+                M.keybind(window_id, next_buffer)
             end,
             desc = lib_util.command_desc("next hover"),
-        }
-    )
-    -- prev
-    api.nvim_buf_set_keymap(
-        buffer_id,
-        "n",
-        config.options.hover.key_binding.prev,
-        "",
+        },
         {
-            nowait = true,
-            noremap = true,
-            callback = function()
+            key = config.options.hover.key_binding.prev,
+            cb = function()
                 if #hover_tuples == 1 then
                     return
                 end
-                local next_buffer = next_render(hover_tuples, window_id, false)
-                M.keybind(hover_tuples, window_id, next_buffer)
+                local next_buffer = next_render(window_id, false)
+                M.keybind(window_id, next_buffer)
             end,
             desc = lib_util.command_desc("prev hover"),
-        }
-    )
-    -- quit
-    api.nvim_buf_set_keymap(
-        buffer_id,
-        "n",
-        config.options.hover.key_binding.quit,
-        "",
+        },
         {
-            nowait = true,
-            noremap = true,
-            callback = function()
+            key = config.options.hover.key_binding.quit,
+            cb = function()
                 lib_windows.close_window(window_id)
             end,
             desc = lib_util.command_desc("hover, close window"),
+        },
+    }
+
+    for _, mapping in pairs(mapping_list) do
+        local opts = {
+            nowait = true,
+            noremap = true,
+            callback = mapping.cb,
+            desc = mapping.desc,
         }
-    )
+        api.nvim_buf_set_keymap(buffer_id, "n", mapping.key, "", opts)
+    end
 end
 
 --- @param callback function
-M.enter_wrap = function(callback)
-    remove_lock = true
+function M.enter_wrap(callback)
+    enter_lock = true
     callback()
-    remove_lock = false
+    enter_lock = false
 end
 
 return M

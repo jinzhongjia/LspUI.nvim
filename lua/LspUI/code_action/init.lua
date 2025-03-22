@@ -12,7 +12,7 @@ local is_initialized = false
 local command_key = "code_action"
 
 -- init for code action
-M.init = function()
+function M.init()
     if not config.options.code_action.enable then
         return
     end
@@ -29,7 +29,7 @@ M.init = function()
 end
 
 -- deinit for code action
-M.deinit = function()
+function M.deinit()
     if not is_initialized then
         lib_notify.Info("code action has been deinit")
         return
@@ -41,7 +41,7 @@ M.deinit = function()
 end
 
 -- run for a code action
-M.run = function()
+function M.run()
     if not config.options.code_action.enable then
         lib_notify.Info("code_sction is not enabled!")
         return

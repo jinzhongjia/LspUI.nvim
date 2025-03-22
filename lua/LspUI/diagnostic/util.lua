@@ -146,7 +146,9 @@ function M.render(action)
     lib_windows.set_style_window(new_window_wrap, "minimal")
     lib_windows.set_right_title_window(new_window_wrap, "diagnostic")
 
+    vim.cmd("normal! m'")
     api.nvim_win_set_cursor(current_window, { next_row + 1, next_col })
+    vim.cmd("normal! m'")
 
     -- try to cloase the old window
     lib_windows.close_window(diagnostic_window)
@@ -184,18 +186,15 @@ function M.autocmd(buffer_id, new_buffer, window_id)
             api.nvim_del_augroup_by_name(autocmd_group)
         end,
     })
-    api.nvim_create_autocmd(
-        { "CursorMoved", "CursorMovedI", "InsertEnter" },
-        {
-            buffer = buffer_id,
-            group = autocmd_group,
-            callback = function()
-                lib_windows.close_window(window_id)
-                api.nvim_del_augroup_by_name(autocmd_group)
-            end,
-            desc = lib_util.command_desc("diagnostic, auto close windows"),
-        }
-    )
+    api.nvim_create_autocmd({ "CursorMoved", "CursorMovedI", "InsertEnter" }, {
+        buffer = buffer_id,
+        group = autocmd_group,
+        callback = function()
+            lib_windows.close_window(window_id)
+            api.nvim_del_augroup_by_name(autocmd_group)
+        end,
+        desc = lib_util.command_desc("diagnostic, auto close windows"),
+    })
 end
 
 return M
