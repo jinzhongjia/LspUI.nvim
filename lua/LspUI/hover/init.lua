@@ -15,7 +15,7 @@ local command_key = "hover"
 local window_id = -1
 
 -- init for hover
-M.init = function()
+function M.init()
     if not config.options.hover.enable then
         return
     end
@@ -26,13 +26,14 @@ M.init = function()
 
     is_initialized = true
 
+    vim.treesitter.language.register("markdown", "LspUI_hover")
     -- register command
     if config.options.hover.command_enable then
         command.register_command(command_key, M.run, {})
     end
 end
 
-M.deinit = function()
+function M.deinit()
     if not is_initialized then
         lib_notify.Info("hover has been deinit")
         return
@@ -44,11 +45,13 @@ M.deinit = function()
 end
 
 -- run of hover
-M.run = function()
+function M.run()
     if not config.options.hover.enable then
         lib_notify.Info("hover is not enabled!")
         return
     end
+
+    -- when hover has existed
     if api.nvim_win_is_valid(window_id) then
         util.enter_wrap(function()
             api.nvim_set_current_win(window_id)
@@ -75,12 +78,9 @@ M.run = function()
                 return
             end
             local buffer_id
-            window_id, buffer_id =
-                util.base_render(hover_tuples[1], #hover_tuples)
-            util.keybind(hover_tuples, window_id, buffer_id)
-            vim.schedule(function()
-                util.autocmd(current_buffer, window_id)
-            end)
+            window_id, buffer_id = util.render(hover_tuples[1], #hover_tuples)
+            util.keybind(window_id, buffer_id)
+            util.autocmd(current_buffer, window_id)
         end
     )
 end
