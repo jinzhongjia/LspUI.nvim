@@ -17,7 +17,7 @@ local M = {}
 -- get all valid clients for lightbulb
 --- @param buffer_id integer
 --- @return vim.lsp.Client[]|nil clients array or nil
-M.get_clients = function(buffer_id)
+function M.get_clients(buffer_id)
     local clients =
         lsp.get_clients({ bufnr = buffer_id, method = code_action_feature })
     if vim.tbl_isempty(clients) then
@@ -30,7 +30,7 @@ end
 --- @param buffer_id integer
 --- @return lsp.CodeActionParams params
 --- @return boolean is_visual
-M.get_range_params = function(buffer_id)
+function M.get_range_params(buffer_id)
     local mode = api.nvim_get_mode().mode
     local params
     local is_visual = false
@@ -163,7 +163,7 @@ end
 --- @param buffer_id integer
 --- @param is_visual boolean
 --- @param callback fun(action_tuples:action_tuple[])
-M.get_action_tuples = function(clients, params, buffer_id, is_visual, callback)
+function M.get_action_tuples(clients, params, buffer_id, is_visual, callback)
     --- @type action_tuple[]
     local action_tuples = {}
     local tmp_number = 0
@@ -220,7 +220,7 @@ end
 --- @param command lsp.Command
 --- @param buffer_id integer
 --- @param handler ?lsp.Handler only called if a server command
-local exec_command = function(client, command, buffer_id, handler)
+local function exec_command(client, command, buffer_id, handler)
     local cmdname = command.command
     local func = client.commands[cmdname] or lsp.commands[cmdname]
     if func then
@@ -256,7 +256,7 @@ end
 --- @param action lsp.CodeAction|lsp.Command
 --- @param client vim.lsp.Client
 --- @param buffer_id integer
-local apply_action = function(action, client, buffer_id)
+local function apply_action(action, client, buffer_id)
     if action.edit then
         lsp.util.apply_workspace_edit(action.edit, client.offset_encoding)
     end
@@ -275,7 +275,7 @@ end
 -- choice action tuple
 -- this function is referred from https://github.com/neovim/neovim/blob/master/runtime/lua/vim/lsp/buf.lua#L639-L675C6
 --- @param action_tuple action_tuple
-local choice_action_tupe = function(action_tuple)
+local function choice_action_tupe(action_tuple)
     local callback = action_tuple.callback
     if callback then
         callback()
@@ -329,7 +329,7 @@ end
 --- @param buffer_id integer
 --- @param window_id integer
 --- @param action_tuples action_tuple[]
-local keybinding_autocmd = function(buffer_id, window_id, action_tuples)
+local function keybinding_autocmd(buffer_id, window_id, action_tuples)
     -- keybind
 
     -- next action
@@ -474,7 +474,7 @@ end
 
 -- render the menu for the code actions
 --- @param action_tuples action_tuple[]
-M.render = function(action_tuples)
+function M.render(action_tuples)
     if vim.tbl_isempty(action_tuples) then
         lib_notify.Info("no code action!")
         return
