@@ -8,7 +8,7 @@ local list = {}
 -- title and callback
 --- @param name string
 --- @param callback fun(uri:lsp.URI,range:lsp.Range):{title:string,action:function}[]
-M.register = function(name, callback)
+function M.register(name, callback)
     if not list[name] then
         list[name] = callback
     else
@@ -22,7 +22,7 @@ M.register = function(name, callback)
 end
 
 --- @param name string
-M.unregister = function(name)
+function M.unregister(name)
     if list[name] then
         list[name] = nil
     end
@@ -31,10 +31,10 @@ end
 --- @param uri lsp.URI
 --- @param range lsp.Range
 --- @return {title:string,action:function}[]
-M.handle = function(uri, range)
+function M.handle(uri, range)
     --- @type {title:string,action:function}[]
     local result = {}
-    for name, callback in pairs(list) do
+    for _, callback in pairs(list) do
         if callback then
             local res = callback(uri, range)
             for _, val in pairs(res) do
