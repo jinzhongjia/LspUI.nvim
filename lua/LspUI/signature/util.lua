@@ -13,7 +13,7 @@ local is_there_virtual_text = false
 
 --- @class signature_info
 --- @field label string
---- @field hint integer?
+--- @field active_parameter integer?
 --- @field parameters {label: string, doc: (string|lsp.MarkupContent)?}[]?
 --- @field doc string?
 
@@ -28,34 +28,52 @@ local function build_signature_info(help, _)
         return nil
     end
 
-    local active_signature = help.activeSignature and help.activeSignature + 1
-        or 1
-    local active_parameter = help.activeParameter and help.activeParameter + 1
-        or 1
+    local active_signature = 1
 
-    --- @type signature_info
-    ---@diagnostic disable-next-line: missing-fields
-    local res = {}
-
-    local signature = help.signatures[active_signature]
-    if signature.activeParameter then
-        active_parameter = signature.activeParameter + 1
-    elseif active_parameter > #signature - 1 then
-        active_parameter = 1
+    if help.activeSignature then
+        active_signature = help.activeSignature + 1
     end
 
-    res.label = signature.label
-    ---@diagnostic disable-next-line: assign-type-mismatch
-    res.doc = type(signature.documentation) == "table"
-            and signature.documentation.value
-        or signature.documentation
+    local active_parameter = 1
 
-    if not signature.parameters or (#signature.parameters == 0) then
+    if help.activeParameter then
+        active_parameter = help.activeParameter + 1
+    end
+
+    --- @type signature_info
+    --- @diagnostic disable-next-line: missing-fields
+    local res = {}
+
+    local current_signature = help.signatures[active_signature]
+
+    res.label = current_signature.label
+    if type(current_signature.documentation) == "table" then
+        res.doc = current_signature.documentation.value
+    else
+        ---@diagnostic disable-next-line: assign-type-mismatch
+        res.doc = current_signature.documentation
+    end
+
+    if
+        not current_signature.parameters or (#current_signature.parameters == 0)
+    then
         return res
     end
 
+    if current_signature.activeParameter then
+        active_parameter = current_signature.activeParameter + 1
+    end
+
+    -- Prevent irregular servers from crossing boundaries
+    if
+        active_parameter > #current_signature.parameters
+        or active_parameter < 1
+    then
+        active_parameter = 1
+    end
+
     --- @type lsp.ParameterInformation[]
-    local parameters = signature.parameters
+    local parameters = current_signature.parameters
 
     --- @type { label: string, doc: (string|lsp.MarkupContent)? }[]
     local params = {}
@@ -67,7 +85,7 @@ local function build_signature_info(help, _)
             })
         else
             local str = string.sub(
-                signature.label,
+                current_signature.label,
                 parameter.label[1] + 1,
                 parameter.label[2]
             )
@@ -79,7 +97,7 @@ local function build_signature_info(help, _)
     end
 
     res.parameters = params
-    res.hint = active_parameter
+    res.active_parameter = active_parameter
 
     return res
 end
@@ -93,12 +111,12 @@ local signature_group
 
 local signature_namespace = api.nvim_create_namespace("LspUI_signature")
 
---- @type { data: lsp.SignatureHelp?,client_name:string|nil }
-local backup = {}
+--- @type signature_info|nil
+local cached_signature_info = nil
 
 --- @param buffer_id number buffer's id
 --- @param callback fun(result: lsp.SignatureHelp|nil,client_name:string|nil)  callback function
-function M.request(buffer_id, callback)
+local function request(buffer_id, callback)
     -- this buffer id maybe invalid
     if not api.nvim_buf_is_valid(buffer_id) then
         return
@@ -112,29 +130,22 @@ function M.request(buffer_id, callback)
     local params = lsp.util.make_position_params()
 
     -- NOTE: we just use one client to get the lsp signature
+    -- TODO: Perhaps users should be allowed to choose which server
     local client = clients[1]
 
-    client.request(
-        signature_feature,
-        params,
-        --- @param err  lsp.ResponseError
-        --- @param result lsp.SignatureHelp?
-        function(err, result, _, _)
-            if err then
-                lib_notify.Error(
-                    string.format(
-                        "sorry, lsp %s report siganature error:%d, &s",
-                        client.name,
-                        err.code,
-                        err.message
-                    )
-                )
-                return
-            end
-            callback(result, client.name)
-        end,
-        buffer_id
-    )
+    --- @param err  lsp.ResponseError
+    --- @param result lsp.SignatureHelp?
+    local function req_callback(err, result, _, _)
+        if err then
+            -- stylua: ignore
+            local err_msg = string.format("sorry, lsp %s report siganature error:%d, &s", client.name, err.code, err.message)
+            lib_notify.Error(err_msg)
+            return
+        end
+        callback(result, client.name)
+    end
+
+    client.request(signature_feature, params, req_callback, buffer_id)
 end
 
 -- get all valid clients for lightbulb
@@ -149,20 +160,16 @@ function M.get_clients(buffer_id)
     return clients
 end
 
---- @type function
-local func
-
 local function signature_handle()
     local current_buffer = api.nvim_get_current_buf()
     -- when current buffer can not use signature
     if not buffer_list[current_buffer] then
-        backup.data = nil
+        cached_signature_info = nil
         return
     end
-    M.request(current_buffer, function(result, client_name)
-        backup.data = result
-        backup.client_name = client_name
 
+    --- @type fun(result: lsp.SignatureHelp|nil,client_name:string|nil)
+    local function req_callback(result, client_name)
         local mode_info = vim.api.nvim_get_mode()
         local mode = mode_info["mode"]
         local is_insert = mode:find("i") ~= nil or mode:find("ic") ~= nil
@@ -180,23 +187,13 @@ local function signature_handle()
 
         local current_window = api.nvim_get_current_win()
         M.render(result, current_buffer, current_window, client_name)
-    end)
-end
-
-local function build_func()
-    if not config.options.signature.debounce then
-        func = signature_handle
-        return
     end
-
-    --- @type integer
-    local time = type(config.options.lightbulb.debounce) == "number"
-            ---@diagnostic disable-next-line: param-type-mismatch
-            and math.floor(config.options.signature.debounce)
-        or 300
-
-    func = lib_util.debounce(signature_handle, time)
+    request(current_buffer, req_callback)
 end
+
+--- the true running function
+--- @type function
+local func
 
 --- @param data lsp.SignatureHelp|nil
 --- @param buffer_id integer
@@ -204,11 +201,12 @@ end
 --- @param client_name string|nil
 function M.render(data, buffer_id, _, client_name)
     local info = build_signature_info(data, client_name)
+    cached_signature_info = info
     if not info then
         return
     end
 
-    if not info.hint then
+    if not info.active_parameter then
         return
     end
 
@@ -218,17 +216,11 @@ function M.render(data, buffer_id, _, client_name)
     --- @type integer
     local col = fn.virtcol(".") - 1
 
+    -- stylua: ignore
+    local render_text = string.format("%s %s", config.options.signature.icon, info.parameters[info.active_parameter].label)
+
     api.nvim_buf_set_extmark(buffer_id, signature_namespace, row, 0, {
-        virt_text = {
-            {
-                string.format(
-                    "%s %s",
-                    config.options.signature.icon,
-                    info.parameters[info.hint].label
-                ),
-                "LspUI_Signature",
-            },
-        },
+        virt_text = { { render_text, "LspUI_Signature" } },
         virt_text_win_col = col,
         hl_mode = "blend",
     })
@@ -251,45 +243,58 @@ function M.autocmd()
     signature_group =
         api.nvim_create_augroup("Lspui_signature", { clear = true })
 
-    -- build debounce function
-    build_func()
+    func = signature_handle
+    if config.options.signature.debounce then
+        local time = 300
+
+        if type(config.options.signature.debounce) == "number" then
+            ---@diagnostic disable-next-line: param-type-mismatch
+            time = math.floor(config.options.signature.debounce)
+        end
+
+        func = lib_util.debounce(signature_handle, time)
+    end
+
+    local function lsp_attach_cb()
+        -- get current buffer
+        local current_buffer = api.nvim_get_current_buf()
+
+        local clients = M.get_clients(current_buffer)
+        if not clients then
+            -- no clients support signature help
+            return
+        end
+
+        buffer_list[current_buffer] = true
+    end
 
     api.nvim_create_autocmd("LspAttach", {
         group = signature_group,
-        callback = function()
-            -- get current buffer
-            local current_buffer = api.nvim_get_current_buf()
-
-            local clients = M.get_clients(current_buffer)
-            if not clients then
-                -- no clients support signature help
-                return
-            end
-
-            buffer_list[current_buffer] = true
-        end,
+        callback = lsp_attach_cb,
         desc = lib_util.command_desc("Lsp attach signature cmd"),
     })
 
     -- maybe this can also use CurosrHold
     api.nvim_create_autocmd({ "CursorMovedI", "InsertEnter" }, {
         group = signature_group,
-        callback = vim.schedule_wrap(func),
+        callback = func,
         desc = lib_util.command_desc(
             "Signature update when CursorHoldI or InsertEnter"
         ),
     })
 
+    local function lsp_detach_cb()
+        local current_buffer = api.nvim_get_current_buf()
+        M.clean_render(current_buffer)
+        if buffer_list[current_buffer] then
+            buffer_list[current_buffer] = false
+        end
+    end
+
     -- when buffer is deleted, disable buffer siganture
-    api.nvim_create_autocmd({ "BufDelete" }, {
+    api.nvim_create_autocmd({ "LspDetach" }, {
         group = signature_group,
-        callback = function()
-            local current_buffer = api.nvim_get_current_buf()
-            M.clean_render(current_buffer)
-            if buffer_list[current_buffer] then
-                buffer_list[current_buffer] = false
-            end
-        end,
+        callback = lsp_detach_cb,
         desc = lib_util.command_desc("Exec signature clean cmd when QuitPre"),
     })
 
@@ -311,7 +316,7 @@ end
 
 --- @return signature_info?
 M.status_line = function()
-    return build_signature_info(backup.data, backup.client_name)
+    return cached_signature_info
 end
 
 return M
