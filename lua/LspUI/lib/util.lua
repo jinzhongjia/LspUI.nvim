@@ -1,7 +1,7 @@
 local api, fn, uv = vim.api, vim.fn, vim.uv
 local M = {}
 
-local version = "v2-undefined"
+local version = "v3-undefined"
 
 local key_bind_opt = { noremap = true, silent = true }
 local move_keys = {

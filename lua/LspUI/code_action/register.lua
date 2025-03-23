@@ -34,7 +34,7 @@ end
 function M.handle(uri, range)
     --- @type {title:string,action:function}[]
     local result = {}
-    for name, callback in pairs(list) do
+    for _, callback in pairs(list) do
         if callback then
             local res = callback(uri, range)
             for _, val in pairs(res) do

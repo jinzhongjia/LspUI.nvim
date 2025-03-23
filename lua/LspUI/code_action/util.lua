@@ -53,9 +53,17 @@ function M.get_range_params(buffer_id)
             start_row, end_row = end_row, start_row
             start_col, end_col = end_col, start_col
         end
+
+        if mode == "V" then
+            start_col = 1
+            local lines =
+                api.nvim_buf_get_lines(buffer_id, end_row - 1, end_row, true)
+            end_col = #lines[1]
+        end
         params = lsp.util.make_given_range_params(
             { start_row, start_col - 1 },
-            { end_row, end_col - 1 }
+            { end_row, end_col - 1 },
+            buffer_id
         )
     else
         params = lsp.util.make_range_params()
@@ -82,7 +90,7 @@ end
 --- @param uri lsp.DocumentUri
 --- @param range lsp.Range
 --- @return action_tuple[]
-local get_gitsigns_actions = function(
+local function get_gitsigns_actions(
     action_tuples,
     buffer_id,
     is_visual,
