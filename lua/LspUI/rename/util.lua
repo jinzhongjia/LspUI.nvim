@@ -280,6 +280,14 @@ local function render(clients, buffer_id, old_name, position_param)
         old_name,
     })
 
+    -- this will remove the undo history
+    vim.api.nvim_buf_call(new_buffer, function()
+        local old_undolevels = vim.bo.undolevels
+        vim.bo.undolevels = -1
+        vim.cmd("normal! a \b") -- Make a meaningless change and then delete it.
+        vim.bo.undolevels = old_undolevels
+    end)
+
     api.nvim_set_option_value("filetype", "LspUI-rename", { buf = new_buffer })
     api.nvim_set_option_value("modifiable", true, { buf = new_buffer })
     api.nvim_set_option_value("bufhidden", "wipe", { buf = new_buffer })
@@ -316,7 +324,7 @@ local function render(clients, buffer_id, old_name, position_param)
             api.nvim_feedkeys(
                 api.nvim_replace_termcodes("<C-g>", true, true, true),
                 "n",
-                true
+                false
             )
         end)
     end
