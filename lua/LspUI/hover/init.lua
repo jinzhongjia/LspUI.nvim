@@ -68,13 +68,35 @@ function M.run()
         lib_notify.Warn("no client supports hover!")
         return
     end
+    -- make hover params
+    -- TODO: inplement workDoneProgreeParam
+    -- https://microsoft.github.io/language-server-protocol/specifications/lsp/3.17/specification/#hoverParams
+    --- @type lsp.TextDocumentPositionParams
+    local position_param = vim.lsp.util.make_position_params()
     util.get_hovers(
+        position_param,
         clients,
         current_buffer,
         --- @param hover_tuples hover_tuple[]
         function(hover_tuples)
             -- We should detect hover_tuples is empty ?
             if vim.tbl_isempty(hover_tuples) then
+                return
+            end
+            local new_current_buffer = api.nvim_get_current_buf()
+            if current_buffer ~= new_current_buffer then
+                -- Since the request is asynchronous, the server response might be slow.
+                -- Need to check if the current buffer when the response returns is the same as the buffer when the request was made. If they're different, don't render the result.
+                return
+            end
+            --- @type lsp.TextDocumentPositionParams
+            local new_position_param = vim.lsp.util.make_position_params()
+            local old_position = position_param.position
+            local new_position = new_position_param.position
+            if
+                old_position.character ~= new_position.character
+                or old_position.line ~= new_position.line
+            then
                 return
             end
             local buffer_id

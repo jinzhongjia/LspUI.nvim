@@ -168,16 +168,13 @@ local function hover_req_cb(client, hover_ctx)
 end
 
 -- get hovers from lsp
+--- @param position_param lsp.TextDocumentPositionParams
 --- @param clients vim.lsp.Client[]
 --- @param buffer_id integer
 --- @param callback fun(hover_tuples: hover_tuple[])
-function M.get_hovers(clients, buffer_id, callback)
+function M.get_hovers(position_param, clients, buffer_id, callback)
     -- remove past hover
     hover_tuples = {}
-    -- make hover params
-    -- TODO: inplement workDoneProgreeParam
-    -- https://microsoft.github.io/language-server-protocol/specifications/lsp/3.17/specification/#hoverParams
-    local params = lsp.util.make_position_params()
 
     --- @type LspUI_hover_ctx
     local hover_ctx = {
@@ -189,7 +186,7 @@ function M.get_hovers(clients, buffer_id, callback)
 
     for _, client in pairs(clients) do
         -- stylua: ignore
-        client.request(hover_feature, params, hover_req_cb(clients,hover_ctx), buffer_id)
+        client.request(hover_feature, position_param, hover_req_cb(clients,hover_ctx), buffer_id)
     end
 end
 
