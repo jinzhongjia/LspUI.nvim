@@ -29,6 +29,10 @@ function ClassView:New(create_buf)
     return obj
 end
 
+local function command_desc(desc)
+    return "[LspUI]: " .. desc
+end
+
 -- 修改 window 绑定的 buffer
 --- @param newBuffer integer
 function ClassView:SwitchBuffer(newBuffer)
@@ -113,17 +117,21 @@ function ClassView:Focusable(focusable)
     self:update()
 end
 
---- @param width integer
---- @param height integer
+--- @param width integer|nil
+--- @param height integer|nil
 function ClassView:Size(width, height)
-    if width < 1 then
-        width = 1
+    if width then
+        if width < 1 then
+            width = 1
+        end
+        self._config.width = width
     end
-    if height < 1 then
-        height = 1
+    if height then
+        if height < 1 then
+            height = 1
+        end
+        self._config.height = height
     end
-    self._config.width = width
-    self._config.height = height
     self:update()
 end
 
@@ -235,6 +243,64 @@ function ClassView:Updates(cb)
     cb()
     self._stop_update = false
     self:update()
+end
+
+--- @param start integer
+--- @param end_ integer
+--- @param content string[]
+function ClassView:BufContent(start, end_, content)
+    local invalid = not api.nvim_buf_is_valid(self._attachBuffer)
+    if invalid then
+        return
+    end
+    api.nvim_buf_set_lines(self._attachBuffer, start, end_, true, content)
+end
+
+--- @param cb fun()
+function ClassView:BufCall(cb)
+    local invalid = not api.nvim_buf_is_valid(self._attachBuffer)
+    if invalid then
+        return
+    end
+
+    api.nvim_buf_call(self._attachBuffer, cb)
+end
+
+--- @param mode string
+--- @param key string
+--- @param cb fun()
+--- @param desc string
+function ClassView:KeyMap(mode, key, cb, desc)
+    local invalid = not api.nvim_buf_is_valid(self._attachBuffer)
+    if invalid then
+        return
+    end
+    api.nvim_buf_set_keymap(self._attachBuffer, mode, key, "", {
+        nowait = true,
+        noremap = true,
+        callback = cb,
+        desc = command_desc(desc),
+    })
+end
+
+function ClassView:AutoCmd() end
+
+--- @param event string|string[]
+--- @param group string|integer
+--- @param cb fun()
+--- @param desc string
+function ClassView:BufAutoCmd(event, group, cb, desc)
+    local invalid = not api.nvim_buf_is_valid(self._attachBuffer)
+    if invalid then
+        return
+    end
+
+    api.nvim_create_autocmd(event, {
+        group = group,
+        buffer = self._attachBuffer,
+        callback = cb,
+        desc = command_desc(desc),
+    })
 end
 
 return ClassView
