@@ -11,8 +11,8 @@ local is_initialized = false
 local command_key = "hover"
 
 -- window's id
---- @type integer
-local window_id = -1
+--- @type ClassView
+local view
 
 -- init for hover
 function M.init()
@@ -52,12 +52,10 @@ function M.run()
     end
 
     -- when hover has existed
-    if api.nvim_win_is_valid(window_id) then
+    if  view and view:Valid() then
         util.enter_wrap(function()
-            api.nvim_set_current_win(window_id)
-            api.nvim_set_option_value("winhighlight", "Normal:Normal", {
-                win = window_id,
-            })
+            view:Focus()
+            view:Winhl("Normal:Normal")
         end)
         return
     end
@@ -75,12 +73,12 @@ function M.run()
         function(hover_tuples)
             -- We should detect hover_tuples is empty ?
             if vim.tbl_isempty(hover_tuples) then
+        lib_notify.Info("no hover!")
                 return
             end
-            local buffer_id
-            window_id, buffer_id = util.render(hover_tuples[1], #hover_tuples)
-            util.keybind(window_id, buffer_id)
-            util.autocmd(current_buffer, window_id)
+            view = util.render(hover_tuples[1], #hover_tuples)
+            util.keybind(view)
+            util.autocmd(current_buffer, view)
         end
     )
 end
