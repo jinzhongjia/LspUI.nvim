@@ -76,7 +76,6 @@ function M.request(buffer_id, callback)
     if buffer_id ~= api.nvim_win_get_buf(api.nvim_get_current_win()) then
         return
     end
-    local params = lsp.util.make_range_params()
     local context = {
         triggerKind = vim.lsp.protocol.CodeActionTriggerKind.Invoked,
         diagnostics = lib_lsp.diagnostic_vim_to_lsp(
@@ -85,7 +84,6 @@ function M.request(buffer_id, callback)
             })
         ),
     }
-    params.context = context
 
     -- reduce a little calculations
     local __callback = lib_util.exec_once(callback)
@@ -104,7 +102,13 @@ function M.request(buffer_id, callback)
         end
         ::_continue::
     end
+    local clients = M.get_clients(buffer_id)
+    if (not clients) or #clients < 1 then
+        return
+    end
 
+    local params = lsp.util.make_range_params(0, clients[1].offset_encoding)
+    params.context = context
     -- stylua: ignore
     local register_res =code_action_register.handle(params.textDocument.uri, params.range)
 
@@ -113,7 +117,6 @@ function M.request(buffer_id, callback)
         return
     end
 
-    local clients = M.get_clients(buffer_id)
     local tmp_number = 0
 
     for _, client in pairs(clients or {}) do

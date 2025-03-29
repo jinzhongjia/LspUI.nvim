@@ -123,11 +123,11 @@ local function request(buffer_id, callback)
     end
 
     local clients = M.get_clients(buffer_id)
-    if not clients then
+    if (not clients) or #clients < 1 then
         return
     end
 
-    local params = lsp.util.make_position_params()
+    local params = lsp.util.make_position_params(0, clients[1].offset_encoding)
 
     -- NOTE: we just use one client to get the lsp signature
     -- TODO: Perhaps users should be allowed to choose which server
@@ -145,7 +145,7 @@ local function request(buffer_id, callback)
         callback(result, client.name)
     end
 
-    client.request(signature_feature, params, req_callback, buffer_id)
+    client:request(signature_feature, params, req_callback, buffer_id)
 end
 
 -- get all valid clients for lightbulb

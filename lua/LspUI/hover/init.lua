@@ -64,7 +64,7 @@ function M.run()
     -- get current buffer
     local current_buffer = api.nvim_get_current_buf()
     local clients = util.get_clients(current_buffer)
-    if clients == nil then
+    if clients == nil or #clients < 1 then
         lib_notify.Warn("no client supports hover!")
         return
     end

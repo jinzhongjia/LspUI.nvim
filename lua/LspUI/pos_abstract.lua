@@ -175,7 +175,7 @@ local main_view_restore_keybind = function(map_infos, buffer_id)
         -- pcall(fn.mapset, "n", 0, value)
         if not vim.tbl_isempty(value) then
             api.nvim_buf_del_keymap(buffer_id, "n", key)
-            fn.mapset("n", 0, value)
+            fn.mapset("n", false, value)
         else
             api.nvim_buf_del_keymap(buffer_id, "n", key)
             -- pcall(vim.api.nvim_buf_del_keymap, buffer_id, "n", key)
@@ -672,7 +672,7 @@ local function csharp_ls_handle(_client, uri)
             uri = uri,
         },
     }
-    local _res, _ = _client.request_sync("csharp/metadata", _params, 10000, 0)
+    local _res, _ = _client:request_sync("csharp/metadata", _params, 10000, 0)
 
     ---@diagnostic disable-next-line: need-check-nil
     local _result = _res.result
@@ -747,7 +747,7 @@ M.lsp_clients_request = function(buffer_id, clients, params, callback)
     local data = {}
 
     for _, client in pairs(clients) do
-        client.request(method.method, params, function(err, result, _, _)
+        client:request(method.method, params, function(err, result, _, _)
             -- always add one
             tmp_number = tmp_number + 1
 

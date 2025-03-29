@@ -1,7 +1,6 @@
 local api, lsp = vim.api, vim.lsp
 local command = require("LspUI.command")
 local config = require("LspUI.config")
-local lib_debug = require("LspUI.lib.debug")
 local lib_notify = require("LspUI.lib.notify")
 local util = require("LspUI.call_hierarchy.util")
 
@@ -47,8 +46,8 @@ M.deinit = function()
     command.unregister_command(command_key)
 end
 
---- @param arg "incoming"|"outgoing"
-M.run = function(arg)
+--- @param _ "incoming"|"outgoing"
+M.run = function(_)
     if true then
         return
     end
@@ -68,13 +67,13 @@ M.run = function(arg)
         lib_notify.Warn("no client supports call_hierarchy!")
         return
     end
-    local params = lsp.util.make_position_params()
+    local params = lsp.util.make_position_params(0, clients[1].offset_encoding)
 
     for _, client in pairs(clients) do
-        client.request(
+        client:request(
             lsp.protocol.Methods.textDocument_prepareCallHierarchy,
             params,
-            function(err, result, context, config) end,
+            function(_, _, _, _) end,
             current_buffer
         )
     end

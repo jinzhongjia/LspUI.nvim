@@ -47,7 +47,16 @@ M.run = function(callback)
     end
     -- get current buffer
     local current_buffer = api.nvim_get_current_buf()
-    local clients
+    local clients = util.get_clients(current_buffer)
+
+    if clients == nil then
+        if callback then
+            callback()
+        else
+            lib_notify.Warn("no client supports reference!")
+        end
+        return
+    end
 
     local window = nil
     local params
@@ -82,18 +91,7 @@ M.run = function(callback)
         end
     else
         window = api.nvim_get_current_win()
-        params = util.make_params(window)
-    end
-
-    clients = util.get_clients(current_buffer)
-
-    if clients == nil then
-        if callback then
-            callback()
-        else
-            lib_notify.Warn("no client supports reference!")
-        end
-        return
+        params = util.make_params(window, clients[1].offset_encoding)
     end
 
     pos_abstract.go(

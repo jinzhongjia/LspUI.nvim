@@ -28,9 +28,10 @@ end
 
 -- make range params
 --- @param buffer_id integer
+--- @param offset_encoding string
 --- @return lsp.CodeActionParams params
 --- @return boolean is_visual
-function M.get_range_params(buffer_id)
+function M.get_range_params(buffer_id, offset_encoding)
     local mode = api.nvim_get_mode().mode
     local params
     local is_visual = false
@@ -63,10 +64,11 @@ function M.get_range_params(buffer_id)
         params = lsp.util.make_given_range_params(
             { start_row, start_col - 1 },
             { end_row, end_col - 1 },
-            buffer_id
+            buffer_id,
+            offset_encoding
         )
     else
-        params = lsp.util.make_range_params()
+        params = lsp.util.make_range_params(0, offset_encoding)
     end
 
     local context = {
@@ -78,6 +80,7 @@ function M.get_range_params(buffer_id)
         ),
     }
 
+    ---@diagnostic disable-next-line: inject-field
     params.context = context
 
     return params, is_visual
@@ -176,7 +179,7 @@ function M.get_action_tuples(clients, params, buffer_id, is_visual, callback)
     local action_tuples = {}
     local tmp_number = 0
     for _, client in pairs(clients) do
-        client.request(code_action_feature, params, function(err, result, _, _)
+        client:request(code_action_feature, params, function(err, result, _, _)
             if err ~= nil then
                 lib_notify.Warn(string.format("there some error, %s", err))
                 return
@@ -258,7 +261,7 @@ local function exec_command(client, command, buffer_id, handler)
         arguments = command.arguments,
     }
 
-    client.request(exec_command_feature, params, handler, buffer_id)
+    client:request(exec_command_feature, params, handler, buffer_id)
 end
 
 --- @param action lsp.CodeAction|lsp.Command
@@ -310,9 +313,9 @@ local function choice_action_tupe(action_tuple)
         reg or {},
         "registerOptions",
         "resolveProvider"
-    ) or client.supports_method(code_action_resolve_feature)
+    ) or client:supports_method(code_action_resolve_feature)
     if not action.edit and client and supports_resolve then
-        client.request(
+        client:request(
             code_action_resolve_feature,
             action,
             --- @param err lsp.ResponseError

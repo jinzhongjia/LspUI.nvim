@@ -56,7 +56,7 @@ function M.run()
         return
     end
 
-    local params, is_visual = util.get_range_params(current_buffer)
+    local params, is_visual = util.get_range_params(current_buffer,clients[1].offset_encoding)
 
     util.get_action_tuples(
         clients,

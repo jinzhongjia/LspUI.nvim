@@ -4,7 +4,7 @@ return {
     -- init `LspUI` plugin
     --- @param user_config LspUI_config? user's plugin config
     setup = function(user_config)
-        if vim.fn.has("nvim-0.10") == 1 then
+        if vim.fn.has("nvim-0.11") == 1 then
             local async, message = vim.uv.new_async(function()
                 local config = require("LspUI.config")
                 local command = require("LspUI.command")
@@ -24,9 +24,9 @@ return {
             end
         else
             lib_notify.Warn(
-                "The version of neovim needs to be at least 0.10!! you can use branch legacy"
+                "The version of neovim needs to be at least 0.11!! you can use branch legacy"
             )
         end
     end,
-    api = vim.fn.has("nvim-0.10") == 0 and {} or require("LspUI.api"),
+    api = vim.fn.has("nvim-0.11") == 0 and {} or require("LspUI.api"),
 }

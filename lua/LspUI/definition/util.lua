@@ -19,10 +19,11 @@ end
 -- TODO: implement `WorkDoneProgressParams` and `PartialResultParams`
 --
 --- @param window_id integer
+--- @param offset_encoding string
 --- @return lsp.TextDocumentPositionParams
 --- @see https://microsoft.github.io/language-server-protocol/specifications/lsp/3.17/specification/#definitionParams
-M.make_params = function(window_id)
-    local params = lsp.util.make_position_params(window_id)
+M.make_params = function(window_id, offset_encoding)
+    local params = lsp.util.make_position_params(window_id, offset_encoding)
     return params
 end
 

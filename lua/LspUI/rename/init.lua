@@ -49,7 +49,7 @@ M.run = function()
 
     local current_buffer = api.nvim_get_current_buf()
     local clients = util.get_clients(current_buffer)
-    if clients == nil then
+    if clients == nil or #clients < 1 then
         -- if no valid client, step into here
         lib_notify.Warn("no client supports rename!")
         return
