@@ -22,7 +22,7 @@ A plugin which wraps Neovim LSP operations with a nicer UI.
 
 ## 📦 Installation
 
-- Requires neovim `0.10`
+- Requires neovim `0.11`
 
 Recommend to install one markdown plugin for hover feature, like [render-markdown.nvim](https://github.com/MeanderingProgrammer/render-markdown.nvim), [markview.nvim](https://github.com/OXY2DEV/markview.nvim)
 
