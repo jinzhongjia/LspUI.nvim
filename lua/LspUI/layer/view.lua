@@ -286,7 +286,7 @@ end
 function ClassView:AutoCmd() end
 
 --- @param event string|string[]
---- @param group string|integer
+--- @param group string|integer|nil
 --- @param cb fun()
 --- @param desc string
 function ClassView:BufAutoCmd(event, group, cb, desc)

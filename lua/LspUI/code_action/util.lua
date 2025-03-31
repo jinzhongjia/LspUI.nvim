@@ -4,6 +4,7 @@ local exec_command_feature = lsp.protocol.Methods.workspace_executeCommand
 local code_action_resolve_feature = lsp.protocol.Methods.codeAction_resolve
 
 local config = require("LspUI.config")
+local layer = require("LspUI.layer")
 local lib_lsp = require("LspUI.lib.lsp")
 local lib_notify = require("LspUI.lib.notify")
 local lib_util = require("LspUI.lib.util")
@@ -337,150 +338,77 @@ local function choice_action_tupe(action_tuple)
     end
 end
 
---- @param buffer_id integer
---- @param window_id integer
+--- @param view ClassView
 --- @param action_tuples action_tuple[]
-local function keybinding_autocmd(buffer_id, window_id, action_tuples)
+local function keybinding_autocmd(view, action_tuples)
     -- keybind
 
-    -- next action
-    api.nvim_buf_set_keymap(
-        buffer_id,
-        "n",
-        config.options.code_action.key_binding.next,
-        "",
-        {
-            nowait = true,
-            callback = function()
-                -- get current line number
-                local _, lnum, _, _ = unpack(vim.fn.getpos("."))
-                if lnum == #action_tuples then
-                    api.nvim_win_set_cursor(window_id, { 1, 1 })
-                    return
-                end
+    view:KeyMap("n", config.options.code_action.key_binding.next, function()
+        -- get current line number
+        local _, lnum, _, _ = unpack(vim.fn.getpos("."))
+        if lnum == #action_tuples then
+            ---@diagnostic disable-next-line: param-type-mismatch
+            api.nvim_win_set_cursor(view:GetWinID(), { 1, 1 })
+            return
+        end
 
-                api.nvim_win_set_cursor(window_id, { lnum + 1, 1 })
-            end,
-            desc = lib_util.command_desc("go to next action"),
-        }
-    )
+        ---@diagnostic disable-next-line: param-type-mismatch
+        api.nvim_win_set_cursor(view:GetWinID(), { lnum + 1, 1 })
+    end, "go to next action")
 
-    -- prev action
-    api.nvim_buf_set_keymap(
-        buffer_id,
-        "n",
-        config.options.code_action.key_binding.prev,
-        "",
-        {
-            nowait = true,
-            noremap = true,
-            callback = function()
-                -- get current line number
-                local _, lnum, _, _ = unpack(vim.fn.getpos("."))
-                if lnum == 1 then
-                    api.nvim_win_set_cursor(window_id, { #action_tuples, 1 })
-                    return
-                end
+    view:KeyMap("n", config.options.code_action.key_binding.prev, function()
+        -- get current line number
+        local _, lnum, _, _ = unpack(vim.fn.getpos("."))
+        if lnum == 1 then
+            ---@diagnostic disable-next-line: param-type-mismatch
+            api.nvim_win_set_cursor(view:GetWinID(), { #action_tuples, 1 })
+            return
+        end
 
-                api.nvim_win_set_cursor(window_id, { lnum - 1, 1 })
-            end,
-            desc = lib_util.command_desc("go to prev action"),
-        }
-    )
+        ---@diagnostic disable-next-line: param-type-mismatch
+        api.nvim_win_set_cursor(view:GetWinID(), { lnum - 1, 1 })
+    end, "go to prev action")
 
-    -- quit action
-    api.nvim_buf_set_keymap(
-        buffer_id,
-        "n",
-        config.options.code_action.key_binding.quit,
-        "",
-        {
-            nowait = true,
-            noremap = true,
-            callback = function()
-                -- the buffer will be deleted automatically when windows closed
-                lib_windows.close_window(window_id)
-            end,
-            desc = lib_util.command_desc("quit code_action"),
-        }
-    )
+    view:KeyMap("n", config.options.code_action.key_binding.quit, function()
+        view:Destory()
+    end, "quit code_action")
 
-    -- exec action
-    api.nvim_buf_set_keymap(
-        buffer_id,
-        "n",
-        config.options.code_action.key_binding.exec,
-        "",
-        {
-            nowait = true,
-            noremap = true,
-            callback = function()
-                local action_tuple_index = tonumber(fn.expand("<cword>"))
-                if action_tuple_index == nil then
-                    lib_notify.Error(
-                        string.format(
-                            "this plugin occurs an error: %s",
-                            "try to convert a non-number to number"
-                        )
-                    )
-                    return
-                end
-                local action_tuple = action_tuples[action_tuple_index]
-                choice_action_tupe(action_tuple)
-                lib_windows.close_window(window_id)
-            end,
-            desc = lib_util.command_desc("execute acode action"),
-        }
-    )
+    view:KeyMap("n", config.options.code_action.key_binding.exec, function()
+        local action_tuple_index = tonumber(fn.expand("<cword>"))
+        if action_tuple_index == nil then
+            lib_notify.Error(
+                string.format(
+                    "this plugin occurs an error: %s",
+                    "try to convert a non-number to number"
+                )
+            )
+            return
+        end
+        local action_tuple = action_tuples[action_tuple_index]
+        choice_action_tupe(action_tuple)
+        view:Destory()
+    end, "execute acode action")
 
     -- number keys exec action
     for action_tuple_index, action_tuple in pairs(action_tuples) do
-        api.nvim_buf_set_keymap(
-            buffer_id,
-            "n",
-            tostring(action_tuple_index),
-            "",
-            {
-                noremap = true,
-                callback = function()
-                    choice_action_tupe(action_tuple)
-                    lib_windows.close_window(window_id)
-                end,
-                desc = lib_util.command_desc(
-                    string.format(
-                        "exec action with numberk key [%d]",
-                        action_tuple_index
-                    )
-                ),
-            }
-        )
+        -- stylua: ignore
+        local desc = string.format("exec action with numberk key [%d]", action_tuple_index)
+        view:KeyMap("n", tostring(action_tuple_index), function()
+            choice_action_tupe(action_tuple)
+            view:Destory()
+        end, desc)
     end
 
-    --
-    -- lock cursor
-    --
-    api.nvim_create_autocmd("CursorMoved", {
-        buffer = buffer_id,
-        callback = function()
-            local _, lnum, col, _ = unpack(vim.fn.getpos("."))
-            if col ~= 2 then
-                api.nvim_win_set_cursor(window_id, { lnum, 1 })
-            end
-        end,
-        desc = lib_util.command_desc("lock the cursor"),
-    })
-
-    -- auto close window when focus leave float window
-    api.nvim_create_autocmd("WinLeave", {
-        buffer = buffer_id,
-        once = true,
-        callback = function()
-            lib_windows.close_window(window_id)
-        end,
-        desc = lib_util.command_desc(
-            "code action auto close window when focus leave"
-        ),
-    })
+    view:BufAutoCmd("CursorMoved", nil, function()
+        local _, lnum, col, _ = unpack(vim.fn.getpos("."))
+        if col ~= 2 then
+            ---@diagnostic disable-next-line: param-type-mismatch
+            api.nvim_win_set_cursor(view:GetWinID(), { lnum, 1 })
+        end
+    end, "lock the cursor")
+    view:BufAutoCmd("WinLeave", nil, function()
+        view:Destory()
+    end, "code action auto close window when focus leave")
 end
 
 -- render the menu for the code actions
@@ -510,49 +438,28 @@ function M.render(action_tuples)
     -- max height should be 10, TODO: maybe this number should be set by user
     local height = #contents > 10 and 10 or #contents
 
-    local new_buffer = api.nvim_create_buf(false, true)
+    local view = layer.ClassView:New(true)
 
-    api.nvim_buf_set_lines(new_buffer, 0, -1, false, contents)
-    api.nvim_set_option_value("filetype", "LspUI-code_action", {
-        buf = new_buffer,
-    })
-    api.nvim_set_option_value("modifiable", false, {
-        buf = new_buffer,
-    })
-    api.nvim_set_option_value("bufhidden", "wipe", {
-        buf = new_buffer,
-    })
+    view:BufContent(0, -1, contents)
+    view:BufOption("filetype", "LspUI-code_action")
+    view:BufOption("modifiable", false)
+    view:BufOption("bufhidden", "wipe")
+    view:Size(max_width + 1, height)
+    view:Enter(true)
+    view:Anchor("NW")
+    view:Border("rounded")
+    view:Focusable(true)
+    view:Relative("cursor")
+    view:Pos(1, 1)
+    view:Style("minimal")
+    view:Title(title, "right")
+    -- render
+    view:Render()
+    view:Winhl("Normal:Normal")
+    view:Winbl(config.options.code_action.transparency)
 
-    local new_window_wrap = lib_windows.new_window(new_buffer)
-
-    lib_windows.set_width_window(new_window_wrap, max_width + 1)
-    lib_windows.set_height_window(new_window_wrap, height)
-    lib_windows.set_enter_window(new_window_wrap, true)
-    lib_windows.set_anchor_window(new_window_wrap, "NW")
-    lib_windows.set_border_window(new_window_wrap, "rounded")
-    lib_windows.set_focusable_window(new_window_wrap, true)
-    lib_windows.set_relative_window(new_window_wrap, "cursor")
-    lib_windows.set_col_window(new_window_wrap, 1)
-    lib_windows.set_row_window(new_window_wrap, 1)
-    lib_windows.set_style_window(new_window_wrap, "minimal")
-    lib_windows.set_right_title_window(new_window_wrap, title)
-
-    local window_id = lib_windows.display_window(new_window_wrap)
-
-    -- disable change the buffer
-    api.nvim_set_option_value("winhighlight", "Normal:Normal", {
-        win = window_id,
-    })
-
-    api.nvim_set_option_value(
-        "winblend",
-        config.options.code_action.transparency,
-        {
-            win = window_id,
-        }
-    )
-
-    keybinding_autocmd(new_buffer, window_id, action_tuples)
+    ---@diagnostic disable-next-line: param-type-mismatch
+    keybinding_autocmd(view, action_tuples)
 end
 
 return M
