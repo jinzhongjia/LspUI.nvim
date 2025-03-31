@@ -1,5 +1,6 @@
 local api, fn = vim.api, vim.fn
 local config = require("LspUI.config")
+local layer = require("LspUI.layer")
 local lib_notify = require("LspUI.lib.notify")
 local lib_util = require("LspUI.lib.util")
 local lib_windows = require("LspUI.lib.windows")
@@ -12,6 +13,7 @@ local M = {}
 --- @field end_col integer
 
 local autocmd_group = "Lspui_diagnostic"
+local ns_id = vim.api.nvim_create_namespace("LspUI-diagnostic")
 
 -- convert severity to string
 --- @param severity integer
@@ -40,7 +42,12 @@ local function diagnostic_severity_to_highlight(severity)
     return arr[severity] or nil
 end
 
-local diagnostic_window = -1
+--- @type ClassView
+local diagnostic_view
+
+local function cleanStringConcise(str)
+    return str:match("^%s*(.-)%s*$"):gsub("%.+$", "")
+end
 
 -- render the float window
 --- @param action "prev"|"next"
@@ -64,9 +71,9 @@ function M.render(action)
     local diagnostic
 
     if search_forward then
-        diagnostic = vim.diagnostic.get_next()
+        diagnostic = vim.diagnostic.jump({ count = 1 })
     else
-        diagnostic = vim.diagnostic.get_prev()
+        diagnostic = vim.diagnostic.jump({ count = 1 })
     end
 
     if not diagnostic then
@@ -99,82 +106,87 @@ function M.render(action)
                 severity = diagnostic.severity,
                 lnum = #content,
                 col = 0,
-                end_col = -1,
+                end_col = msg_len - 1,
             }
         )
         table.insert(content, msg)
     end
 
-    -- create a new buffer
-    local new_buffer = api.nvim_create_buf(false, true)
-    api.nvim_buf_set_lines(new_buffer, 0, -1, false, content)
-    -- stylua: ignore
-    api.nvim_set_option_value("filetype", "LspUI-diagnostic", { buf = new_buffer })
-    api.nvim_set_option_value("modifiable", false, { buf = new_buffer })
-    api.nvim_set_option_value("bufhidden", "wipe", { buf = new_buffer })
-
-    -- highlight buffer
-    for _, highlight_group in pairs(highlight_groups) do
-        api.nvim_buf_add_highlight(
-            new_buffer,
-            -1,
-            --- @type string
-            diagnostic_severity_to_highlight(highlight_group.severity),
-            highlight_group.lnum,
-            highlight_group.col,
-            highlight_group.end_col
-        )
-    end
-
     local width =
         math.min(max_width, math.floor(lib_windows.get_max_width() * 0.6))
 
+    if diagnostic.source then
+        local msg =
+            string.format("        %s", cleanStringConcise(diagnostic.source))
+        local len = fn.strdisplaywidth(msg)
+        if len > width then
+            width = math.min(len, math.floor(lib_windows.get_max_width() * 0.6))
+        end
+    end
+
+    local view = layer.ClassView:New(true)
+
+    view:BufContent(0, -1, content)
+    view:BufOption("filetype", "LspUI-diagnostic")
+    view:BufOption("modifiable", false)
+    view:BufOption("bufhidden", "wipe")
+
+    -- highlight buffer
+    for _, highlight_group in pairs(highlight_groups) do
+        vim.hl.range(
+            ---@diagnostic disable-next-line: param-type-mismatch
+            view:GetBufID(),
+            ns_id,
+            diagnostic_severity_to_highlight(highlight_group.severity),
+            { highlight_group.lnum, highlight_group.col },
+            { highlight_group.lnum, highlight_group.end_col }
+        )
+    end
+
     local height = lib_windows.compute_height_for_windows(content, width)
 
-    local new_window_wrap = lib_windows.new_window(new_buffer)
-
-    lib_windows.set_width_window(new_window_wrap, width)
-    -- lib_windows.set_height_window(new_window_wrap, #content)
-    lib_windows.set_height_window(new_window_wrap, height)
-    lib_windows.set_enter_window(new_window_wrap, false)
-    lib_windows.set_anchor_window(new_window_wrap, "NW")
-    lib_windows.set_border_window(new_window_wrap, "rounded")
-    lib_windows.set_focusable_window(new_window_wrap, true)
-    lib_windows.set_relative_window(new_window_wrap, "cursor")
-    lib_windows.set_col_window(new_window_wrap, 1)
-    lib_windows.set_row_window(new_window_wrap, 1)
-    lib_windows.set_style_window(new_window_wrap, "minimal")
-    lib_windows.set_right_title_window(new_window_wrap, "diagnostic")
+    view:Size(width, height)
+    view:Enter(false)
+    view:Anchor("NW")
+    view:Border("rounded")
+    view:Focusable(true)
+    view:Relative("cursor")
+    view:Pos(1, 1)
+    view:Style("minimal")
+    view:Title("diagnostic", "right")
+    if diagnostic.source then
+        view:Footer(cleanStringConcise(diagnostic.source), "right")
+    end
+    if diagnostic_view then
+        diagnostic_view:Destory()
+    end
 
     vim.cmd("normal! m'")
     api.nvim_win_set_cursor(current_window, { next_row + 1, next_col })
     vim.cmd("normal! m'")
 
-    -- try to cloase the old window
-    lib_windows.close_window(diagnostic_window)
-    diagnostic_window = lib_windows.display_window(new_window_wrap)
+    view:Render()
 
-    -- stylua: ignore
-    api.nvim_set_option_value("winhighlight", "Normal:Normal", { win = diagnostic_window })
-    api.nvim_set_option_value("wrap", true, { win = diagnostic_window })
-    -- this is very very important, because it will hide highlight group
-    api.nvim_set_option_value("conceallevel", 2, { win = diagnostic_window })
-    api.nvim_set_option_value("concealcursor", "n", { win = diagnostic_window })
-    -- stylua: ignore
-    api.nvim_set_option_value("winblend", config.options.diagnostic.transparency, { win = diagnostic_window })
+    vim.cmd.redraw()
+    diagnostic_view = view
 
+    view:Winhl("Normal:Normal")
+    view:Winbl(config.options.diagnostic.transparency)
+    view:Option("wrap", true)
+    view:Option("conceallevel", 2)
+    view:Option("concealcursor", "n")
     -- Forced delay of autocmd mounting
     vim.schedule(function()
-        M.autocmd(current_buffer, new_buffer, diagnostic_window)
+        M.autocmd(current_buffer)
     end)
 end
 
 -- autocmd for diagnostic
 --- @param buffer_id integer original buffer id, not float window's buffer id
---- @param new_buffer integer new buffer id
---- @param window_id integer new window id
-function M.autocmd(buffer_id, new_buffer, window_id)
+function M.autocmd(buffer_id)
     local group = api.nvim_create_augroup(autocmd_group, { clear = true })
+    local new_buffer = diagnostic_view:GetBufID()
+    local win_id = diagnostic_view:GetWinID()
     api.nvim_create_autocmd("BufEnter", {
         group = group,
         callback = function()
@@ -182,7 +194,7 @@ function M.autocmd(buffer_id, new_buffer, window_id)
             if current_buffer == new_buffer then
                 return
             end
-            lib_windows.close_window(window_id)
+            diagnostic_view:Destory()
             api.nvim_del_augroup_by_name(autocmd_group)
         end,
     })
@@ -190,7 +202,10 @@ function M.autocmd(buffer_id, new_buffer, window_id)
         buffer = buffer_id,
         group = autocmd_group,
         callback = function()
-            lib_windows.close_window(window_id)
+            -- 只有当前的 diagnostic view的window id 没变，才会触发关闭操作
+            if diagnostic_view and diagnostic_view:GetWinID() == win_id then
+                diagnostic_view:Destory()
+            end
             api.nvim_del_augroup_by_name(autocmd_group)
         end,
         desc = lib_util.command_desc("diagnostic, auto close windows"),

@@ -5,8 +5,6 @@ local prepare_rename_feature = lsp.protocol.Methods.textDocument_prepareRename
 local config = require("LspUI.config")
 local layer = require("LspUI.layer")
 local lib_notify = require("LspUI.lib.notify")
-local lib_util = require("LspUI.lib.util")
-local lib_windows = require("LspUI.lib.windows")
 
 --- @alias LspUI_prepare_rename_res lsp.Range | { range: lsp.Range, placeholder: string } | { defaultBehavior: boolean } | nil
 
@@ -162,16 +160,6 @@ local function do_rename(id, clients, buffer_id, position_param)
     end
 end
 
--- wrap windows.close_window
--- add detect insert mode
---- @param window_id integer
-local close_window = function(window_id)
-    if vim.fn.mode() == "i" then
-        vim.cmd([[stopinsert]])
-    end
-    lib_windows.close_window(window_id)
-end
-
 -- calculate display length
 --- @param str string
 local function calculate_length(str)
@@ -192,10 +180,6 @@ local function keybinding_autocmd(
     old_buffer,
     position_param
 )
-    --- @type integer
-    ---@diagnostic disable-next-line: assign-type-mismatch
-    local new_buffer = view:GetBufID()
-
     -- keybinding exec
     for _, mode in pairs({ "i", "n", "v" }) do
         local function cb()
@@ -247,9 +231,6 @@ end
 local function render(clients, buffer_id, old_name, position_param)
     local view = layer.ClassView:New(true)
 
-    --- @type integer
-    ---@diagnostic disable-next-line: assign-type-mismatch
-    local new_buffer = view:GetBufID()
     view:BufContent(0, -1, { old_name })
     view:BufCall(function()
         -- 执行一段无意义的操作，以便撤销时不会撤销到原来的内容
@@ -275,7 +256,7 @@ local function render(clients, buffer_id, old_name, position_param)
     view:Style("minimal")
     view:Title("rename", "right")
 
-    local window_id = view:Render()
+    view:Render()
 
     view:Winhl("Normal:Normal")
     view:Winbl(config.options.rename.transparency)
