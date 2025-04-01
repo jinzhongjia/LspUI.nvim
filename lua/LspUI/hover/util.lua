@@ -246,7 +246,7 @@ function M.autocmd(current_buffer, view)
         { "CursorMoved", "InsertEnter", "BufDelete", "BufLeave" },
         {
             buffer = current_buffer,
-            callback = function(arg)
+            callback = function(_)
                 -- stylua: ignore
                 if enter_lock then return end
                 view:Destory()
@@ -267,11 +267,11 @@ function M.keybind(view)
                     return
                 end
                 ---@diagnostic disable-next-line: param-type-mismatch
-                next_render(view:GetWinID(), true)
+                next_render(view, true)
                 ---@diagnostic disable-next-line: param-type-mismatch
                 M.keybind(view)
             end,
-            desc = lib_util.command_desc("next hover"),
+            desc = "next hover",
         },
         {
             key = config.options.hover.key_binding.prev,
@@ -283,26 +283,19 @@ function M.keybind(view)
                 ---@diagnostic disable-next-line: param-type-mismatch
                 M.keybind(view)
             end,
-            desc = lib_util.command_desc("prev hover"),
+            desc = "prev hover",
         },
         {
             key = config.options.hover.key_binding.quit,
             cb = function()
                 view:Destory()
             end,
-            desc = lib_util.command_desc("hover, close window"),
+            desc = "hover, close window",
         },
     }
 
     for _, mapping in pairs(mapping_list) do
-        local opts = {
-            nowait = true,
-            noremap = true,
-            callback = mapping.cb,
-            desc = mapping.desc,
-        }
-        ---@diagnostic disable-next-line: param-type-mismatch
-        api.nvim_buf_set_keymap(view:GetBufID(), "n", mapping.key, "", opts)
+        view:KeyMap("n", mapping.key, mapping.cb, mapping.desc)
     end
 end
 
