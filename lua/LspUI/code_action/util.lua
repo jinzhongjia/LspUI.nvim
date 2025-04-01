@@ -7,8 +7,6 @@ local config = require("LspUI.config")
 local layer = require("LspUI.layer")
 local lib_lsp = require("LspUI.lib.lsp")
 local lib_notify = require("LspUI.lib.notify")
-local lib_util = require("LspUI.lib.util")
-local lib_windows = require("LspUI.lib.windows")
 local register = require("LspUI.code_action.register")
 
 --- @alias action_tuple { action: lsp.CodeAction|lsp.Command, client: vim.lsp.Client?, buffer_id: integer, callback: function? }
