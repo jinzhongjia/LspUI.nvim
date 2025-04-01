@@ -90,7 +90,12 @@ function M.render(action)
     --- @type LspUI-highlightgroup[]
     local highlight_groups = {}
 
-    local messages = vim.split(diagnostic.message, "\n")
+    -- local messages = vim.split(diagnostic.message, "\n")
+    -- stylua: ignore
+    local messages = vim.split(diagnostic.message, "[\n;]", { plain = false, trimempty = false })
+    for i, part in ipairs(messages) do
+        messages[i] = vim.trim(part)
+    end
 
     for _, message in pairs(messages) do
         --- @type string
@@ -106,7 +111,7 @@ function M.render(action)
                 severity = diagnostic.severity,
                 lnum = #content,
                 col = 0,
-                end_col = msg_len - 1,
+                end_col = msg_len,
             }
         )
         table.insert(content, msg)
