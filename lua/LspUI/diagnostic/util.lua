@@ -15,20 +15,6 @@ local M = {}
 local autocmd_group = "Lspui_diagnostic"
 local ns_id = vim.api.nvim_create_namespace("LspUI-diagnostic")
 
--- convert severity to string
---- @param severity integer
---- @return string?
----@diagnostic disable-next-line: unused-local, unused-function
-local function diagnostic_severity_to_string(severity)
-    local arr = {
-        "Error",
-        "Warn",
-        "Info",
-        "Hint",
-    }
-    return arr[severity] or nil
-end
-
 -- convert severity to highlight
 --- @param severity integer
 --- @return string
@@ -129,12 +115,12 @@ function M.render(action)
         end
     end
 
-    local view = layer.ClassView:New(true)
-
-    view:BufContent(0, -1, content)
-    view:BufOption("filetype", "LspUI-diagnostic")
-    view:BufOption("modifiable", false)
-    view:BufOption("bufhidden", "wipe")
+    local view = layer.ClassView
+        :New(true)
+        :BufContent(0, -1, content)
+        :BufOption("filetype", "LspUI-diagnostic")
+        :BufOption("modifiable", false)
+        :BufOption("bufhidden", "wipe")
 
     -- highlight buffer
     for _, highlight_group in pairs(highlight_groups) do
@@ -151,17 +137,19 @@ function M.render(action)
     local height = lib_windows.compute_height_for_windows(content, width)
 
     view:Size(width, height)
-    view:Enter(false)
-    view:Anchor("NW")
-    view:Border("rounded")
-    view:Focusable(true)
-    view:Relative("cursor")
-    view:Pos(1, 1)
-    view:Style("minimal")
-    view:Title("diagnostic", "right")
+        :Enter(false)
+        :Anchor("NW")
+        :Border("rounded")
+        :Focusable(true)
+        :Relative("cursor")
+        :Pos(1, 1)
+        :Style("minimal")
+        :Title("diagnostic", "right")
+
     if diagnostic.source then
         view:Footer(cleanStringConcise(diagnostic.source), "right")
     end
+
     if diagnostic_view then
         diagnostic_view:Destory()
     end
@@ -176,10 +164,11 @@ function M.render(action)
     diagnostic_view = view
 
     view:Winhl("Normal:Normal")
-    view:Winbl(config.options.diagnostic.transparency)
-    view:Option("wrap", true)
-    view:Option("conceallevel", 2)
-    view:Option("concealcursor", "n")
+        :Winbl(config.options.diagnostic.transparency)
+        :Option("wrap", true)
+        :Option("conceallevel", 2)
+        :Option("concealcursor", "n")
+
     -- Forced delay of autocmd mounting
     vim.schedule(function()
         M.autocmd(current_buffer)

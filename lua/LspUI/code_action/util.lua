@@ -436,25 +436,26 @@ function M.render(action_tuples)
     -- max height should be 10, TODO: maybe this number should be set by user
     local height = #contents > 10 and 10 or #contents
 
-    local view = layer.ClassView:New(true)
-
-    view:BufContent(0, -1, contents)
-    view:BufOption("filetype", "LspUI-code_action")
-    view:BufOption("modifiable", false)
-    view:BufOption("bufhidden", "wipe")
-    view:Size(max_width + 1, height)
-    view:Enter(true)
-    view:Anchor("NW")
-    view:Border("rounded")
-    view:Focusable(true)
-    view:Relative("cursor")
-    view:Pos(1, 1)
-    view:Style("minimal")
-    view:Title(title, "right")
-    -- render
-    view:Render()
-    view:Winhl("Normal:Normal")
-    view:Winbl(config.options.code_action.transparency)
+    local view = layer
+        .ClassView
+        :New(true)
+        :BufContent(0, -1, contents)
+        :BufOption("filetype", "LspUI-code_action")
+        :BufOption("modifiable", false)
+        :BufOption("bufhidden", "wipe")
+        :Size(max_width + 1, height)
+        :Enter(true)
+        :Anchor("NW")
+        :Border("rounded")
+        :Focusable(true)
+        :Relative("cursor")
+        :Pos(1, 1)
+        :Style("minimal")
+        :Title(title, "right")
+        -- render
+        :Render()
+        :Winhl("Normal:Normal")
+        :Winbl(config.options.code_action.transparency)
 
     ---@diagnostic disable-next-line: param-type-mismatch
     keybinding_autocmd(view, action_tuples)

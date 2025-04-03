@@ -20,19 +20,23 @@ function ClassSubView:New(create_buf)
 end
 
 -- pin the buffer
+--- @return ClassSubView
 function ClassSubView:PinBuffer()
     if not self:Valid() then
-        return
+        return self
     end
     api.nvim_set_option_value("winfibuf", true, { win = self._windowId })
+    return self
 end
 
 -- unpin the buffer
+--- @return ClassSubView
 function ClassSubView:UnPinBuffer()
     if not self:Valid() then
-        return
+        return self
     end
     api.nvim_set_option_value("winfibuf", false, { win = self._windowId })
+    return self
 end
 
 return ClassSubView

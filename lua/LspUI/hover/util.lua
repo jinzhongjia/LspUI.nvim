@@ -159,29 +159,29 @@ end
 --- @param hover_tuple_number integer
 --- @return ClassView view window's id
 function M.render(hover_tuple, hover_tuple_number)
-    local view = layer.ClassView:New(false)
-    hover_tuple_current_index = 1
-
     -- stylua: ignore
     local title = hover_tuple_number > 1 and string.format("hover[1/%d]", hover_tuple_number) or "hover"
+    hover_tuple_current_index = 1
 
-    view:SwitchBuffer(hover_tuple.buffer_id)
-    view:Title(title, "right")
-    view:Size(hover_tuple.width, hover_tuple.height)
-    view:Relative("cursor")
-    view:Border("rounded")
-    view:Style("minimal")
-    view:Focusable(true)
-    view:Enter(false)
-    view:Anchor("NW")
-    view:Pos(1, 1)
-    view:Render()
-    view:Winhl("Normal:Normal")
-    view:Option("wrap", true)
-    view:Option("conceallevel", 3)
-    view:Option("concealcursor", "nvic")
-    view:Winbl(config.options.hover.transparency)
-    view:BufOption("filetype", "LspUI_hover")
+    local view = layer.ClassView
+        :New(false)
+        :SwitchBuffer(hover_tuple.buffer_id)
+        :Title(title, "right")
+        :Size(hover_tuple.width, hover_tuple.height)
+        :Relative("cursor")
+        :Border("rounded")
+        :Style("minimal")
+        :Focusable(true)
+        :Enter(false)
+        :Anchor("NW")
+        :Pos(1, 1)
+        :Render()
+        :Winhl("Normal:Normal")
+        :Option("wrap", true)
+        :Option("conceallevel", 3)
+        :Option("concealcursor", "nvic")
+        :Winbl(config.options.hover.transparency)
+        :BufOption("filetype", "LspUI_hover")
 
     -- hooks for markview
     -- render-markdown no need to hook
