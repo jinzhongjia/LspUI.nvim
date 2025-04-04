@@ -59,7 +59,7 @@ function M.render(action)
     if search_forward then
         diagnostic = vim.diagnostic.jump({ count = 1 })
     else
-        diagnostic = vim.diagnostic.jump({ count = 1 })
+        diagnostic = vim.diagnostic.jump({ count = -1 })
     end
 
     if not diagnostic then
