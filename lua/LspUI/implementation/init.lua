@@ -95,7 +95,6 @@ M.run = function(callback)
         pos_abstract.method.implementation,
         current_buffer,
         window,
-        clients,
         params,
         callback
     )

@@ -98,7 +98,6 @@ M.run = function(callback)
         pos_abstract.method.reference,
         current_buffer,
         window,
-        clients,
         params,
         callback
     )

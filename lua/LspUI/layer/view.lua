@@ -17,13 +17,13 @@ local ClassView = {
 
 ClassView.__index = ClassView
 
---- @param create_buf boolean
+--- @param createBuf boolean
 --- @return ClassView
-function ClassView:New(create_buf)
+function ClassView:New(createBuf)
     local obj = {} -- 创建一个新的空表作为对象
     setmetatable(obj, self) -- 设置元表，使对象继承类的方法
     -- 初始化对象的属性
-    if create_buf then
+    if createBuf then
         self._attachBuffer = api.nvim_create_buf(false, true)
     end
     return obj
@@ -97,6 +97,15 @@ function ClassView:Valid()
         return false
     end
     return api.nvim_win_is_valid(self._windowId)
+end
+
+-- whether buffer is valid
+--- @return boolean
+function ClassView:BufVaild()
+    if not self._attachBuffer then
+        return false
+    end
+    return api.nvim_buf_is_valid(self._attachBuffer)
 end
 
 --- @param callback fun()
@@ -280,6 +289,7 @@ function ClassView:Focus()
     return self
 end
 
+-- 将回调里面的更新操作压缩为依次执行
 --- @param cb fun()
 --- @return ClassView
 function ClassView:Updates(cb)

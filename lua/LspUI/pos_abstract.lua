@@ -1,5 +1,6 @@
 local api, fn, lsp = vim.api, vim.fn, vim.lsp
 local config = require("LspUI.config")
+local layer = require("LspUI.layer")
 local lib_notify = require("LspUI.lib.notify")
 local lib_util = require("LspUI.lib.util")
 local lib_windows = require("LspUI.lib.windows")
@@ -26,18 +27,14 @@ local push_tagstack = nil
 
 -- create auto group
 
---- @alias lsp_range { start: lsp.Position, finish: lsp.Position }
---- @alias lsp_position  { buffer_id: integer, fold: boolean, range: lsp_range[]}
---- @alias Lsp_position_wrap  { [lsp.URI]: lsp_position}
-
 -- more info, see M.method
 --- @type { method: string, name: "definition"|"type_definition"|"declaration"|"reference"|"implementation", fold: boolean }
 local method = nil
 
---- @type Lsp_position_wrap
+--- @type LspUIPositionWrap
 local datas = {}
 
---- @type { uri: string, buffer_id: integer, range: lsp_range? }
+--- @type { uri: string, buffer_id: integer, range: LspUIRange? }
 local current_item = {}
 
 -- main view
@@ -86,7 +83,7 @@ M.method = {
 -- get pos through lnum
 --- @param lnum integer
 --- @return string? uri
---- @return lsp_range? range
+--- @return LspUIRange? range
 local get_lsp_position_by_lnum = function(lnum)
     for uri, data in pairs(M.datas()) do
         lnum = lnum - 1
@@ -105,7 +102,7 @@ local get_lsp_position_by_lnum = function(lnum)
 end
 
 -- highlight main view
---- @param data lsp_position
+--- @param data LspUIPosition
 local main_set_hl = function(data)
     for _, val in pairs(data.range) do
         for row = val.start.line, val.finish.line, 1 do
@@ -640,8 +637,8 @@ M.secondary_view_hide = function(hide)
     return secondary_view.hide
 end
 
---- @param param Lsp_position_wrap?
---- @return Lsp_position_wrap
+--- @param param LspUIPositionWrap?
+--- @return LspUIPositionWrap
 M.datas = function(param)
     if param then
         datas = param
@@ -732,84 +729,59 @@ end
 -- this function only can be called by `definition` or `declaration`
 -- or `type definition` or `reference` or `implementation`
 --- @param buffer_id integer which buffer do method
---- @param clients vim.lsp.Client[]
 --- @param params table
---- @param callback fun(datas: Lsp_position_wrap|nil)
-M.lsp_clients_request = function(buffer_id, clients, params, callback)
-    -- tmp_number is only for counts
-    local tmp_number = 0
-
-    local client_number = #clients
-
+--- @param callback fun(datas: LspUIPositionWrap|nil)
+function M.lsp_clients_request(buffer_id, params, callback)
     local origin_uri = vim.uri_from_bufnr(buffer_id)
 
-    --- @type Lsp_position_wrap
+    --- @type LspUIPositionWrap
     local data = {}
 
-    for _, client in pairs(clients) do
-        client:request(method.method, params, function(err, result, _, _)
-            -- always add one
-            tmp_number = tmp_number + 1
+    --- @type lsp.MultiHandler
+    local function cb(results, _, _)
+        if not api.nvim_buf_is_valid(buffer_id) then
+            return
+        end
 
-            if err ~= nil then
-                lib_notify.Warn(
-                    string.format(
-                        "method %s meet error, error code is %d, msg is %s",
-                        method.name,
-                        err.code,
-                        err.message
-                    )
-                )
-            else
-                local function _handle_result(_result)
-                    -- response is a position
-                    local uri = _result.uri or _result.targetUri
-                    local range = _result.range or _result.targetRange
-
-                    if method.name == "definition" then
-                        uri = csharp_ls_handle(client, uri)
-                    end
-
-                    local uri_buffer = vim.uri_to_bufnr(uri)
-                    if data[uri] == nil then
-                        data[uri] = {
-                            buffer_id = uri_buffer,
-                            fold = method.fold
-                                and not lib_util.compare_uri(origin_uri, uri),
-                            range = {},
-                        }
-                    end
-
-                    table.insert(data[uri].range, {
-                        start = range.start,
-                        finish = range["end"],
-                    })
-                end
-                if result and not vim.tbl_isempty(result) then
-                    if result.uri then
-                        _handle_result(result)
-                    else
-                        for _, response in ipairs(result) do
-                            _handle_result(response)
-                        end
-                    end
-                end
+        local function _handle_result(lspRes)
+            -- response is a position
+            local uri = lspRes.uri or lspRes.targetUri
+            local range = lspRes.range or lspRes.targetRange
+            local uri_buffer = vim.uri_to_bufnr(uri)
+            if data[uri] == nil then
+                data[uri] = {
+                    buffer_id = uri_buffer,
+                    fold = method.fold
+                        and not lib_util.compare_uri(origin_uri, uri),
+                    range = {},
+                }
             end
 
-            if tmp_number == client_number then
-                if vim.tbl_isempty(data) then
-                    callback(nil)
+            table.insert(data[uri].range, {
+                start = range.start,
+                finish = range["end"],
+            })
+        end
+        for clientID, result in pairs(results) do
+            if result and not vim.tbl_isempty(result) then
+                if result.result.uri then
+                    _handle_result(result.result)
                 else
-                    callback(data)
+                    for _, response in ipairs(result.result) do
+                        _handle_result(response)
+                    end
                 end
             end
-        end, buffer_id)
+        end
+        callback(data)
     end
+
+    lsp.buf_request_all(buffer_id, method.method, params, cb)
 end
 
 --- @return integer width
 --- @return integer height
-local generate_secondary_view = function()
+local function generate_secondary_view()
     if not api.nvim_buf_is_valid(M.secondary_view_buffer()) then
         -- in this scope, we will create a new buffer
         M.secondary_view_buffer(api.nvim_create_buf(false, true))
@@ -996,7 +968,7 @@ M.main_view_render = function()
 end
 
 -- render secondary view
-M.secondary_view_render = function()
+function M.secondary_view_render()
     -- generate buffer, get width and height
     local width, height = generate_secondary_view()
 
@@ -1428,21 +1400,15 @@ end
 
 --- @param buffer_id integer which buffer do method
 --- @param window_id integer? which window do method
---- @param clients vim.lsp.Client[]
 --- @param params table
 --- @param new_method { method: string, name: string, fold: boolean }
 --- @param callback fun(Lsp_position_wrap?)?
-M.go = function(new_method, buffer_id, window_id, clients, params, callback)
+function M.go(new_method, buffer_id, window_id, params, callback)
     -- set method
     method = new_method
 
-    M.lsp_clients_request(buffer_id, clients, params, function(data)
-        -- if the buffer_id is not valid, just return
-        if not api.nvim_buf_is_valid(buffer_id) then
-            return
-        end
-
-        if not data then
+    M.lsp_clients_request(buffer_id, params, function(data)
+        if vim.tbl_isempty(data) then
             if callback then
                 callback()
             else
@@ -1457,9 +1423,11 @@ M.go = function(new_method, buffer_id, window_id, clients, params, callback)
 
         M.datas(data)
 
-        if window_id then
-            push_tagstack = lib_util.create_push_tagstack(window_id)
-        end
+        -- TODO: 这里需要判断是否是 secondary view
+        vim.cmd("normal! m'")
+        -- if window_id then
+        --     push_tagstack = lib_util.create_push_tagstack(window_id)
+        -- end
 
         M.secondary_view_render()
 
