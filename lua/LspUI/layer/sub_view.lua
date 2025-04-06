@@ -4,6 +4,7 @@ local ClassView = require("LspUI.layer.view")
 
 --- @class ClassSubView: ClassView
 --- @field _data LspUIPositionWrap
+--- @field _method_name string
 local ClassSubView = {}
 
 local subViewNamespace = api.nvim_create_namespace("LspUISubView")
@@ -74,6 +75,17 @@ function ClassSubView:AddHl(nameSpace, hlGroup, lnum, col, endCol)
         { lnum, endCol }
     )
     return self
+end
+
+-- 渲染 buffer 内容
+function ClassSubView:BufRender()
+    if self:BufVaild() then
+        -- 如果 buffer 有效
+
+        return
+    end
+    self:BufOption("modifiable", true)
+    self:BufOption("filetype", string.format("LspUI-%s",self._method_name))
 end
 
 return ClassSubView
