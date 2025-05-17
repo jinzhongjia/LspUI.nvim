@@ -6,6 +6,7 @@ local api = vim.api
 --- @field _enter boolean
 --- @field _config table
 --- @field _closeEvent fun()|nil
+--- @field _bindedView ClassView|nil 绑定的视图
 local ClassView = {
     _windowId = nil,
     _attachBuffer = nil,
@@ -13,6 +14,7 @@ local ClassView = {
     _config = {},
     _closeEvent = nil,
     _stop_update = false,
+    _bindedView = nil, -- 新增：保存绑定的视图引用
 }
 
 ClassView.__index = ClassView
@@ -81,12 +83,16 @@ function ClassView:Destory()
     if not self:Valid() then
         return self
     end
+
     if self._closeEvent then
         self._closeEvent()
     end
+
     api.nvim_win_close(self._windowId, true)
     self._windowId = nil
     self._attachBuffer = nil
+    self._bindedView = nil -- 清除绑定引用
+
     return self
 end
 
@@ -366,6 +372,55 @@ function ClassView:BufAutoCmd(event, group, cb, desc)
         callback = cb,
         desc = command_desc(desc),
     })
+    return self
+end
+
+-- 添加一个新方法用于绑定视图
+--- @param view ClassView 要绑定的视图
+--- @return ClassView
+function ClassView:BindView(view)
+    if not view then
+        return self
+    end
+
+    -- 建立双向绑定关系
+    self._bindedView = view
+    view._bindedView = self
+
+    -- 为两个视图设置关闭事件
+    local originalCloseEvent = self._closeEvent
+    self._closeEvent = function()
+        if originalCloseEvent then
+            originalCloseEvent()
+        end
+
+        -- 如果绑定的视图存在且有效，则销毁它
+        if self._bindedView and self._bindedView:Valid() then
+            local bindedView = self._bindedView
+            self._bindedView = nil -- 清除绑定关系，防止循环调用
+            bindedView._bindedView = nil -- 清除对方的绑定关系
+            if bindedView then
+                bindedView:Destory()
+            end
+        end
+    end
+
+    -- 只有当对方没有设置关闭事件时，我们才为其设置
+    -- 这避免了在两个视图都调用BindView时重复设置事件处理器
+    if not view._closeEvent then
+        view._closeEvent = function()
+            -- 如果绑定的视图存在且有效，则销毁它
+            if view._bindedView and view._bindedView:Valid() then
+                local bindedView = view._bindedView
+                view._bindedView = nil -- 清除绑定关系，防止循环调用
+                bindedView._bindedView = nil -- 清除对方的绑定关系
+                if bindedView then
+                    bindedView:Destory()
+                end
+            end
+        end
+    end
+
     return self
 end
 

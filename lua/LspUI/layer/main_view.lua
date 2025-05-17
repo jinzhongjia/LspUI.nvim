@@ -156,4 +156,24 @@ function ClassMainView:SetZIndex(subView)
     return self
 end
 
+--- 将 MainView 与 SubView 绑定，设置正确的z-index层级关系
+--- @param subView ClassSubView SubView实例
+--- @return ClassMainView
+function ClassMainView:BindWithSubView(subView)
+    -- 调用基础绑定方法
+    self:BindView(subView)
+
+    -- 设置正确的z-index，确保SubView在MainView之上
+    if self:Valid() and subView:Valid() then
+        local mainWinId = self:GetWinID()
+        local subWinId = subView:GetWinID()
+        if mainWinId and subWinId then
+            api.nvim_win_set_config(mainWinId, { zindex = 50 })
+            api.nvim_win_set_config(subWinId, { zindex = 100 })
+        end
+    end
+
+    return self
+end
+
 return ClassMainView
