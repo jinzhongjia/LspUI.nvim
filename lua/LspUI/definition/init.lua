@@ -1,6 +1,7 @@
 local api = vim.api
 local command = require("LspUI.command")
 local config = require("LspUI.config")
+local interface = require("LspUI.interface")
 local lib_notify = require("LspUI.lib.notify")
 local pos_abstract = require("LspUI.pos_abstract")
 local util = require("LspUI.definition.util")
@@ -92,13 +93,15 @@ M.run = function(callback)
         params = util.make_params(window, clients[1].offset_encoding)
     end
 
-    pos_abstract.go(
-        pos_abstract.method.definition,
-        current_buffer,
-        window,
-        params,
-        callback
-    )
+    interface.go(pos_abstract.method.definition.name, current_buffer, params
+)
+    -- pos_abstract.go(
+    --     pos_abstract.method.definition,
+    --     current_buffer,
+    --     window,
+    --     params,
+    --     callback
+    -- )
 end
 
 return M

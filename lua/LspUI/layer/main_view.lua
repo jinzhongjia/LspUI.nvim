@@ -16,13 +16,14 @@ function ClassMainView:New(createBuf)
     local view = ClassView:New(createBuf)
     local obj = setmetatable(view, self)
     obj._old_winbar = {}
+    obj._config = {}
 
     -- 注释明确告诉类型系统这是返回ClassMainView
     --- @cast obj ClassMainView
 
     -- 设置MainView默认配置
     obj._config.relative = "editor"
-    obj._config.style = "minimal"
+    -- obj._config.style = ""
     obj._config.border = "rounded"
 
     -- 设置MainView大小为编辑器大小
@@ -135,44 +136,6 @@ function ClassMainView:Resize()
     local height = api.nvim_get_option_value("lines", {}) - 2
 
     self:Size(width, height)
-    return self
-end
-
---- 设置MainView和SubView的z-index层级关系
---- @param subView ClassSubView SubView实例
---- @return ClassMainView
-function ClassMainView:SetZIndex(subView)
-    if not self:Valid() or not subView:Valid() then
-        return self
-    end
-    -- 确保MainView的zindex较低
-    api.nvim_win_set_config(self._windowId, { zindex = 50 })
-    -- 添加nil检查
-    local winID = subView:GetWinID()
-    if winID then -- 确保winID不是nil
-        -- 确保SubView的zindex较高
-        api.nvim_win_set_config(winID, { zindex = 100 })
-    end
-    return self
-end
-
---- 将 MainView 与 SubView 绑定，设置正确的z-index层级关系
---- @param subView ClassSubView SubView实例
---- @return ClassMainView
-function ClassMainView:BindWithSubView(subView)
-    -- 调用基础绑定方法
-    self:BindView(subView)
-
-    -- 设置正确的z-index，确保SubView在MainView之上
-    if self:Valid() and subView:Valid() then
-        local mainWinId = self:GetWinID()
-        local subWinId = subView:GetWinID()
-        if mainWinId and subWinId then
-            api.nvim_win_set_config(mainWinId, { zindex = 50 })
-            api.nvim_win_set_config(subWinId, { zindex = 100 })
-        end
-    end
-
     return self
 end
 

@@ -424,4 +424,54 @@ function ClassView:BindView(view)
     return self
 end
 
+--- 隐藏视图（不销毁）
+--- @return ClassView
+function ClassView:HideView()
+    if self:Valid() then
+        api.nvim_win_hide(self._windowId)
+    end
+    return self
+end
+
+--- 显示视图（如果已经隐藏）
+--- @return ClassView
+function ClassView:ShowView()
+    if not self._windowId or not api.nvim_win_is_valid(self._windowId) then
+        if self:BufVaild() then
+            -- 使用保存的配置重新创建窗口
+            self._windowId =
+                api.nvim_open_win(self._attachBuffer, self._enter, self._config)
+            return self
+        end
+    end
+    return self
+end
+
+-- 添加到 ClassView
+--- 保存当前窗口配置
+--- @return ClassView
+function ClassView:SaveCurrentConfig()
+    if self:Valid() then
+        -- 获取当前窗口配置并保存
+        local current_config = api.nvim_win_get_config(self._windowId)
+        -- 只保存我们需要的属性
+        for k, v in pairs(current_config) do
+            if type(v) ~= "function" and k ~= "id" and k ~= "win" then
+                self._config[k] = v
+            end
+        end
+    end
+    return self
+end
+
+--- 设置窗口的 z-index
+--- @param zindex integer z-index值
+--- @return ClassView
+function ClassView:SetZIndex(zindex)
+    if self:Valid() then
+        api.nvim_win_set_config(self._windowId, { zindex = zindex })
+    end
+    return self
+end
+
 return ClassView

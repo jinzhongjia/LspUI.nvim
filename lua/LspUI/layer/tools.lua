@@ -90,4 +90,28 @@ function M.GetUriLines(buffer_id, uri, rows)
     return lines
 end
 
+--- 比较两个 URI 是否指向同一文件
+--- @param uri_1 lsp.URI 第一个 URI
+--- @param uri_2 lsp.URI 第二个 URI
+--- @return boolean 是否相同
+function M.compare_uri(uri_1, uri_2)
+    -- 快速路径：URI 字符串相同时直接返回 true
+    if uri_1 == uri_2 then
+        return true
+    end
+
+    -- 转换为本地路径
+    local path_1 = vim.uri_to_fname(uri_1)
+    local path_2 = vim.uri_to_fname(uri_2)
+
+    -- Windows 系统上执行不区分大小写的比较并规范化路径分隔符
+    if vim.fn.has("win32") == 1 then
+        -- 转换为小写并将所有路径分隔符统一为 '\'
+        path_1 = string.lower(path_1):gsub("/", "\\")
+        path_2 = string.lower(path_2):gsub("/", "\\")
+    end
+
+    return path_1 == path_2
+end
+
 return M
