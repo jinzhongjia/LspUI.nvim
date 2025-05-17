@@ -254,7 +254,7 @@ function ClassController:_onCursorMoved()
         uri = uri,
         buffer_id = self._lsp:GetData()[uri].buffer_id,
         range = range,
-        is_file_header = (range == nil), -- 添加这个字段更清晰地标识
+        is_file_header = (range == nil),
     }
 
     -- 只有当选中了具体代码行且主视图有效时才更新主视图
@@ -277,6 +277,9 @@ function ClassController:_onCursorMoved()
                 vim.cmd("norm! zz")
             end)
         end
+
+        -- 添加这行：设置高亮
+        self._mainView:SetHighlight({ range })
     end
 end
 
@@ -364,6 +367,9 @@ function ClassController:Go(method_name, buffer_id, params)
             api.nvim_set_current_win(win)
             local lnum = self:_findPositionFromParams(params)
             api.nvim_win_set_cursor(win, { lnum, 0 })
+
+            -- 手动触发一次光标移动处理
+            self:_onCursorMoved()
         end
     end)
 end
@@ -519,6 +525,7 @@ function ClassController:ActionNextEntry()
     -- 查找下一个项目
     for uri, item in pairs(data) do
         if found then
+            ---@diagnostic disable-next-line: param-type-mismatch
             api.nvim_win_set_cursor(self._subView:GetWinID(), { line, 0 })
             return
         end
@@ -568,7 +575,6 @@ function ClassController:ActionQuit()
     -- 使用 Destory 会同时销毁两个视图，因为它们是绑定的
     self._subView:Destory()
 end
-
 function ClassController:ActionToggleMainView()
     if not self._mainView:Valid() then
         -- 如果数据存在则重新渲染
@@ -583,10 +589,8 @@ function ClassController:ActionToggleMainView()
 
             -- 更新配置
             self._mainView:Updates(function()
-                self
-                    ._mainView
+                self._mainView
                     :Border("none")
-                    -- :Style("minimal")
                     :Relative("editor")
                     :Size(
                         api.nvim_get_option_value("columns", {}) - 2,
@@ -603,13 +607,17 @@ function ClassController:ActionToggleMainView()
             if self._subView:Valid() then
                 self._subView:SetZIndex(100)
             end
+
+            -- 添加：如果当前有选中的range，恢复高亮
+            if self._current_item and self._current_item.range then
+                self._mainView:SetHighlight({ self._current_item.range })
+            end
         end
     else
         -- 保存当前配置后隐藏
         self._mainView:SaveCurrentConfig():HideView()
     end
 end
-
 function ClassController:ActionToggleSubView()
     if not self._subView:Valid() then
         -- 先完全重新生成内容

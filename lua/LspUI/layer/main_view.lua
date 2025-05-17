@@ -9,6 +9,7 @@ local ClassMainView = {}
 setmetatable(ClassMainView, ClassView)
 ClassMainView.__index = ClassMainView
 ClassMainView._keymap_history = {}
+ClassMainView._namespace = api.nvim_create_namespace("LspUI_main")
 
 --- 创建一个新的MainView实例
 --- @param createBuf boolean 是否创建新的缓冲区
@@ -69,10 +70,14 @@ function ClassMainView:SetWinbar(winbar)
     return self
 end
 
---- 重写SwitchBuffer方法，处理winbar的保存和恢复
 --- @param newBuffer integer
 --- @return ClassMainView
 function ClassMainView:SwitchBuffer(newBuffer)
+    -- 清除当前缓冲区的高亮
+    if self:Valid() and self._attachBuffer then
+        self:ClearHighlight()
+    end
+
     -- 保存当前buffer的winbar（如果存在）
     if self:Valid() and self._attachBuffer then
         -- 查找当前buffer所有的窗口
@@ -205,6 +210,59 @@ function ClassMainView:RestoreKeyMappings(buf_id)
 
     -- 清理存储
     self._keymap_history[buf_id] = nil
+
+    return self
+end
+
+--- 清除主视图中的所有高亮
+--- @return ClassMainView
+function ClassMainView:ClearHighlight()
+    if not self:BufVaild() then
+        return self
+    end
+
+    api.nvim_buf_clear_namespace(self._attachBuffer, self._namespace, 0, -1)
+    return self
+end
+
+--- 在主视图中高亮指定范围
+--- @param ranges LspUIRange[] 要高亮的范围数组
+--- @param hlGroup string? 高亮组名称，默认为 "Search"
+--- @return ClassMainView
+function ClassMainView:SetHighlight(ranges, hlGroup)
+    if not self:BufVaild() then
+        return self
+    end
+
+    hlGroup = hlGroup or "Search"
+
+    -- 先清除旧的高亮
+    self:ClearHighlight()
+
+    -- 为每个范围添加高亮
+    for _, range in ipairs(ranges) do
+        for row = range.start.line, range.finish.line do
+            local start_col = 0
+            local end_col = -1
+
+            if row == range.start.line then
+                start_col = range.start.character
+            end
+
+            if row == range.finish.line then
+                end_col = range.finish.character
+            end
+
+            api.nvim_buf_add_highlight(
+                self._attachBuffer,
+                self._namespace,
+                hlGroup,
+                row,
+                start_col,
+                end_col
+            )
+        end
+    end
 
     return self
 end
