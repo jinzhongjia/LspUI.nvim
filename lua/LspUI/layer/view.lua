@@ -1,4 +1,4 @@
-local api, fn = vim.api, vim.fn
+local api = vim.api
 
 --- @class ClassView
 --- @field _windowId integer|nil
@@ -24,7 +24,7 @@ function ClassView:New(createBuf)
     setmetatable(obj, self) -- 设置元表，使对象继承类的方法
     -- 初始化对象的属性
     if createBuf then
-        self._attachBuffer = api.nvim_create_buf(false, true)
+        obj._attachBuffer = api.nvim_create_buf(false, true)
     end
     return obj
 end
