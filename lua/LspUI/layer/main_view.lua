@@ -100,6 +100,18 @@ function ClassMainView:SwitchBuffer(newBuffer)
     -- 调用父类方法切换buffer
     ClassView.SwitchBuffer(self, newBuffer)
 
+    -- 确保缓冲区被加载
+    if not api.nvim_buf_is_loaded(newBuffer) then
+        vim.fn.bufload(newBuffer)
+    end
+
+    -- 触发BufRead事件确保语法高亮
+    api.nvim_buf_call(newBuffer, function()
+        if api.nvim_get_option_value("filetype", { buf = newBuffer }) == "" then
+            vim.cmd("do BufRead")
+        end
+    end)
+
     -- 为新buffer应用之前保存的winbar设置（如果有）
     if self:Valid() and self._old_winbar[newBuffer] then
         local winbar = self._old_winbar[newBuffer]
