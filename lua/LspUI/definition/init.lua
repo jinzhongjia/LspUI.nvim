@@ -93,8 +93,7 @@ M.run = function(callback)
         params = util.make_params(window, clients[1].offset_encoding)
     end
 
-    interface.go(pos_abstract.method.definition.name, current_buffer, params
-)
+    interface.go(pos_abstract.method.definition.name, current_buffer, params)
     -- pos_abstract.go(
     --     pos_abstract.method.definition,
     --     current_buffer,

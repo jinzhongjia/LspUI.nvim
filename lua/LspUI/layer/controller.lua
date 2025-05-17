@@ -312,27 +312,27 @@ end
 
 ---@private
 ---@param uri string
+---@param offset integer? 可选的行偏移量
 ---@return integer lnum 光标应放置的行号
-function ClassController:_getCursorPosForUri(uri)
+function ClassController:_getCursorPosForUri(uri, offset)
+    offset = offset or 0
     local lnum = 0
-    for currentUri, data in pairs(self._lsp:GetData()) do
-        lnum = lnum + 1
+    local data = self._lsp:GetData()
+
+    for currentUri, item in pairs(data) do
+        lnum = lnum + 1 -- 文件标题行
+
         if currentUri == uri then
-            return lnum
+            return lnum + offset -- 如果找到URI，返回文件标题行+偏移
         end
-        if not data.fold then
-            for _, _ in pairs(data.range) do
-                lnum = lnum + 1
-            end
+
+        if not item.fold then
+            lnum = lnum + #item.range -- 如果文件未折叠，加上其范围行数
         end
     end
 
-    -- 默认返回值
-    local method = self._lsp:GetMethod()
-    if method and method.fold then
-        return 1
-    end
-    return 2
+    -- 默认返回首行
+    return 1
 end
 
 -- 公开API开始
@@ -483,31 +483,56 @@ function ClassController:ActionJump(cmd)
     })
     vim.cmd("norm! zz")
 end
+
 function ClassController:ActionToggleFold()
     if not self._current_item.uri then
         return
     end
 
-    -- 切换折叠状态
+    -- 获取当前数据
     local data = self._lsp:GetData()
     local uri = self._current_item.uri
+    local current_range = self._current_item.range
+    local line_offset = 0
 
     if data[uri] then
+        -- 如果当前在文件的代码行上，计算偏移量
+        if current_range and not data[uri].fold then
+            -- 已展开状态，找出当前范围是第几个
+            for i, range in ipairs(data[uri].range) do
+                if
+                    range.start.line == current_range.start.line
+                    and range.start.character
+                        == current_range.start.character
+                then
+                    line_offset = i
+                    break
+                end
+            end
+        end
+
+        -- 切换折叠状态
         data[uri].fold = not data[uri].fold
+
+        -- 折叠后光标应该在文件标题行，展开后可能在代码行
+        if data[uri].fold then
+            line_offset = 0
+        end
 
         -- 重新生成SubView内容
         local width, height = self:_generateSubViewContent()
         self._subView:Size(width, height)
 
-        -- 保持光标在当前文件路径上
-        local lnum = self:_getCursorPosForUri(uri)
+        -- 设置光标位置
+        local lnum = self:_getCursorPosForUri(uri, line_offset)
         if
             self._subView:GetWinID()
-            ---@diagnostic disable-next-line: param-type-mismatch
             and api.nvim_win_is_valid(self._subView:GetWinID())
         then
-            ---@diagnostic disable-next-line: param-type-mismatch
             api.nvim_win_set_cursor(self._subView:GetWinID(), { lnum, 0 })
+
+            -- 手动触发一次光标移动处理更新当前项
+            self:_onCursorMoved()
         end
     end
 end

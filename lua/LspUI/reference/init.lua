@@ -4,6 +4,7 @@ local config = require("LspUI.config")
 local lib_notify = require("LspUI.lib.notify")
 local pos_abstract = require("LspUI.pos_abstract")
 local util = require("LspUI.reference.util")
+local interface = require("LspUI.interface")
 
 local M = {}
 
@@ -94,13 +95,14 @@ M.run = function(callback)
         params = util.make_params(window, clients[1].offset_encoding)
     end
 
-    pos_abstract.go(
-        pos_abstract.method.reference,
-        current_buffer,
-        window,
-        params,
-        callback
-    )
+    interface.go(pos_abstract.method.reference.name, current_buffer, params)
+    -- pos_abstract.go(
+    --     pos_abstract.method.reference,
+    --     current_buffer,
+    --     window,
+    --     params,
+    --     callback
+    -- )
 end
 
 return M
