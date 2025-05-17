@@ -254,6 +254,7 @@ function ClassController:_onCursorMoved()
         uri = uri,
         buffer_id = self._lsp:GetData()[uri].buffer_id,
         range = range,
+        is_file_header = (range == nil), -- 添加这个字段更清晰地标识
     }
 
     -- 只有当选中了具体代码行且主视图有效时才更新主视图
@@ -432,6 +433,13 @@ function ClassController:ActionJump(cmd)
     -- 保存当前项目
     local item = self._current_item
 
+    -- 如果是文件路径行（没有range），则执行折叠操作
+    if not item.range then
+        -- 切换折叠状态，不关闭视图
+        self:ActionToggleFold()
+        return
+    end
+
     -- 执行标签栈
     if self._push_tagstack then
         self._push_tagstack()
@@ -441,40 +449,34 @@ function ClassController:ActionJump(cmd)
     self._subView:Destory() -- 会同时销毁绑定的mainView
 
     -- 执行跳转
-    if item.range then
-        -- 打开新窗口或标签页
-        if cmd then
-            if cmd == "tabe" then
-                vim.cmd("tab split")
-            else
-                vim.cmd(cmd)
-            end
-        end
-
-        -- 打开文件
-        if lib_util.buffer_is_listed(item.buffer_id) then
-            vim.cmd(string.format("buffer %s", item.buffer_id))
+    -- 打开新窗口或标签页
+    if cmd then
+        if cmd == "tabe" then
+            vim.cmd("tab split")
         else
-            vim.cmd(
-                string.format(
-                    "edit %s",
-                    vim.fn.fnameescape(vim.uri_to_fname(item.uri))
-                )
-            )
+            vim.cmd(cmd)
         end
-
-        -- 设置光标位置
-        api.nvim_win_set_cursor(0, {
-            item.range.start.line + 1,
-            item.range.start.character,
-        })
-        vim.cmd("norm! zz")
-    else
-        -- 切换折叠状态
-        self:ActionToggleFold()
     end
-end
 
+    -- 打开文件
+    if lib_util.buffer_is_listed(item.buffer_id) then
+        vim.cmd(string.format("buffer %s", item.buffer_id))
+    else
+        vim.cmd(
+            string.format(
+                "edit %s",
+                vim.fn.fnameescape(vim.uri_to_fname(item.uri))
+            )
+        )
+    end
+
+    -- 设置光标位置
+    api.nvim_win_set_cursor(0, {
+        item.range.start.line + 1,
+        item.range.start.character,
+    })
+    vim.cmd("norm! zz")
+end
 function ClassController:ActionToggleFold()
     if not self._current_item.uri then
         return
