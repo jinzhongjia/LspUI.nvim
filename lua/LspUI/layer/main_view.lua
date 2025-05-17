@@ -1,5 +1,6 @@
 local api = vim.api
 local ClassView = require("LspUI.layer.view")
+local config = require("LspUI.config")
 
 --- @class ClassMainView: ClassView
 --- @field _old_winbar table 存储每个缓冲区原始的winbar设置
@@ -7,6 +8,7 @@ local ClassMainView = {}
 
 setmetatable(ClassMainView, ClassView)
 ClassMainView.__index = ClassMainView
+ClassMainView._keymap_history = {}
 
 --- 创建一个新的MainView实例
 --- @param createBuf boolean 是否创建新的缓冲区
@@ -17,6 +19,7 @@ function ClassMainView:New(createBuf)
     local obj = setmetatable(view, self)
     obj._old_winbar = {}
     obj._config = {}
+    obj._keymap_history = {}
 
     -- 注释明确告诉类型系统这是返回ClassMainView
     --- @cast obj ClassMainView
@@ -122,6 +125,23 @@ function ClassMainView:Destory()
                 end
             end
         end
+
+        -- 恢复当前buffer的键映射
+        if self._keymap_history and self._keymap_history[current_buf] then
+            self:RestoreKeyMappings(current_buf)
+        end
+    end
+
+    -- 对所有保存的键映射执行恢复
+    if self._keymap_history then
+        for buf_id, _ in pairs(self._keymap_history) do
+            if
+                api.nvim_buf_is_valid(buf_id)
+                and buf_id ~= self._attachBuffer
+            then
+                self:RestoreKeyMappings(buf_id)
+            end
+        end
     end
 
     -- 调用父类的销毁方法
@@ -136,6 +156,56 @@ function ClassMainView:Resize()
     local height = api.nvim_get_option_value("lines", {}) - 2
 
     self:Size(width, height)
+    return self
+end
+
+--- 保存当前缓冲区的按键映射
+--- @param buf_id integer 缓冲区ID
+--- @return ClassMainView
+function ClassMainView:SaveKeyMappings(buf_id)
+    if not buf_id or not api.nvim_buf_is_valid(buf_id) then
+        return self
+    end
+
+    local keybinds = {
+        config.options.pos_keybind.main.back,
+        config.options.pos_keybind.main.hide_secondary,
+    }
+
+    self._keymap_history[buf_id] = {}
+
+    for _, key in ipairs(keybinds) do
+        self._keymap_history[buf_id][key] = vim.fn.maparg(key, "n", false, true)
+    end
+
+    return self
+end
+
+--- 恢复缓冲区的键映射
+--- @param buf_id integer 缓冲区ID
+--- @return ClassMainView
+function ClassMainView:RestoreKeyMappings(buf_id)
+    if
+        not buf_id
+        or not api.nvim_buf_is_valid(buf_id)
+        or not self._keymap_history[buf_id]
+    then
+        return self
+    end
+
+    for key, map_info in pairs(self._keymap_history[buf_id]) do
+        -- 先删除当前映射
+        pcall(api.nvim_buf_del_keymap, buf_id, "n", key)
+
+        -- 如果有原始映射，则恢复
+        if not vim.tbl_isempty(map_info) then
+            vim.fn.mapset("n", false, map_info)
+        end
+    end
+
+    -- 清理存储
+    self._keymap_history[buf_id] = nil
+
     return self
 end
 

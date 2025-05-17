@@ -74,9 +74,10 @@ function ClassController:_generateSubViewContent()
     for uri, item in pairs(data) do
         -- 文件名格式化
         local file_full_name = vim.uri_to_fname(uri)
+        -- 修复：使用正确的Unicode折叠图标
         local file_fmt = string.format(
             " %s %s",
-            item.fold and "" or "",
+            data.fold and "▶" or "▼", -- 使用正确的Unicode字符
             vim.fn.fnamemodify(file_full_name, ":t")
         )
 
@@ -219,6 +220,7 @@ function ClassController:_setupMainViewKeyBindings()
     if not buf then
         return
     end
+    self._mainView:SaveKeyMappings(buf)
 
     local keyBindings = {
         [config.options.pos_keybind.main.back] = function()
@@ -247,13 +249,14 @@ function ClassController:_onCursorMoved()
         return
     end
 
-    -- 设置当前项目
+    -- 设置当前项目，即使没有range（表示是文件路径行）
     self._current_item = {
         uri = uri,
         buffer_id = self._lsp:GetData()[uri].buffer_id,
         range = range,
     }
 
+    -- 只有当选中了具体代码行且主视图有效时才更新主视图
     if range and self._mainView:Valid() then
         -- 切换主视图缓冲区
         local bufId = self._lsp:GetData()[uri].buffer_id
@@ -284,15 +287,20 @@ function ClassController:_getLspPositionByLnum(lnum)
     for uri, item in pairs(data) do
         lnum = lnum - 1
         if lnum == 0 then
+            -- 这是文件路径行，返回URI但不返回range
             return uri, nil
         end
         if not item.fold then
             for _, val in pairs(item.range) do
                 lnum = lnum - 1
                 if lnum == 0 then
+                    -- 这是代码行，返回URI和range
                     return uri, val
                 end
             end
+        else
+            -- 如果已折叠，跳过所有代码行
+            lnum = lnum - #item.range
         end
     end
     return nil, nil
@@ -479,9 +487,20 @@ function ClassController:ActionToggleFold()
     if data[uri] then
         data[uri].fold = not data[uri].fold
 
-        -- 重新渲染视图
+        -- 重新生成SubView内容
         local width, height = self:_generateSubViewContent()
         self._subView:Size(width, height)
+
+        -- 保持光标在当前文件路径上
+        local lnum = self:_getCursorPosForUri(uri)
+        if
+            self._subView:GetWinID()
+            ---@diagnostic disable-next-line: param-type-mismatch
+            and api.nvim_win_is_valid(self._subView:GetWinID())
+        then
+            ---@diagnostic disable-next-line: param-type-mismatch
+            api.nvim_win_set_cursor(self._subView:GetWinID(), { lnum, 0 })
+        end
     end
 end
 
