@@ -106,10 +106,17 @@ function ClassController:_generateSubViewContent()
         local norm_file_path =
             normalize_path(vim.fn.fnamemodify(file_full_name, ":p"))
 
+        -- 在 _generateSubViewContent 函数中修改以下代码
         if norm_file_path:sub(1, #cwd) == cwd then
             -- 如果文件在工作目录下，显示相对路径
-            rel_path = file_full_name:sub(#vim.fn.getcwd() + 1) -- +1 是为了去掉路径分隔符
-            rel_path = vim.fn.fnamemodify(rel_path, ":h")
+            local rel_to_cwd = file_full_name:sub(#vim.fn.getcwd() + 1)
+
+            -- 去除可能存在的开头斜杠
+            if rel_to_cwd:sub(1, 1) == "/" or rel_to_cwd:sub(1, 1) == "\\" then
+                rel_to_cwd = rel_to_cwd:sub(2)
+            end
+
+            rel_path = vim.fn.fnamemodify(rel_to_cwd, ":h")
             if rel_path ~= "." and rel_path ~= "" then
                 rel_path = " (" .. rel_path .. ")"
             else
