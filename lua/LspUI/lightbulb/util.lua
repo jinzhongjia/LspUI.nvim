@@ -4,7 +4,7 @@ local code_action_feature = lsp.protocol.Methods.textDocument_codeAction
 local code_action_register = require("LspUI.code_action.register")
 local config = require("LspUI.config")
 local global = require("LspUI.global")
-local lib_lsp = require("LspUI.lib.lsp")
+local layer = require("LspUI.layer")
 local lib_notify = require("LspUI.lib.notify")
 local lib_util = require("LspUI.lib.util")
 
@@ -78,7 +78,7 @@ function M.request(buffer_id, callback)
     end
     local context = {
         triggerKind = vim.lsp.protocol.CodeActionTriggerKind.Invoked,
-        diagnostics = lib_lsp.diagnostic_vim_to_lsp(
+        diagnostics = layer.ClassLsp:diagnostic_vim_to_lsp(
             vim.diagnostic.get(buffer_id, {
                 lnum = fn.line(".") - 1,
             })

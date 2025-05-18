@@ -4,7 +4,6 @@ local config = require("LspUI.config")
 local layer = require("LspUI.layer")
 local lib_notify = require("LspUI.lib.notify")
 local lib_util = require("LspUI.lib.util")
-local lib_windows = require("LspUI.lib.windows")
 
 --- @alias hover_tuple { client: vim.lsp.Client, buffer_id: integer, width: integer, height: integer }
 
@@ -88,7 +87,7 @@ local function hover_req_cb(client, hover_ctx)
                 end
 
                 -- stylua: ignore
-                width = math.min(width, math.floor(lib_windows.get_max_width() * 0.6))
+                width = math.min(width, math.floor(layer.tools.get_max_width() * 0.6))
 
                 local height = #markdown_lines
 
@@ -101,7 +100,7 @@ local function hover_req_cb(client, hover_ctx)
                         -- contents = markdown_lines,
                         width = width,
                         -- stylua: ignore
-                        height = math.min(height, math.floor(lib_windows.get_max_height() * 0.8)),
+                        height = math.min(height, math.floor(layer.tools.get_max_height() * 0.8)),
                     }
                 )
             end

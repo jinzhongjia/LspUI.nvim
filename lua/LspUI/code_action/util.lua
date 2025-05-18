@@ -5,7 +5,6 @@ local code_action_resolve_feature = lsp.protocol.Methods.codeAction_resolve
 
 local config = require("LspUI.config")
 local layer = require("LspUI.layer")
-local lib_lsp = require("LspUI.lib.lsp")
 local lib_notify = require("LspUI.lib.notify")
 local register = require("LspUI.code_action.register")
 
@@ -72,7 +71,7 @@ function M.get_range_params(buffer_id, offset_encoding)
 
     local context = {
         triggerKind = vim.lsp.protocol.CodeActionTriggerKind.Invoked,
-        diagnostics = lib_lsp.diagnostic_vim_to_lsp(
+        diagnostics = layer.ClassLsp:diagnostic_vim_to_lsp(
             vim.diagnostic.get(buffer_id, {
                 lnum = fn.line(".") - 1,
             })

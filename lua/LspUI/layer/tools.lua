@@ -121,4 +121,38 @@ function M.buffer_is_listed(buffer_id)
     return fn.buflisted(buffer_id) == 1
 end
 
+-- this func get max width of nvim
+--- @return integer width
+M.get_max_width = function()
+    return api.nvim_get_option_value("columns", {})
+end
+
+-- this func get max height of nvim
+--- @return integer height
+M.get_max_height = function()
+    -- 减去命令行高度、状态栏和标签页行的高度
+    return api.nvim_get_option_value("lines", {})
+        - api.nvim_get_option_value("cmdheight", {})
+        - (api.nvim_get_option_value("laststatus", {}) > 0 and 1 or 0)
+        - (api.nvim_get_option_value("showtabline", {}) > 0 and 1 or 0)
+end
+
+--- 计算窗口内容的显示高度
+--- @param contents string[] 要显示的内容
+--- @param width integer 窗口宽度
+--- @return integer 内容在给定宽度下需要的高度
+M.compute_height_for_windows = function(contents, width)
+    if not width or width <= 0 then
+        return #contents -- 如果宽度无效，至少返回行数
+    end
+
+    local height = 0
+    for _, line in ipairs(contents) do
+        local line_width = fn.strdisplaywidth(line)
+        height = height + math.max(1, math.ceil(line_width / width))
+    end
+
+    return height
+end
+
 return M

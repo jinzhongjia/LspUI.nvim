@@ -145,6 +145,7 @@ function ClassMainView:Destory()
 
         -- 恢复当前buffer的键映射
         if self._keymap_history and self._keymap_history[current_buf] then
+            ---@diagnostic disable-next-line: param-type-mismatch
             self:RestoreKeyMappings(current_buf)
         end
     end

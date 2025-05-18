@@ -3,7 +3,6 @@ local config = require("LspUI.config")
 local layer = require("LspUI.layer")
 local lib_notify = require("LspUI.lib.notify")
 local lib_util = require("LspUI.lib.util")
-local lib_windows = require("LspUI.lib.windows")
 local M = {}
 
 --- @class LspUI-highlightgroup
@@ -104,14 +103,14 @@ function M.render(action)
     end
 
     local width =
-        math.min(max_width, math.floor(lib_windows.get_max_width() * 0.6))
+        math.min(max_width, math.floor(layer.tools.get_max_width() * 0.6))
 
     if diagnostic.source then
         local msg =
             string.format("        %s", cleanStringConcise(diagnostic.source))
         local len = fn.strdisplaywidth(msg)
         if len > width then
-            width = math.min(len, math.floor(lib_windows.get_max_width() * 0.6))
+            width = math.min(len, math.floor(layer.tools.get_max_width() * 0.6))
         end
     end
 
@@ -134,7 +133,7 @@ function M.render(action)
         )
     end
 
-    local height = lib_windows.compute_height_for_windows(content, width)
+    local height = layer.tools.compute_height_for_windows(content, width)
 
     view:Size(width, height)
         :Enter(false)
