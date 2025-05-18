@@ -1,0 +1,7 @@
+- lsp 的util复用
+- code action 简化
+- hover 简化
+- inlay hint 简化
+- lightbulb 简化
+- rename 简化
+- signature help 简化

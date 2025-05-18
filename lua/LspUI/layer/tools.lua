@@ -188,4 +188,31 @@ M.command_desc = function(desc)
     return "[LspUI]: " .. desc
 end
 
+function M.debounce(func, delay)
+    local timer = nil
+    return function(...)
+        local args = { ... }
+        if timer then
+            timer:stop()
+            timer:close() -- 确保计时器资源被释放
+        end
+
+        timer = vim.loop.new_timer()
+        if timer == nil then
+            return
+        end
+        timer:start(
+            delay,
+            0,
+            vim.schedule_wrap(function()
+                func(unpack(args))
+                if timer then
+                    timer:close()
+                    timer = nil
+                end
+            end)
+        )
+    end
+end
+
 return M
