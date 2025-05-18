@@ -131,14 +131,17 @@ function ClassController:_generateSubViewContent()
                 rel_to_cwd = rel_to_cwd:sub(2)
             end
 
-            rel_path = vim.fn.fnamemodify(rel_to_cwd, ":h")
-            if rel_path ~= "." and rel_path ~= "" then
-                rel_path = " (" .. rel_path .. ")"
+            -- 获取相对路径的目录部分
+            local rel_dir = vim.fn.fnamemodify(rel_to_cwd, ":h")
+
+            -- 总是以 ./ 开头显示
+            if rel_dir == "." then
+                rel_path = " (./)" -- 文件在工作区根目录
             else
-                rel_path = ""
+                rel_path = " (./" .. rel_dir .. ")" -- 文件在子目录
             end
         else
-            -- 否则显示目录路径
+            -- 否则显示绝对目录路径
             local dir = vim.fn.fnamemodify(file_full_name, ":h")
             rel_path = " (" .. dir .. ")"
         end
