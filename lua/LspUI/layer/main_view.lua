@@ -279,4 +279,23 @@ function ClassMainView:SetHighlight(ranges, hlGroup)
     return self
 end
 
+-- 添加到 ClassMainView
+--- @return ClassMainView
+function ClassMainView:PinBuffer()
+    if not self:Valid() then
+        return self
+    end
+    api.nvim_set_option_value("winfixbuf", true, { win = self._windowId })
+    return self
+end
+
+--- @return ClassMainView
+function ClassMainView:UnPinBuffer()
+    if not self:Valid() then
+        return self
+    end
+    api.nvim_set_option_value("winfixbuf", false, { win = self._windowId })
+    return self
+end
+
 return ClassMainView

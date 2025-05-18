@@ -259,9 +259,15 @@ function ClassController:_onCursorMoved()
 
     -- 只有当选中了具体代码行且主视图有效时才更新主视图
     if range and self._mainView:Valid() then
+        -- 切换缓冲区前先暂时解除固定
+        self._mainView:UnPinBuffer()
+
         -- 切换主视图缓冲区
         local bufId = self._lsp:GetData()[uri].buffer_id
         self._mainView:SwitchBuffer(bufId)
+
+        -- 切换后重新固定
+        self._mainView:PinBuffer()
 
         -- 设置光标位置
         local win = self._mainView:GetWinID()
@@ -444,6 +450,9 @@ function ClassController:RenderViews()
 
         self._mainView:Render()
 
+        -- 添加：设置主视图为固定状态
+        self._mainView:PinBuffer()
+
         -- 建立双向绑定
         self._mainView:BindView(self._subView)
         self._subView:SetZIndex(100)
@@ -479,6 +488,11 @@ function ClassController:ActionJump(cmd)
     -- 清除高亮 - 添加这一行确保高亮被清除
     if self._mainView:Valid() then
         self._mainView:ClearHighlight()
+    end
+
+    -- 关闭视图前先解除固定
+    if self._mainView:Valid() then
+        self._mainView:UnPinBuffer()
     end
 
     -- 关闭视图
@@ -607,6 +621,9 @@ function ClassController:ActionPrevEntry()
 end
 
 function ClassController:ActionQuit()
+    if self._mainView:Valid() then
+        self._mainView:UnPinBuffer()
+    end
     -- 使用 Destory 会同时销毁两个视图，因为它们是绑定的
     self._subView:Destory()
 end
