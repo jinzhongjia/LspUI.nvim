@@ -13,11 +13,41 @@ local tools = require("LspUI.layer.tools")
 local ClassLsp = {
     _client = nil,
     _datas = {},
+    ---@diagnostic disable-next-line: assign-type-mismatch
     _method = nil,
+    ---@diagnostic disable-next-line: assign-type-mismatch
     _origin_uri = nil,
 }
 
 ClassLsp.__index = ClassLsp
+
+ClassLsp.methods = {
+    definition = {
+        method = lsp.protocol.Methods.textDocument_definition,
+        name = "definition",
+        fold = false,
+    },
+    type_definition = {
+        method = lsp.protocol.Methods.textDocument_typeDefinition,
+        name = "type_definition",
+        fold = false,
+    },
+    declaration = {
+        method = lsp.protocol.Methods.textDocument_declaration,
+        name = "declaration",
+        fold = false,
+    },
+    reference = {
+        method = lsp.protocol.Methods.textDocument_references,
+        name = "reference",
+        fold = true,
+    },
+    implementation = {
+        method = lsp.protocol.Methods.textDocument_implementation,
+        name = "implementation",
+        fold = true,
+    },
+}
 
 ---@return ClassLsp
 function ClassLsp:New()
@@ -29,36 +59,8 @@ end
 ---@param method_name string "definition"|"type_definition"|"declaration"|"reference"|"implementation"
 ---@return boolean 设置是否成功
 function ClassLsp:SetMethod(method_name)
-    local methods = {
-        definition = {
-            method = lsp.protocol.Methods.textDocument_definition,
-            name = "definition",
-            fold = false,
-        },
-        type_definition = {
-            method = lsp.protocol.Methods.textDocument_typeDefinition,
-            name = "type_definition",
-            fold = false,
-        },
-        declaration = {
-            method = lsp.protocol.Methods.textDocument_declaration,
-            name = "declaration",
-            fold = false,
-        },
-        reference = {
-            method = lsp.protocol.Methods.textDocument_references,
-            name = "reference",
-            fold = true,
-        },
-        implementation = {
-            method = lsp.protocol.Methods.textDocument_implementation,
-            name = "implementation",
-            fold = true,
-        },
-    }
-
-    if methods[method_name] then
-        self._method = methods[method_name]
+    if self.methods[method_name] then
+        self._method = self.methods[method_name]
         return true
     else
         lib_notify.Error("不支持的LSP方法: " .. method_name)
