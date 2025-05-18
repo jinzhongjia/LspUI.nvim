@@ -4,4 +4,3 @@
 - inlay hint 简化
 - lightbulb 简化
 - rename 简化
-- signature help 简化
