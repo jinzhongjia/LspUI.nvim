@@ -2,7 +2,6 @@ local api, fn = vim.api, vim.fn
 local config = require("LspUI.config")
 local layer = require("LspUI.layer")
 local lib_notify = require("LspUI.lib.notify")
-local lib_util = require("LspUI.lib.util")
 local M = {}
 
 --- @class LspUI-highlightgroup
@@ -38,12 +37,8 @@ end
 --- @param action "prev"|"next"
 function M.render(action)
     --- @type boolean
-    local search_forward
-    if action == "prev" then
-        search_forward = false
-    elseif action == "next" then
-        search_forward = true
-    else
+    local search_forward = action == "next"
+    if not (action == "next" or action == "prev") then
         lib_notify.Warn(string.format("diagnostic, unknown action %s", action))
         return
     end
@@ -55,11 +50,8 @@ function M.render(action)
     --- @type vim.Diagnostic|nil
     local diagnostic
 
-    if search_forward then
-        diagnostic = vim.diagnostic.jump({ count = 1 })
-    else
-        diagnostic = vim.diagnostic.jump({ count = -1 })
-    end
+    local count = search_forward and 1 or -1
+    diagnostic = vim.diagnostic.jump({ count = count })
 
     if not diagnostic then
         return
@@ -84,7 +76,7 @@ function M.render(action)
 
     for _, message in pairs(messages) do
         --- @type string
-        local msg = string.format("%s", message)
+        local msg = message
         local msg_len = fn.strdisplaywidth(msg)
         if msg_len > max_width then
             max_width = msg_len
@@ -201,7 +193,7 @@ function M.autocmd(buffer_id)
             end
             api.nvim_del_augroup_by_name(autocmd_group)
         end,
-        desc = lib_util.command_desc("diagnostic, auto close windows"),
+        desc = layer.tools.command_desc("diagnostic, auto close windows"),
     })
 end
 

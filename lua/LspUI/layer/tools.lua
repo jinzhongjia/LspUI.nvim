@@ -181,4 +181,11 @@ function M.save_position_to_jumplist()
     api.nvim_command("normal! m'")
 end
 
+-- generate command description
+--- @param desc string
+--- @return string
+M.command_desc = function(desc)
+    return "[LspUI]: " .. desc
+end
+
 return M
