@@ -21,7 +21,7 @@ function M.init()
 
     is_initialized = true
     vim.treesitter.language.register("markdown", "LspUI_hover")
-    
+
     -- register command
     if config.options.hover.command_enable then
         command.register_command(command_key, M.run, {})
@@ -52,7 +52,7 @@ function M.run()
         end)
         return
     end
-    
+
     -- get current buffer
     local current_buffer = api.nvim_get_current_buf()
     local clients = util.get_clients(current_buffer)
@@ -60,7 +60,7 @@ function M.run()
         lib_notify.Warn("no client supports hover!")
         return
     end
-    
+
     util.get_hovers(clients, current_buffer, function(hover_tuples)
         if vim.tbl_isempty(hover_tuples) then
             lib_notify.Info("no hover!")
