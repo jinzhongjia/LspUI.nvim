@@ -187,7 +187,6 @@ function ClassController:_generateSubViewContent()
             -- 如果未折叠，添加到内容
             if not item.fold then
                 -- 当前行在内容中的索引
-                local line_index = #content
                 table.insert(content, code_fmt)
 
                 if filetype ~= "" then
@@ -220,13 +219,13 @@ function ClassController:_generateSubViewContent()
 
     -- 对文件名行应用高亮
     for _, lnum in pairs(hl_lines) do
-        vim.api.nvim_buf_add_highlight(
+        vim.highlight.range(
             bufId,
             subViewNamespace,
             "Directory",
-            lnum - 1, -- 行号从0开始
-            3,
-            -1
+            { lnum - 1, 3 },
+            { lnum - 1, -1 },
+            { priority = vim.highlight.priorities.user }
         )
     end
 
@@ -520,7 +519,7 @@ end
 function ClassController:Go(method_name, buffer_id, params)
     -- 检查现有视图状态
     local mainViewValid = self._mainView and self._mainView:Valid()
-    local subViewValid = self._subView and self._subView:Valid()
+    -- local subViewValid = self._subView and self._subView:Valid()
 
     -- 如果主视图有效，需要恢复当前缓冲区的按键映射
     if mainViewValid then
@@ -571,9 +570,9 @@ function ClassController:Go(method_name, buffer_id, params)
             end
 
             -- 打开文件
-            local buffer_id = vim.uri_to_bufnr(single_uri)
-            if tools.buffer_is_listed(buffer_id) then
-                vim.cmd(string.format("buffer %s", buffer_id))
+            local uri_buffer_id = vim.uri_to_bufnr(single_uri)
+            if tools.buffer_is_listed(uri_buffer_id) then
+                vim.cmd(string.format("buffer %s", uri_buffer_id))
             else
                 vim.cmd(
                     string.format(
@@ -628,13 +627,16 @@ function ClassController:RenderViews()
     end
 
     if subViewValid then
-        -- 既然视图存在，只需清理而不销毁
-        api.nvim_buf_clear_namespace(
-            self._subView:GetBufID(),
-            api.nvim_create_namespace("LspUISubView"),
-            0,
-            -1
-        )
+        local bufId = self._subView:GetBufID()
+        if bufId then
+            -- 既然视图存在，只需清理而不销毁
+            api.nvim_buf_clear_namespace(
+                bufId,
+                api.nvim_create_namespace("LspUISubView"),
+                0,
+                -1
+            )
+        end
     end
 
     -- 创建副视图或更新现有副视图
@@ -786,8 +788,10 @@ function ClassController:ActionToggleFold()
     local lnum = self:_getCursorPosForUri(uri, currentRange)
     if
         self._subView:GetWinID()
+        ---@diagnostic disable-next-line: param-type-mismatch
         and api.nvim_win_is_valid(self._subView:GetWinID())
     then
+        ---@diagnostic disable-next-line: param-type-mismatch
         api.nvim_win_set_cursor(self._subView:GetWinID(), { lnum, 0 })
 
         -- 手动触发一次光标移动处理更新当前项
@@ -839,6 +843,7 @@ function ClassController:ActionPrevEntry()
         if uri == current_uri then
             if prev_line < line then
                 api.nvim_win_set_cursor(
+                    ---@diagnostic disable-next-line: param-type-mismatch
                     self._subView:GetWinID(),
                     { prev_line, 0 }
                 )
@@ -959,7 +964,7 @@ function ClassController:ActionFoldAll(fold)
     local changed = false
 
     -- 修改所有项目的折叠状态
-    for uri, item in pairs(data) do
+    for _, item in pairs(data) do
         if item.fold ~= fold then
             item.fold = fold
             changed = true
@@ -973,6 +978,7 @@ function ClassController:ActionFoldAll(fold)
 
         -- 恢复光标位置
         local lnum = self:_getCursorPosForUri(current_uri)
+        ---@diagnostic disable-next-line: param-type-mismatch
         api.nvim_win_set_cursor(self._subView:GetWinID(), { lnum, 0 })
     end
 end

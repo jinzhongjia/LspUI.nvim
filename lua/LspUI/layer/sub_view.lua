@@ -23,6 +23,7 @@ ClassSubView.__index = ClassSubView
 
 --- @class LspUIPosition
 --- @field buffer_id integer
+--- @field fold boolean
 --- @field range LspUIRange[]
 
 --- @alias LspUIPositionWrap  { [lsp.URI]: LspUIPosition}
