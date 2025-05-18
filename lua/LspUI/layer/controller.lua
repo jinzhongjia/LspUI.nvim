@@ -23,6 +23,7 @@ local ClassController = {
     _subView = nil,
     _current_item = {},
     _push_tagstack = nil,
+    _debounce_delay = 50, -- 50ms 的防抖延迟
 }
 
 ClassController.__index = ClassController
@@ -277,7 +278,7 @@ function ClassController:_setupSubViewKeyBindings()
 
     -- 设置光标移动事件
     self._subView:BufAutoCmd("CursorMoved", "LspUI_SubView", function()
-        self:_onCursorMoved()
+        self:_debouncedCursorMoved()
     end, "跟踪光标移动")
 end
 
@@ -354,6 +355,26 @@ function ClassController:_onCursorMoved()
         -- 添加这行：设置高亮
         self._mainView:SetHighlight({ range })
     end
+end
+
+--- @private
+function ClassController:_debouncedCursorMoved()
+    -- 清除之前的定时器
+    if self._debounce_timer then
+        vim.fn.timer_stop(self._debounce_timer)
+        self._debounce_timer = nil
+    end
+
+    -- 创建新的定时器
+    self._debounce_timer = vim.fn.timer_start(self._debounce_delay, function()
+        -- 在主线程中执行
+        vim.schedule(function()
+            -- 确保视图仍然有效
+            if self._subView:Valid() then
+                self:_onCursorMoved()
+            end
+        end)
+    end)
 end
 
 ---@private
