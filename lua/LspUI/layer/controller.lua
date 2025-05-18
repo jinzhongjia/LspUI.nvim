@@ -516,6 +516,7 @@ end
 ---@param method_name string
 ---@param buffer_id integer
 ---@param params table
+-- 修改 ClassController:Go 方法
 function ClassController:Go(method_name, buffer_id, params)
     -- 检查现有视图状态
     local mainViewValid = self._mainView and self._mainView:Valid()
@@ -544,6 +545,58 @@ function ClassController:Go(method_name, buffer_id, params)
             return
         end
 
+        -- 计算结果总数
+        local total_results = 0
+        local single_uri, single_range
+
+        -- 遍历所有URI的结果
+        for uri, item in pairs(data) do
+            total_results = total_results + #item.range
+
+            -- 如果只有一个结果，记录它的位置信息
+            if total_results == 1 and #item.range == 1 then
+                single_uri = uri
+                single_range = item.range[1]
+            elseif total_results > 1 then
+                -- 一旦发现多于一个结果，停止记录
+                break
+            end
+        end
+
+        -- 如果只有一个结果，直接跳转
+        if total_results == 1 and single_uri and single_range then
+            -- 执行标签栈
+            if self._push_tagstack then
+                self._push_tagstack()
+            end
+
+            -- 打开文件
+            local buffer_id = vim.uri_to_bufnr(single_uri)
+            if tools.buffer_is_listed(buffer_id) then
+                vim.cmd(string.format("buffer %s", buffer_id))
+            else
+                vim.cmd(
+                    string.format(
+                        "edit %s",
+                        vim.fn.fnameescape(vim.uri_to_fname(single_uri))
+                    )
+                )
+            end
+
+            -- 设置光标位置
+            api.nvim_win_set_cursor(0, {
+                single_range.start.line + 1,
+                single_range.start.character,
+            })
+            vim.cmd("norm! zz")
+
+            lib_notify.Info(
+                string.format("Jumped to the only %s location", method_name)
+            )
+            return
+        end
+
+        -- 多于一个结果时，渲染视图
         -- 渲染视图，无论视图是否已存在
         self:RenderViews()
 
