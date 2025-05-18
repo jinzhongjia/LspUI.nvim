@@ -1,4 +1,3 @@
--- lua/LspUI/layer/controller.lua (修复版本)
 local api = vim.api
 local ClassLsp = require("LspUI.layer.lsp")
 local ClassMainView = require("LspUI.layer.main_view")
