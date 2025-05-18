@@ -172,4 +172,13 @@ function M.islist(t)
     return count > 0
 end
 
+--- 保存当前位置到 jumplist 中
+--- 可以在需要跳转前调用此函数，以便之后能够使用 CTRL-O 返回
+--- @return nil
+function M.save_position_to_jumplist()
+    -- 使用 m' 命令将当前位置添加到 jumplist
+    -- 这相当于在当前位置设置一个匿名标记
+    api.nvim_command("normal! m'")
+end
+
 return M

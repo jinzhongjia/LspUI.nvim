@@ -4,7 +4,6 @@ local ClassMainView = require("LspUI.layer.main_view")
 local ClassSubView = require("LspUI.layer.sub_view")
 local config = require("LspUI.config")
 local lib_notify = require("LspUI.layer.notify")
-local lib_util = require("LspUI.lib.util")
 local tools = require("LspUI.layer.tools")
 
 -- 添加全局单例实例
@@ -15,7 +14,7 @@ local _controller_instance = nil
 ---@field _mainView ClassMainView
 ---@field _subView ClassSubView
 ---@field _current_item {uri: string, buffer_id: integer, range: LspUIRange?}
----@field _push_tagstack function|nil
+---@field origin_win integer?
 local ClassController = {
     ---@diagnostic disable-next-line: assign-type-mismatch
     _lsp = nil,
@@ -24,7 +23,6 @@ local ClassController = {
     ---@diagnostic disable-next-line: assign-type-mismatch
     _subView = nil,
     _current_item = {},
-    _push_tagstack = nil,
     _debounce_delay = 50, -- 50ms 的防抖延迟
 }
 
@@ -518,8 +516,9 @@ end
 ---@param method_name string
 ---@param buffer_id integer
 ---@param params table
+---@param origin_win integer?
 -- 修改 ClassController:Go 方法
-function ClassController:Go(method_name, buffer_id, params)
+function ClassController:Go(method_name, buffer_id, params, origin_win)
     -- 检查现有视图状态
     local mainViewValid = self._mainView and self._mainView:Valid()
 
@@ -536,8 +535,7 @@ function ClassController:Go(method_name, buffer_id, params)
         return
     end
 
-    -- 保存标签栈
-    self._push_tagstack = lib_util.create_push_tagstack(0)
+    self.origin_win = origin_win or api.nvim_get_current_win()
 
     -- 发起LSP请求
     self._lsp:Request(buffer_id, params, function(data)
@@ -575,9 +573,7 @@ function ClassController:Go(method_name, buffer_id, params)
         -- 如果只有一个结果，直接跳转
         if total_results == 1 and single_uri and single_range then
             -- 执行标签栈
-            if self._push_tagstack then
-                self._push_tagstack()
-            end
+            tools.save_position_to_jumplist()
 
             -- 打开文件
             local uri_buffer_id = vim.uri_to_bufnr(single_uri)
@@ -726,9 +722,10 @@ function ClassController:ActionJump(cmd)
         return
     end
 
-    -- 执行标签栈
-    if self._push_tagstack then
-        self._push_tagstack()
+    if api.nvim_win_is_valid(self.origin_win) then
+        api.nvim_win_call(self.origin_win, function()
+            tools.save_position_to_jumplist()
+        end)
     end
 
     -- 清除高亮 - 添加这一行确保高亮被清除
