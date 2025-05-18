@@ -142,7 +142,7 @@ function M.render(action)
     end
 
     if diagnostic_view then
-        diagnostic_view:Destory()
+        diagnostic_view:Destroy()
     end
 
     vim.cmd("normal! m'")
@@ -179,7 +179,7 @@ function M.autocmd(buffer_id)
             if current_buffer == new_buffer then
                 return
             end
-            diagnostic_view:Destory()
+            diagnostic_view:Destroy()
             api.nvim_del_augroup_by_name(autocmd_group)
         end,
     })
@@ -189,7 +189,7 @@ function M.autocmd(buffer_id)
         callback = function()
             -- 只有当前的 diagnostic view的window id 没变，才会触发关闭操作
             if diagnostic_view and diagnostic_view:GetWinID() == win_id then
-                diagnostic_view:Destory()
+                diagnostic_view:Destroy()
             end
             api.nvim_del_augroup_by_name(autocmd_group)
         end,

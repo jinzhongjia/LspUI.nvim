@@ -188,7 +188,7 @@ local function keybinding_autocmd(
                 position_param.newName = new_name
                 do_rename(1, clients, old_buffer, position_param)
             end
-            view:Destory()
+            view:Destroy()
         end
         local key = config.options.rename.key_binding.exec
         ---@diagnostic disable-next-line: param-type-mismatch
@@ -196,7 +196,7 @@ local function keybinding_autocmd(
     end
 
     view:KeyMap("n", config.options.rename.key_binding.quit, function()
-        view:Destory()
+        view:Destroy()
     end, "quit rename")
 
     local autocmd_group_id =
@@ -219,7 +219,7 @@ local function keybinding_autocmd(
     )
 
     view:BufAutoCmd("WinLeave", autocmd_group_id, function()
-        view:Destory()
+        view:Destroy()
     end, "rename auto close windows when focus leave")
 end
 

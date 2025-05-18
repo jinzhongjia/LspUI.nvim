@@ -77,9 +77,9 @@ function ClassView:Relative(relative)
     return self
 end
 
--- destory window
+-- destroy window
 --- @return ClassView
-function ClassView:Destory()
+function ClassView:Destroy()
     if not self:Valid() then
         return self
     end
@@ -400,7 +400,7 @@ function ClassView:BindView(view)
             self._bindedView = nil -- 清除绑定关系，防止循环调用
             bindedView._bindedView = nil -- 清除对方的绑定关系
             if bindedView then
-                bindedView:Destory()
+                bindedView:Destroy()
             end
         end
     end
@@ -415,7 +415,7 @@ function ClassView:BindView(view)
                 view._bindedView = nil -- 清除绑定关系，防止循环调用
                 bindedView._bindedView = nil -- 清除对方的绑定关系
                 if bindedView then
-                    bindedView:Destory()
+                    bindedView:Destroy()
                 end
             end
         end

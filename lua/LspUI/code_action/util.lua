@@ -367,7 +367,7 @@ local function keybinding_autocmd(view, action_tuples)
     end, "go to prev action")
 
     view:KeyMap("n", config.options.code_action.key_binding.quit, function()
-        view:Destory()
+        view:Destroy()
     end, "quit code_action")
 
     view:KeyMap("n", config.options.code_action.key_binding.exec, function()
@@ -383,7 +383,7 @@ local function keybinding_autocmd(view, action_tuples)
         end
         local action_tuple = action_tuples[action_tuple_index]
         choice_action_tupe(action_tuple)
-        view:Destory()
+        view:Destroy()
     end, "execute acode action")
 
     -- number keys exec action
@@ -392,7 +392,7 @@ local function keybinding_autocmd(view, action_tuples)
         local desc = string.format("exec action with numberk key [%d]", action_tuple_index)
         view:KeyMap("n", tostring(action_tuple_index), function()
             choice_action_tupe(action_tuple)
-            view:Destory()
+            view:Destroy()
         end, desc)
     end
 
@@ -404,7 +404,7 @@ local function keybinding_autocmd(view, action_tuples)
         end
     end, "lock the cursor")
     view:BufAutoCmd("WinLeave", nil, function()
-        view:Destory()
+        view:Destroy()
     end, "code action auto close window when focus leave")
 end
 

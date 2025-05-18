@@ -121,9 +121,9 @@ function ClassMainView:SwitchBuffer(newBuffer)
     return self
 end
 
---- 重写Destory方法，恢复原始winbar
+--- 重写Destroy方法，恢复原始winbar
 --- @return ClassMainView
-function ClassMainView:Destory()
+function ClassMainView:Destroy()
     if self:Valid() and self._attachBuffer then
         -- 恢复当前buffer的原始winbar设置
         local current_buf = self._attachBuffer
@@ -163,7 +163,7 @@ function ClassMainView:Destory()
     end
 
     -- 调用父类的销毁方法
-    ClassView.Destory(self)
+    ClassView.Destroy(self)
     return self
 end
 

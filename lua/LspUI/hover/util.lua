@@ -248,7 +248,7 @@ function M.autocmd(current_buffer, view)
             callback = function(_)
                 -- stylua: ignore
                 if enter_lock then return end
-                view:Destory()
+                view:Destroy()
                 return true
             end,
             desc = lib_util.command_desc("auto close hover when cursor moves"),
@@ -287,7 +287,7 @@ function M.keybind(view)
         {
             key = config.options.hover.key_binding.quit,
             cb = function()
-                view:Destory()
+                view:Destroy()
             end,
             desc = "hover, close window",
         },

@@ -739,7 +739,7 @@ function ClassController:ActionJump(cmd)
     end
 
     -- 关闭视图
-    self._subView:Destory() -- 会同时销毁绑定的mainView
+    self._subView:Destroy() -- 会同时销毁绑定的mainView
 
     -- 执行跳转
     if cmd then
@@ -878,8 +878,8 @@ function ClassController:ActionQuit()
         self._subView:ClearSyntaxHighlight()
     end
 
-    -- 使用 Destory 会同时销毁两个视图，因为它们是绑定的
-    self._subView:Destory()
+    -- 使用 Destroy 会同时销毁两个视图，因为它们是绑定的
+    self._subView:Destroy()
 end
 
 function ClassController:ActionToggleMainView()
