@@ -519,7 +519,6 @@ end
 function ClassController:Go(method_name, buffer_id, params)
     -- 检查现有视图状态
     local mainViewValid = self._mainView and self._mainView:Valid()
-    -- local subViewValid = self._subView and self._subView:Valid()
 
     -- 如果主视图有效，需要恢复当前缓冲区的按键映射
     if mainViewValid then
@@ -540,7 +539,15 @@ function ClassController:Go(method_name, buffer_id, params)
     -- 发起LSP请求
     self._lsp:Request(buffer_id, params, function(data)
         if not data or vim.tbl_isempty(data) then
-            lib_notify.Info(string.format("找不到%s", method_name))
+            if method_name == ClassLsp.methods.incoming_calls.name then
+                lib_notify.Info("找不到调用此函数/方法的位置")
+            elseif method_name == ClassLsp.methods.outgoing_calls.name then
+                lib_notify.Info(
+                    "找不到此函数/方法调用的其他位置"
+                )
+            else
+                lib_notify.Info(string.format("找不到%s", method_name))
+            end
             return
         end
 

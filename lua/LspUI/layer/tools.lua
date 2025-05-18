@@ -155,4 +155,21 @@ M.compute_height_for_windows = function(contents, width)
     return height
 end
 
+-- 添加一个辅助函数到 tools 模块，用于检查是否为列表类型
+-- 在 lua\LspUI\layer\tools.lua 中添加：
+function M.islist(t)
+    if type(t) ~= "table" then
+        return false
+    end
+    -- 检查是否为序列
+    local count = 0
+    for _ in pairs(t) do
+        count = count + 1
+        if t[count] == nil then
+            return false
+        end
+    end
+    return count > 0
+end
+
 return M
