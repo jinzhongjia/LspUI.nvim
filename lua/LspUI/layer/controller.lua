@@ -103,12 +103,12 @@ function ClassController:_generateSubViewContent()
 
         -- 计算相对路径，用于extmark
         local rel_path = ""
-        local norm_file_path = normalize_path(file_full_name)
+        local norm_file_path =
+            normalize_path(vim.fn.fnamemodify(file_full_name, ":p"))
 
-        print(file_full_name, cwd)
-        if file_full_name:sub(1, #cwd) == cwd then
+        if norm_file_path:sub(1, #cwd) == cwd then
             -- 如果文件在工作目录下，显示相对路径
-            rel_path = file_full_name:sub(#cwd + 1) -- +1 是为了去掉路径分隔符
+            rel_path = file_full_name:sub(#vim.fn.getcwd() + 1) -- +1 是为了去掉路径分隔符
             rel_path = vim.fn.fnamemodify(rel_path, ":h")
             if rel_path ~= "." and rel_path ~= "" then
                 rel_path = " (" .. rel_path .. ")"
