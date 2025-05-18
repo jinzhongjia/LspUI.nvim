@@ -1,6 +1,7 @@
 -- this file is just for secondary view
 local api, fn = vim.api, vim.fn
 local ClassView = require("LspUI.layer.view")
+local syntax_highlight = require("LspUI.layer.syntax_highlight")
 local tools = require("LspUI.layer.tools")
 
 --- @class ClassSubView: ClassView
@@ -85,6 +86,51 @@ function ClassSubView:AddHl(nameSpace, hlGroup, lnum, col, endCol)
         { lnum, col },
         { lnum, endCol }
     )
+    return self
+end
+
+--- 为子视图应用代码语法高亮
+--- @param code_regions table<string, {line:integer, col_start:integer, col_end:integer}[]>
+--- @return ClassSubView
+function ClassSubView:ApplySyntaxHighlight(code_regions)
+    if not self:BufVaild() then
+        return self
+    end
+
+    -- 格式化数据为treesitter需要的格式
+    local regions = {}
+
+    for lang, entries in pairs(code_regions) do
+        if lang ~= "" then
+            regions[lang] = {}
+
+            for _, entry in ipairs(entries) do
+                -- 使用Treesitter兼容的格式
+                table.insert(regions[lang], {
+                    { entry.line, entry.col_start }, -- [start_row, start_col]
+                    { entry.line, entry.col_end }, -- [end_row, end_col]
+                })
+            end
+        end
+    end
+
+    -- 应用语法高亮
+    if not vim.tbl_isempty(regions) then
+        require("LspUI.layer.syntax_highlight").attach(self:GetBufID(), regions)
+    end
+
+    return self
+end
+
+-- 添加方法用于移除语法高亮
+--- 清除子视图的语法高亮
+--- @return ClassSubView
+function ClassSubView:ClearSyntaxHighlight()
+    if not self:BufVaild() then
+        return self
+    end
+
+    syntax_highlight.detach(self:GetBufID())
     return self
 end
 

@@ -86,6 +86,9 @@ function ClassController:_generateSubViewContent()
     local extmarks = {} -- 存储要添加的extmark信息 {line, text, hl_group}
     local max_width = 0
 
+    -- 添加新变量用于收集语法高亮信息
+    local syntax_regions = {}
+
     -- 统一路径格式的辅助函数
     local function normalize_path(path)
         -- 统一使用正斜杠作为路径分隔符
@@ -109,6 +112,9 @@ function ClassController:_generateSubViewContent()
         -- 文件名格式化
         local file_full_name = vim.uri_to_fname(uri)
         local file_name = vim.fn.fnamemodify(file_full_name, ":t")
+
+        -- 确定文件类型
+        local filetype = vim.filetype.match({ filename = file_full_name }) or ""
 
         -- 计算相对路径，用于extmark
         local rel_path = ""
@@ -168,13 +174,30 @@ function ClassController:_generateSubViewContent()
 
         -- 获取代码行内容
         local lines = tools.GetUriLines(item.buffer_id, uri, uri_rows)
+
+        -- 初始化该语言的语法高亮区域
+        if not syntax_regions[filetype] and filetype ~= "" then
+            syntax_regions[filetype] = {}
+        end
+
         for _, row in pairs(uri_rows) do
             local line_code = vim.fn.trim(lines[row] or "")
             local code_fmt = string.format("   %s", line_code)
 
             -- 如果未折叠，添加到内容
             if not item.fold then
+                -- 当前行在内容中的索引
+                local line_index = #content
                 table.insert(content, code_fmt)
+
+                if filetype ~= "" then
+                    local line_content = content[#content] -- 获取刚添加的内容
+                    table.insert(syntax_regions[filetype], {
+                        line = #content - 1, -- 行号 (0-based)
+                        col_start = 3, -- 开始列（跳过前导空格）
+                        col_end = #line_content, -- 结束列（使用实际内容长度）
+                    })
+                end
             end
 
             -- 更新最大宽度
@@ -187,6 +210,9 @@ function ClassController:_generateSubViewContent()
 
     -- 设置内容
     api.nvim_buf_set_lines(bufId, 0, -1, true, content)
+
+    -- 应用语法高亮
+    self._subView:ApplySyntaxHighlight(syntax_regions)
 
     -- 设置高亮
     local subViewNamespace = api.nvim_create_namespace("LspUISubView")
@@ -780,6 +806,11 @@ function ClassController:ActionQuit()
     if self._mainView:Valid() then
         self._mainView:ClearHighlight()
         self._mainView:UnPinBuffer()
+    end
+
+    -- 清除子视图的语法高亮
+    if self._subView:Valid() then
+        self._subView:ClearSyntaxHighlight()
     end
 
     -- 使用 Destory 会同时销毁两个视图，因为它们是绑定的
