@@ -1,5 +1,6 @@
 -- lua/LspUI/layer/lsp.lua (重构版本)
 local api, lsp = vim.api, vim.lsp
+local diagnostic_severity = vim.diagnostic.severity -- 缓存常用引用
 
 local lib_notify = require("LspUI.layer.notify")
 local tools = require("LspUI.layer.tools")
@@ -148,6 +149,46 @@ function ClassLsp:_processLspResult(result, data)
             handle_result(response)
         end
     end
+end
+
+--- 将 Vim 诊断格式转换为 LSP 诊断格式
+--- @param diagnostics vim.Diagnostic[] Vim 格式的诊断数组
+--- @return lsp.Diagnostic[] LSP 格式的诊断数组
+function ClassLsp:diagnostic_vim_to_lsp(diagnostics)
+    if not diagnostics or #diagnostics == 0 then
+        return {} -- 添加空检查提高健壮性
+    end
+
+    local result = {}
+    for i, diagnostic in ipairs(diagnostics) do -- 使用 ipairs 替代 tbl_map 可能更高效
+        local severity = diagnostic.severity
+        if type(severity) == "string" then
+            severity = diagnostic_severity[severity]
+        end
+
+        local user_data_lsp = (
+            diagnostic.user_data and diagnostic.user_data.lsp
+        ) or {}
+
+        result[i] = vim.tbl_extend("keep", {
+            range = {
+                start = {
+                    line = diagnostic.lnum,
+                    character = diagnostic.col,
+                },
+                ["end"] = {
+                    line = diagnostic.end_lnum,
+                    character = diagnostic.end_col,
+                },
+            },
+            severity = severity,
+            message = diagnostic.message,
+            source = diagnostic.source,
+            code = diagnostic.code,
+        }, user_data_lsp)
+    end
+
+    return result
 end
 
 return ClassLsp
