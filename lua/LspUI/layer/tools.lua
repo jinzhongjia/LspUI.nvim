@@ -106,9 +106,9 @@ function M.compare_uri(uri_1, uri_2)
 
     -- Windows 系统上执行不区分大小写的比较并规范化路径分隔符
     if vim.fn.has("win32") == 1 then
-        -- 转换为小写并将所有路径分隔符统一为 '\'
-        path_1 = string.lower(path_1):gsub("/", "\\")
-        path_2 = string.lower(path_2):gsub("/", "\\")
+        -- 转换为小写并将所有路径分隔符统一为 '/'
+        path_1 = path_1:lower():gsub("\\", "/")
+        path_2 = path_2:lower():gsub("\\", "/")
     end
 
     return path_1 == path_2

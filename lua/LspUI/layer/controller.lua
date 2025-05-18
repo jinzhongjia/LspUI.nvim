@@ -63,30 +63,79 @@ function ClassController:_generateSubViewContent()
         { buf = bufId }
     )
 
+    -- 先清空缓冲区，避免与旧内容冲突
+    api.nvim_buf_set_lines(bufId, 0, -1, true, {})
+
+    -- 创建命名空间用于extmark，并清除旧的extmark
+    local extmark_ns = api.nvim_create_namespace("LspUIPathExtmarks")
+    api.nvim_buf_clear_namespace(bufId, extmark_ns, 0, -1)
+
     -- 初始化变量
-    local hl_num = 0
-    local hl = {}
-    local content = {}
+    local hl_lines = {} -- 需要高亮的行
+    local content = {} -- 要添加的内容
+    local extmarks = {} -- 存储要添加的extmark信息 {line, text, hl_group}
     local max_width = 0
-    local height = 0
+
+    -- 统一路径格式的辅助函数
+    local function normalize_path(path)
+        -- 统一使用正斜杠作为路径分隔符
+        local result = path:gsub("\\", "/")
+        -- Windows 系统转为小写以进行不区分大小写的比较
+        if vim.fn.has("win32") == 1 then
+            result = result:lower()
+        end
+        -- 确保路径以斜杠结束
+        if result:sub(-1) ~= "/" then
+            result = result .. "/"
+        end
+        return result
+    end
+
+    -- 获取并规范化当前工作目录
+    local cwd = normalize_path(vim.fn.getcwd())
 
     -- 生成内容
     for uri, item in pairs(data) do
         -- 文件名格式化
         local file_full_name = vim.uri_to_fname(uri)
-        -- 修复：使用正确的Unicode折叠图标
-        local file_fmt = string.format(
-            " %s %s",
-            data.fold and "▶" or "▼", -- 使用正确的Unicode字符
-            vim.fn.fnamemodify(file_full_name, ":t")
-        )
+        local file_name = vim.fn.fnamemodify(file_full_name, ":t")
 
+        -- 计算相对路径，用于extmark
+        local rel_path = ""
+        local norm_file_path = normalize_path(file_full_name)
+
+        print(file_full_name, cwd)
+        if file_full_name:sub(1, #cwd) == cwd then
+            -- 如果文件在工作目录下，显示相对路径
+            rel_path = file_full_name:sub(#cwd + 1) -- +1 是为了去掉路径分隔符
+            rel_path = vim.fn.fnamemodify(rel_path, ":h")
+            if rel_path ~= "." and rel_path ~= "" then
+                rel_path = " (" .. rel_path .. ")"
+            else
+                rel_path = ""
+            end
+        else
+            -- 否则显示目录路径
+            local dir = vim.fn.fnamemodify(file_full_name, ":h")
+            rel_path = " (" .. dir .. ")"
+        end
+
+        -- 构建文件行格式
+        local file_fmt =
+            string.format(" %s %s", item.fold and "▶" or "▼", file_name)
+
+        -- 添加到内容
         table.insert(content, file_fmt)
-        height = height + 1
+        table.insert(hl_lines, #content) -- 记录需要高亮的行号
 
-        -- 记录高亮行
-        hl_num = hl_num + 1
-        table.insert(hl, hl_num)
+        -- 存储extmark信息，等内容全部添加完后再设置
+        if rel_path ~= "" then
+            table.insert(extmarks, {
+                line = #content - 1, -- 行号从0开始
+                text = rel_path,
+                hl_group = "Comment",
+            })
+        end
 
         -- 更新最大宽度
         local file_fmt_len = vim.fn.strdisplaywidth(file_fmt)
@@ -103,16 +152,13 @@ function ClassController:_generateSubViewContent()
         -- 获取代码行内容
         local lines = tools.GetUriLines(item.buffer_id, uri, uri_rows)
         for _, row in pairs(uri_rows) do
-            local line_code = vim.fn.trim(lines[row])
+            local line_code = vim.fn.trim(lines[row] or "")
             local code_fmt = string.format("   %s", line_code)
 
             -- 如果未折叠，添加到内容
             if not item.fold then
                 table.insert(content, code_fmt)
-                hl_num = hl_num + 1
             end
-
-            height = height + 1
 
             -- 更新最大宽度
             local code_fmt_length = vim.fn.strdisplaywidth(code_fmt)
@@ -122,21 +168,41 @@ function ClassController:_generateSubViewContent()
         end
     end
 
-    -- 设置内容和高亮
+    -- 设置内容
     api.nvim_buf_set_lines(bufId, 0, -1, true, content)
 
+    -- 设置高亮
     local subViewNamespace = api.nvim_create_namespace("LspUISubView")
     api.nvim_buf_clear_namespace(bufId, subViewNamespace, 0, -1)
 
-    for _, lnum in pairs(hl) do
+    -- 对文件名行应用高亮
+    for _, lnum in pairs(hl_lines) do
         vim.api.nvim_buf_add_highlight(
             bufId,
             subViewNamespace,
             "Directory",
-            lnum - 1,
+            lnum - 1, -- 行号从0开始
             3,
             -1
         )
+    end
+
+    -- 添加所有extmark
+    for _, mark in ipairs(extmarks) do
+        -- 检查行是否有效
+        if mark.line >= 0 and mark.line < #content then
+            local line_content = content[mark.line + 1] or "" -- +1因为lua索引从1开始
+            api.nvim_buf_set_extmark(
+                bufId,
+                extmark_ns,
+                mark.line,
+                #line_content,
+                {
+                    virt_text = { { mark.text, mark.hl_group } },
+                    virt_text_pos = "eol",
+                }
+            )
+        end
     end
 
     -- 禁止修改
@@ -147,11 +213,12 @@ function ClassController:_generateSubViewContent()
     local max_columns =
         math.floor(api.nvim_get_option_value("columns", {}) * 0.3)
 
+    -- 确保宽度至少满足工作区路径显示需要
     if max_columns > res_width then
         res_width = max_columns
     end
 
-    return res_width, height + 1
+    return res_width, #content + 1 -- 高度就是内容行数+1
 end
 
 ---@private
