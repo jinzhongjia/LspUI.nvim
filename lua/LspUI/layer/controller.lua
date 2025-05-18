@@ -508,7 +508,7 @@ function ClassController:ActionJump(cmd)
     end
 
     -- 打开文件
-    if lib_util.buffer_is_listed(item.buffer_id) then
+    if tools.buffer_is_listed(item.buffer_id) then
         vim.cmd(string.format("buffer %s", item.buffer_id))
     else
         vim.cmd(
@@ -762,7 +762,7 @@ function ClassController:_findPositionFromParams(params)
         if not data.fold then
             for _, val in pairs(data.range) do
                 lnum = lnum + 1
-                if lib_util.compare_uri(uri, param_uri) then
+                if tools.compare_uri(uri, param_uri) then
                     if not file_lnum then
                         file_lnum = lnum
                     end

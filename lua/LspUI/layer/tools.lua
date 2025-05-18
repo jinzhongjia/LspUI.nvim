@@ -114,4 +114,11 @@ function M.compare_uri(uri_1, uri_2)
     return path_1 == path_2
 end
 
+-- check buffer is listed ?
+--- @param buffer_id integer
+--- @return boolean
+function M.buffer_is_listed(buffer_id)
+    return fn.buflisted(buffer_id) == 1
+end
+
 return M
