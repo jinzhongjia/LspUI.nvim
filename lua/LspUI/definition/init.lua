@@ -65,7 +65,7 @@ M.run = function(callback)
         util.make_params(api.nvim_get_current_win(), clients[1].offset_encoding)
 
     -- Call interface to execute definition lookup
-    interface.go("definition", current_buffer, params)
+    interface.go(layer.ClassLsp.methods.definition.name, current_buffer, params)
 end
 
 return M

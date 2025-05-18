@@ -1,24 +1,22 @@
 local api = vim.api
 local command = require("LspUI.command")
 local config = require("LspUI.config")
-local lib_notify = require("LspUI.lib.notify")
-local pos_abstract = require("LspUI.pos_abstract")
-local util = require("LspUI.reference.util")
 local interface = require("LspUI.interface")
+local layer = require("LspUI.layer")
+local util = require("LspUI.reference.util")
+
+local lib_notify = layer.notify
+local LspLayer = layer.lsp
 
 local M = {}
 
--- whether this module is initialized
+-- Whether this module is initialized
 local is_initialized = false
-
 local command_key = "reference"
 
+-- Initialize the module
 M.init = function()
-    if not config.options.reference.enable then
-        return
-    end
-
-    if is_initialized then
+    if not config.options.reference.enable or is_initialized then
         return
     end
 
@@ -29,80 +27,47 @@ M.init = function()
     end
 end
 
+-- De-initialize the module
 M.deinit = function()
     if not is_initialized then
-        lib_notify.Info("reference has been deinit")
+        lib_notify.Info("Reference module has been deinitialized")
         return
     end
 
     is_initialized = false
-
     command.unregister_command(command_key)
 end
 
---- @param callback fun(Lsp_position_wrap?)?
+--- @param callback fun(LspUIPositionWrap?)?
 M.run = function(callback)
     if not config.options.reference.enable then
-        lib_notify.Info("reference is not enabled!")
+        lib_notify.Info("Reference feature is not enabled!")
         return
     end
-    -- get current buffer
+
+    -- Get current buffer and client information
     local current_buffer = api.nvim_get_current_buf()
     local clients = util.get_clients(current_buffer)
 
-    if clients == nil then
+    if not clients then
         if callback then
             callback()
         else
-            lib_notify.Warn("no client supports reference!")
+            lib_notify.Warn("No client supports reference!")
         end
         return
     end
 
-    local window = nil
+    -- Get request parameters
     local params
+    local window = nil
 
-    if pos_abstract.is_secondary_buffer(current_buffer) then
-        if
-            pos_abstract.get_current_method().name
-            == pos_abstract.method.reference.name
-        then
-            return
-        end
-        local current_item = pos_abstract.get_current_item()
+    -- Get position information from current window
+    window = api.nvim_get_current_win()
+    params = util.make_params(window, clients[1].offset_encoding)
 
-        current_buffer = vim.uri_to_bufnr(current_item.uri)
-
-        if current_item.range then
-            --- @type lsp.TextDocumentPositionParams
-            params = {
-                textDocument = {
-                    uri = current_item.uri,
-                },
-                position = {
-                    line = current_item.range.start.line,
-                    character = current_item.range.start.character,
-                },
-                context = {
-                    includeDeclaration = true,
-                },
-            }
-        else
-            return
-        end
-    else
-        window = api.nvim_get_current_win()
-        params = util.make_params(window, clients[1].offset_encoding)
-    end
-
-    interface.go(pos_abstract.method.reference.name, current_buffer, params)
-    -- pos_abstract.go(
-    --     pos_abstract.method.reference,
-    --     current_buffer,
-    --     window,
-    --     params,
-    --     callback
-    -- )
+    -- Call interface to execute reference lookup
+    interface.go(layer.ClassLsp.methods.reference.name, current_buffer, params)
 end
 
 return M
