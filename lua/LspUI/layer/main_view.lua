@@ -266,13 +266,12 @@ function ClassMainView:SetHighlight(ranges, hlGroup)
                 end_col = range.finish.character
             end
 
-            api.nvim_buf_add_highlight(
+            vim.hl.range(
                 self._attachBuffer,
                 self._namespace,
                 hlGroup,
-                row,
-                start_col,
-                end_col
+                { row, start_col },
+                { row, end_col }
             )
         end
     end
