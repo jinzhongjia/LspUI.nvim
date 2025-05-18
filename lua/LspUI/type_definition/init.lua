@@ -27,17 +27,6 @@ M.init = function()
     end
 end
 
--- De-initialize the module
-M.deinit = function()
-    if not is_initialized then
-        lib_notify.Info("Type Definition module has been deinitialized")
-        return
-    end
-
-    is_initialized = false
-    command.unregister_command(command_key)
-end
-
 --- @param callback fun(LspUIPositionWrap?)?
 M.run = function(callback)
     if not config.options.type_definition.enable then
