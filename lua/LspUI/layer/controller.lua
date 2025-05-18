@@ -8,6 +8,9 @@ local lib_notify = require("LspUI.layer.notify")
 local lib_util = require("LspUI.lib.util")
 local tools = require("LspUI.layer.tools")
 
+-- 添加全局单例实例
+local _controller_instance = nil
+
 ---@class ClassController
 ---@field _lsp ClassLsp
 ---@field _mainView ClassMainView
@@ -30,6 +33,11 @@ ClassController.__index = ClassController
 
 ---@return ClassController
 function ClassController:New()
+    -- 如果存在全局实例，直接返回
+    if _controller_instance then
+        return _controller_instance
+    end
+
     local obj = {}
     setmetatable(obj, self)
 
@@ -39,6 +47,8 @@ function ClassController:New()
 
     api.nvim_create_augroup("LspUI_SubView", { clear = true })
 
+    -- 保存为全局单例
+    _controller_instance = obj
     return obj
 end
 
@@ -334,12 +344,27 @@ function ClassController:_onCursorMoved()
 
     -- 只有当选中了具体代码行且主视图有效时才更新主视图
     if range and self._mainView:Valid() then
+        -- 获取当前缓冲区，用于后面的按键映射恢复
+        local current_buf = self._mainView:GetBufID()
+
         -- 切换缓冲区前先暂时解除固定
         self._mainView:UnPinBuffer()
+
+        -- 如果当前缓冲区有效，先恢复它的按键映射
+        if
+            current_buf
+            and current_buf ~= self._lsp:GetData()[uri].buffer_id
+        then
+            self._mainView:RestoreKeyMappings(current_buf)
+        end
 
         -- 切换主视图缓冲区
         local bufId = self._lsp:GetData()[uri].buffer_id
         self._mainView:SwitchBuffer(bufId)
+
+        -- 为新缓冲区保存原始按键映射，然后设置新的按键映射
+        self._mainView:SaveKeyMappings(bufId)
+        self:_setupMainViewKeyBindings()
 
         -- 切换后重新固定
         self._mainView:PinBuffer()
@@ -359,7 +384,7 @@ function ClassController:_onCursorMoved()
             end)
         end
 
-        -- 添加这行：设置高亮
+        -- 设置高亮
         self._mainView:SetHighlight({ range })
     end
 end
@@ -467,6 +492,18 @@ end
 ---@param buffer_id integer
 ---@param params table
 function ClassController:Go(method_name, buffer_id, params)
+    -- 检查现有视图状态
+    local mainViewValid = self._mainView and self._mainView:Valid()
+    local subViewValid = self._subView and self._subView:Valid()
+
+    -- 如果主视图有效，需要恢复当前缓冲区的按键映射
+    if mainViewValid then
+        local currentBuffer = self._mainView:GetBufID()
+        if currentBuffer and api.nvim_buf_is_valid(currentBuffer) then
+            self._mainView:RestoreKeyMappings(currentBuffer)
+        end
+    end
+
     -- 设置方法
     if not self._lsp:SetMethod(method_name) then
         return
@@ -482,7 +519,7 @@ function ClassController:Go(method_name, buffer_id, params)
             return
         end
 
-        -- 初始化视图
+        -- 渲染视图，无论视图是否已存在
         self:RenderViews()
 
         -- 绑定键映射
@@ -502,7 +539,27 @@ function ClassController:Go(method_name, buffer_id, params)
 end
 
 function ClassController:RenderViews()
-    -- 创建副视图
+    -- 检查视图是否存在
+    local mainViewValid = self._mainView and self._mainView:Valid()
+    local subViewValid = self._subView and self._subView:Valid()
+
+    -- 如果视图已存在，先保存其状态并清理
+    if mainViewValid then
+        -- 解除缓冲区固定
+        self._mainView:UnPinBuffer()
+    end
+
+    if subViewValid then
+        -- 既然视图存在，只需清理而不销毁
+        api.nvim_buf_clear_namespace(
+            self._subView:GetBufID(),
+            api.nvim_create_namespace("LspUISubView"),
+            0,
+            -1
+        )
+    end
+
+    -- 创建副视图或更新现有副视图
     local width, height = self:_generateSubViewContent()
 
     self._subView:Updates(function()
@@ -516,7 +573,10 @@ function ClassController:RenderViews()
             :Title(self._lsp:GetMethod().name, "center")
     end)
 
-    self._subView:Render()
+    -- 如果副视图不存在，渲染它
+    if not subViewValid then
+        self._subView:Render()
+    end
 
     -- 获取第一个URI对应的缓冲区作为MainView的初始缓冲区
     local firstBuffer = nil
@@ -525,15 +585,13 @@ function ClassController:RenderViews()
         break
     end
 
-    -- 创建主视图，确保设置了初始缓冲区
+    -- 创建或更新主视图
     if firstBuffer then
         self._mainView:SwitchBuffer(firstBuffer)
 
         self._mainView:Updates(function()
-            self
-                ._mainView
+            self._mainView
                 :Border("none")
-                -- :Style("minimal")
                 :Relative("editor")
                 :Size(
                     api.nvim_get_option_value("columns", {}) - 2,
@@ -543,12 +601,15 @@ function ClassController:RenderViews()
                 :Winbl(config.options.pos_keybind.transparency)
         end)
 
-        self._mainView:Render()
+        -- 如果主视图不存在，渲染它
+        if not mainViewValid then
+            self._mainView:Render()
+        end
 
-        -- 添加：设置主视图为固定状态
+        -- 设置主视图为固定状态
         self._mainView:PinBuffer()
 
-        -- 建立双向绑定
+        -- 设置或更新绑定关系
         self._mainView:BindView(self._subView)
         self._subView:SetZIndex(100)
 
@@ -716,12 +777,16 @@ function ClassController:ActionPrevEntry()
 end
 
 function ClassController:ActionQuit()
+    -- 先清除主视图的高亮
     if self._mainView:Valid() then
+        self._mainView:ClearHighlight()
         self._mainView:UnPinBuffer()
     end
+
     -- 使用 Destory 会同时销毁两个视图，因为它们是绑定的
     self._subView:Destory()
 end
+
 function ClassController:ActionToggleMainView()
     if not self._mainView:Valid() then
         -- 如果数据存在则重新渲染
