@@ -3,7 +3,7 @@ local inlay_hint_feature = lsp.protocol.Methods.textDocument_inlayHint
 
 local command = require("LspUI.command")
 local config = require("LspUI.config")
-local lib_util = require("LspUI.lib.util")
+local tools = require("LspUI.layer.tools")
 
 local inlay_hint = lsp.inlay_hint.enable
 local inlay_hint_is_enabled = lsp.inlay_hint.is_enabled
@@ -106,7 +106,7 @@ function M.init()
             end
             -- 移除了 arg.bufnr 检查，因为它未定义
         end,
-        desc = lib_util.command_desc("inlay hint"),
+        desc = tools.command_desc("inlay hint"),
     })
 end
 

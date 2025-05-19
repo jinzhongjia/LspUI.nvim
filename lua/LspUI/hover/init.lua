@@ -1,9 +1,9 @@
 -- lua/LspUI/hover/init.lua
 local api = vim.api
+local ClassHover = require("LspUI.layer.hover")
 local command = require("LspUI.command")
 local config = require("LspUI.config")
-local lib_notify = require("LspUI.layer").notify
-local ClassHover = require("LspUI.layer.hover")
+local notify = require("LspUI.layer.notify")
 
 local M = {}
 
@@ -45,7 +45,7 @@ end
 -- 运行 hover
 function M.run()
     if not config.options.hover.enable then
-        lib_notify.Info("hover is not enabled!")
+        notify.Info("hover is not enabled!")
         return
     end
 
@@ -65,14 +65,14 @@ function M.run()
     local current_buffer = api.nvim_get_current_buf()
     local clients = hover_manager:GetClients(current_buffer)
     if not clients or #clients < 1 then
-        lib_notify.Warn("no client supports hover!")
+        notify.Warn("no client supports hover!")
         return
     end
 
     -- 获取 hover 信息
     hover_manager:GetHovers(clients, current_buffer, function(hover_tuples)
         if vim.tbl_isempty(hover_tuples) then
-            lib_notify.Info("no hover!")
+            notify.Info("no hover!")
             return
         end
 

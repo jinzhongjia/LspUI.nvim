@@ -1,7 +1,8 @@
 local api, fn = vim.api, vim.fn
+local ClassView = require("LspUI.layer.view")
 local config = require("LspUI.config")
-local layer = require("LspUI.layer")
-local lib_notify = require("LspUI.lib.notify")
+local notify = require("LspUI.layer.notify")
+local tools = require("LspUI.layer.tools")
 local M = {}
 
 --- @class LspUI-highlightgroup
@@ -39,7 +40,7 @@ function M.render(action)
     --- @type boolean
     local search_forward = action == "next"
     if not (action == "next" or action == "prev") then
-        lib_notify.Warn(string.format("diagnostic, unknown action %s", action))
+        notify.Warn(string.format("diagnostic, unknown action %s", action))
         return
     end
     -- get current buffer
@@ -95,19 +96,18 @@ function M.render(action)
     end
 
     local width =
-        math.min(max_width, math.floor(layer.tools.get_max_width() * 0.6))
+        math.min(max_width, math.floor(tools.get_max_width() * 0.6))
 
     if diagnostic.source then
         local msg =
             string.format("        %s", cleanStringConcise(diagnostic.source))
         local len = fn.strdisplaywidth(msg)
         if len > width then
-            width = math.min(len, math.floor(layer.tools.get_max_width() * 0.6))
+            width = math.min(len, math.floor(tools.get_max_width() * 0.6))
         end
     end
 
-    local view = layer.ClassView
-        :New(true)
+    local view = ClassView:New(true)
         :BufContent(0, -1, content)
         :BufOption("filetype", "LspUI-diagnostic")
         :BufOption("modifiable", false)
@@ -125,7 +125,7 @@ function M.render(action)
         )
     end
 
-    local height = layer.tools.compute_height_for_windows(content, width)
+    local height = tools.compute_height_for_windows(content, width)
 
     view:Size(width, height)
         :Enter(false)
@@ -193,7 +193,7 @@ function M.autocmd(buffer_id)
             end
             api.nvim_del_augroup_by_name(autocmd_group)
         end,
-        desc = layer.tools.command_desc("diagnostic, auto close windows"),
+        desc = tools.command_desc("diagnostic, auto close windows"),
     })
 end
 

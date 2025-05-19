@@ -2,8 +2,8 @@ local api, lsp, fn = vim.api, vim.lsp, vim.fn
 local signature_feature = lsp.protocol.Methods.textDocument_signatureHelp
 
 local config = require("LspUI.config")
-local lib_notify = require("LspUI.lib.notify")
-local lib_util = require("LspUI.lib.util")
+local notify = require("LspUI.layer.notify")
+local tools = require("LspUI.layer.tools")
 
 local M = {}
 
@@ -124,7 +124,7 @@ local function request(buffer_id, callback)
 
     client:request(signature_feature, params, function(err, result, _, _)
         if err then
-            lib_notify.Error(
+            notify.Error(
                 string.format(
                     "sorry, lsp %s report signature error:%d, %s",
                     client.name,
@@ -220,7 +220,7 @@ local function create_autocmd(events, callback, desc)
     api.nvim_create_autocmd(events, {
         group = signature_group,
         callback = callback,
-        desc = lib_util.command_desc(desc),
+        desc = tools.command_desc(desc),
     })
 end
 
@@ -239,7 +239,7 @@ function M.autocmd()
             time = math.floor(config.options.signature.debounce)
         end
         -- 如果是 true，使用默认值
-        signature_handler = lib_util.debounce(signature_handle, time)
+        signature_handler = tools.debounce(signature_handle, time)
     end
 
     -- LSP 附加事件 - 添加缓冲区到支持集合

@@ -1,4 +1,4 @@
-local lib_notify = require("LspUI.lib.notify")
+local lib_notify = require("LspUI.layer.notify")
 
 local M = {}
 

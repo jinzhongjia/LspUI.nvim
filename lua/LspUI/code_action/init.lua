@@ -1,7 +1,7 @@
 local api = vim.api
 local command = require("LspUI.command")
 local config = require("LspUI.config")
-local lib_notify = require("LspUI.lib.notify")
+local lib_notify = require("LspUI.layer.notify")
 local util = require("LspUI.code_action.util")
 
 local M = {}

@@ -1,11 +1,9 @@
 local lsp, api, fn = vim.lsp, vim.api, vim.fn
 local hover_feature = lsp.protocol.Methods.textDocument_hover
+local ClassView = require("LspUI.layer.view")
 local config = require("LspUI.config")
-local layer = require("LspUI.layer")
-local lib_notify = require("LspUI.lib.notify")
-local lib_util = require("LspUI.lib.util")
-
---- @alias hover_tuple { client: vim.lsp.Client, buffer_id: integer, width: integer, height: integer }
+local notify = require("LspUI.layer.notify")
+local tools = require("LspUI.layer.tools")
 
 local M = {}
 
@@ -31,12 +29,6 @@ function M.get_clients(buffer_id)
     return clients
 end
 
---- @class LspUI_hover_ctx
---- @field clients vim.lsp.Client[]
---- @field requested_client_count integer
---- @field invalid_clients string[]
---- @field callback fun(hover_tuples: hover_tuple[])
-
 --- @param hover_ctx LspUI_hover_ctx
 local function hover_req_cb(client, hover_ctx)
     --- @param err lsp.ResponseError
@@ -55,7 +47,7 @@ local function hover_req_cb(client, hover_ctx)
                 err.code,
                 err.message
             )
-            lib_notify.Warn(_err_msg)
+            notify.Warn(_err_msg)
         end
 
         if err == nil then
@@ -87,7 +79,7 @@ local function hover_req_cb(client, hover_ctx)
                 end
 
                 -- stylua: ignore
-                width = math.min(width, math.floor(layer.tools.get_max_width() * 0.6))
+                width = math.min(width, math.floor(tools.get_max_width() * 0.6))
 
                 local height = #markdown_lines
 
@@ -100,7 +92,7 @@ local function hover_req_cb(client, hover_ctx)
                         -- contents = markdown_lines,
                         width = width,
                         -- stylua: ignore
-                        height = math.min(height, math.floor(layer.tools.get_max_height() * 0.8)),
+                        height = math.min(height, math.floor(tools.get_max_height() * 0.8)),
                     }
                 )
             end
@@ -120,7 +112,7 @@ local function hover_req_cb(client, hover_ctx)
                     names = names .. string.format(", %s", client_name)
                 end
             end
-            lib_notify.Info(string.format("No valid hover, %s", names))
+            notify.Info(string.format("No valid hover, %s", names))
         end
 
         hover_ctx.callback(hover_tuples)
@@ -162,8 +154,7 @@ function M.render(hover_tuple, hover_tuple_number)
     local title = hover_tuple_number > 1 and string.format("hover[1/%d]", hover_tuple_number) or "hover"
     hover_tuple_current_index = 1
 
-    local view = layer.ClassView
-        :New(false)
+    local view = ClassView:New(false)
         :SwitchBuffer(hover_tuple.buffer_id)
         :Title(title, "right")
         :Size(hover_tuple.width, hover_tuple.height)
@@ -251,7 +242,7 @@ function M.autocmd(current_buffer, view)
                 view:Destroy()
                 return true
             end,
-            desc = lib_util.command_desc("auto close hover when cursor moves"),
+            desc = tools.command_desc("auto close hover when cursor moves"),
         }
     )
 end

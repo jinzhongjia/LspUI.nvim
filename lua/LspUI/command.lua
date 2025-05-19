@@ -1,6 +1,6 @@
 local api, fn = vim.api, vim.fn
-local notify = require("LspUI.lib.notify")
-local util = require("LspUI.lib.util")
+local notify = require("LspUI.layer.notify")
+local tools = require("LspUI.layer.tools")
 
 local command_store = {}
 
@@ -12,7 +12,7 @@ end
 
 -- the default function when command `LspUI` execute
 local function default_exec()
-    notify.Info(string.format("Hello, version is %s", util.version()))
+    notify.Info(string.format("Hello, version is %s", tools.version()))
 end
 
 -- exec run function

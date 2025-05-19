@@ -1,5 +1,5 @@
 -- lua/LspUI/interface.lua (新文件，提供简洁的公共接口)
-local ClassController = require("LspUI.layer").ClassController
+local ClassController = require("LspUI.layer.controller")
 
 local M = {}
 

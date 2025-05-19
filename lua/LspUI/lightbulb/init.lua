@@ -1,5 +1,5 @@
 local config = require("LspUI.config")
-local lib_notify = require("LspUI.lib.notify")
+local lib_notify = require("LspUI.layer.notify")
 local util = require("LspUI.lightbulb.util")
 
 local M = {}

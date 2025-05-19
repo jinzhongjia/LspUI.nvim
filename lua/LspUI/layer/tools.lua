@@ -1,6 +1,8 @@
 local api, fn, uv = vim.api, vim.fn, vim.uv
 local M = {}
 
+local version = "v3"
+
 --- @param buffer_id integer
 --- @param uri lsp.URI
 --- @param rows integer[]
@@ -212,6 +214,25 @@ function M.debounce(func, delay)
                 end
             end)
         )
+    end
+end
+
+-- lib function: get version of LspUI
+--- @return string
+function M.version()
+    return version
+end
+
+-- execute once
+--- @param callback function
+function M.exec_once(callback)
+    local is_exec = false
+    return function(...)
+        if is_exec then
+            return
+        end
+        callback(...)
+        is_exec = true
     end
 end
 

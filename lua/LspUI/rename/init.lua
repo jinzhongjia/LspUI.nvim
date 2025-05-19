@@ -3,7 +3,7 @@ local api, fn = vim.api, vim.fn
 local ClassLsp = require("LspUI.layer.lsp") -- 添加引入 ClassLsp
 local command = require("LspUI.command")
 local config = require("LspUI.config")
-local lib_notify = require("LspUI.lib.notify")
+local lib_notify = require("LspUI.layer.notify")
 local util = require("LspUI.rename.util")
 
 local M = {}

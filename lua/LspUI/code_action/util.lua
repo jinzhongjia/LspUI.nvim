@@ -1,7 +1,8 @@
 local api, fn = vim.api, vim.fn
+local ClassLsp = require("LspUI.layer.lsp")
+local ClassView = require("LspUI.layer.view")
 local config = require("LspUI.config")
-local layer = require("LspUI.layer")
-local lib_notify = require("LspUI.lib.notify")
+local notify = require("LspUI.layer.notify")
 
 --- @alias action_tuple { action: lsp.CodeAction|lsp.Command, client: vim.lsp.Client?, buffer_id: integer, callback: function? }
 
@@ -11,7 +12,7 @@ local M = {}
 --- @param buffer_id integer
 --- @return vim.lsp.Client[]|nil clients array or nil
 function M.get_clients(buffer_id)
-    return layer.ClassLsp:GetCodeActionClients(buffer_id)
+    return ClassLsp:GetCodeActionClients(buffer_id)
 end
 
 -- make range params
@@ -21,7 +22,7 @@ end
 --- @return boolean is_visual
 function M.get_range_params(buffer_id, offset_encoding)
     local client = { offset_encoding = offset_encoding }
-    return layer.ClassLsp:MakeCodeActionParams(buffer_id, client)
+    return ClassLsp:MakeCodeActionParams(buffer_id, client)
 end
 
 -- get action tuples
@@ -37,15 +38,15 @@ function M.get_action_tuples(clients, params, buffer_id, is_visual, callback)
         skip_gitsigns = false,
     }
 
-    layer.ClassLsp:RequestCodeActions(buffer_id, params, callback, options)
+    ClassLsp:RequestCodeActions(buffer_id, params, callback, options)
 end
 
 -- choice action tuple
 --- @param action_tuple action_tuple
 local function choice_action_tupe(action_tuple)
-    local success, err = layer.ClassLsp:ExecCodeAction(action_tuple)
+    local success, err = ClassLsp:ExecCodeAction(action_tuple)
     if not success then
-        lib_notify.Warn(err)
+        notify.Warn(err)
     end
 end
 
@@ -86,7 +87,7 @@ local function keybinding_autocmd(view, action_tuples)
     view:KeyMap("n", config.options.code_action.key_binding.exec, function()
         local action_tuple_index = tonumber(fn.expand("<cword>"))
         if action_tuple_index == nil then
-            lib_notify.Error(
+            notify.Error(
                 string.format(
                     "this plugin occurs an error: %s",
                     "try to convert a non-number to number"
@@ -126,7 +127,7 @@ end
 --- @param action_tuples action_tuple[]
 function M.render(action_tuples)
     if vim.tbl_isempty(action_tuples) then
-        lib_notify.Info("no code action!")
+        notify.Info("no code action!")
         return
     end
 
@@ -150,8 +151,7 @@ function M.render(action_tuples)
     -- max height should be 10, TODO: maybe this number should be set by user
     local height = #contents > 10 and 10 or #contents
 
-    local view = layer
-        .ClassView
+    local view = ClassView
         :New(true)
         :BufContent(0, -1, contents)
         :BufOption("filetype", "LspUI-code_action")

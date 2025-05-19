@@ -1,9 +1,10 @@
 -- lua/LspUI/rename/util.lua
 local api, fn = vim.api, vim.fn
 local ClassLsp = require("LspUI.layer.lsp")
+local ClassView = require("LspUI.layer.view")
 local config = require("LspUI.config")
-local layer = require("LspUI.layer")
-local lib_notify = require("LspUI.lib.notify")
+local notify = require("LspUI.layer.notify")
+local tools = require("LspUI.layer.tools")
 
 local M = {}
 
@@ -59,9 +60,9 @@ local function setup_view_bindings(
                     )
 
                     if not success then
-                        lib_notify.Error("Rename operation failed")
+                        notify.Error("Rename operation failed")
                     else
-                        lib_notify.Info(
+                        notify.Info(
                             string.format(
                                 "Renamed '%s' to '%s'",
                                 old_name,
@@ -93,7 +94,7 @@ local function setup_view_bindings(
     end, "Cancel Rename")
 
     -- 文本变化时自动调整窗口大小（使用防抖处理）
-    local resize_debounce = layer.tools.debounce(function()
+    local resize_debounce = tools.debounce(function()
         if not view:Valid() then
             return
         end
@@ -140,8 +141,7 @@ end
 local function render_rename_view(clients, buffer_id, old_name, position_param)
     local width = calculate_length(old_name)
 
-    local view = layer.ClassView
-        :New(true)
+    local view = ClassView:New(true)
         :BufContent(0, -1, { old_name })
         :BufCall(function()
             -- 确保重命名内容不会被历史撤销操作影响
@@ -190,7 +190,7 @@ end
 function M.done(clients, buffer_id, window_id, old_name)
     -- 在操作前确认缓冲区有效性
     if not api.nvim_buf_is_valid(buffer_id) then
-        lib_notify.Error("Invalid buffer ID")
+        notify.Error("Invalid buffer ID")
         return
     end
 
@@ -209,12 +209,12 @@ function M.done(clients, buffer_id, window_id, old_name)
         position_param,
         function(can_rename, valid_clients, error_msg)
             if not can_rename then
-                lib_notify.Info(error_msg or "Cannot rename at this position")
+                notify.Info(error_msg or "Cannot rename at this position")
                 return
             end
 
             if not valid_clients or #valid_clients == 0 then
-                lib_notify.Info("No valid rename clients found")
+                notify.Info("No valid rename clients found")
                 return
             end
 

@@ -47,7 +47,6 @@ ClassLsp.methods = {
         name = "implementation",
         fold = true,
     },
-    -- 添加新的调用层次方法
     incoming_calls = {
         method = lsp.protocol.Methods.callHierarchy_incomingCalls,
         name = "incoming_calls",
@@ -517,7 +516,7 @@ function ClassLsp:RequestCodeActions(buffer_id, params, callback, options)
             params,
             function(err, result, _, _)
                 if err then
-                    require("LspUI.lib.notify").Warn(
+                    require("LspUI.layer.notify").Warn(
                         string.format("code action error: %s", err.message)
                     )
                 else
@@ -590,7 +589,7 @@ function ClassLsp:ExecCommand(client, command, buffer_id, handler)
         or {}
 
     if not vim.list_contains(commands, cmdname) then
-        require("LspUI.lib.notify").Warn(
+        require("LspUI.layer.notify").Warn(
             string.format(
                 "Language server `%s` does not support command `%s`",
                 client.name,
@@ -625,7 +624,7 @@ end
 function ClassLsp:CheckRenamePosition(buffer_id, params, callback)
     local clients = self:GetRenameClients(buffer_id)
     if not clients then
-       callback(false, nil, "No available renaming client") 
+        callback(false, nil, "No available renaming client")
         return
     end
 
@@ -648,7 +647,11 @@ function ClassLsp:CheckRenamePosition(buffer_id, params, callback)
                         if #valid_clients > 0 then
                             callback(true, valid_clients)
                         else
-                           callback(false, nil, "This position cannot be renamed") 
+                            callback(
+                                false,
+                                nil,
+                                "This position cannot be renamed"
+                            )
                         end
                     end
                 end,

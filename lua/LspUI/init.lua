@@ -1,4 +1,4 @@
-local lib_notify = require("LspUI.lib.notify")
+local lib_notify = require("LspUI.layer.notify")
 
 return {
     -- init `LspUI` plugin
@@ -9,11 +9,38 @@ return {
                 local config = require("LspUI.config")
                 local command = require("LspUI.command")
                 local modules = require("LspUI.modules")
+
                 config.setup(user_config)
+
                 vim.schedule(function()
-                    command.init()
-                    for _, module in pairs(modules) do
-                        module.init()
+                    -- 先初始化命令系统
+                    if command and command.init then
+                        command.init()
+                    else
+                        lib_notify.Error("LspUI: 命令模块初始化失败")
+                    end
+
+                    -- 添加防御性检查和错误处理，确保每个模块都有init方法
+                    for name, module in pairs(modules) do
+                        if module and type(module.init) == "function" then
+                            local ok, err = pcall(module.init)
+                            if not ok then
+                                lib_notify.Error(
+                                    string.format(
+                                        "初始化模块 %s 失败: %s",
+                                        name,
+                                        err
+                                    )
+                                )
+                            end
+                        else
+                            lib_notify.Warn(
+                                string.format(
+                                    "模块 %s 缺少init方法或不是有效模块",
+                                    name
+                                )
+                            )
+                        end
                     end
                 end)
             end)
