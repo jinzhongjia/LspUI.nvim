@@ -76,7 +76,7 @@ function ClassLsp:SetMethod(method_name)
         self._method = self.methods[method_name]
         return true
     else
-        lib_notify.Error("不支持的LSP方法: " .. method_name)
+       lib_notify.Error("Unsupported LSP method: " .. method_name) 
         return false
     end
 end
@@ -96,7 +96,7 @@ end
 ---@param callback function 回调函数
 function ClassLsp:Request(buffer_id, params, callback)
     if not self._method then
-        lib_notify.Error("请先设置LSP方法")
+        lib_notify.Error("Please set LSP method first")
         return
     end
 
@@ -119,11 +119,17 @@ function ClassLsp:Request(buffer_id, params, callback)
                 end
 
                 local data = {}
+                local has_valid_result = false
 
                 -- 处理LSP响应数据
                 for _, result in pairs(results) do
-                    if result and not vim.tbl_isempty(result) then
+                    if
+                        result
+                        and result.result
+                        and not vim.tbl_isempty(result.result)
+                    then
                         self:_processLspResult(result.result, data)
+                        has_valid_result = true
                     end
                 end
 
@@ -162,7 +168,7 @@ function ClassLsp:_requestCallHierarchy(buffer_id, params, callback)
             end
 
             if #items == 0 then
-                lib_notify.Info("未找到可用的调用层次项")
+                lib_notify.Info("No available call hierarchy items found")
                 if callback then
                     callback({})
                 end
@@ -256,9 +262,14 @@ function ClassLsp:_processCallHierarchyResult(results, data, is_incoming)
 end
 
 ---@private
----@param result table LSP响应结果
+---@param result table|nil LSP响应结果
 ---@param data LspUIPositionWrap 处理结果存放表
 function ClassLsp:_processLspResult(result, data)
+    -- 防御性编程：检查结果是否为nil
+    if not result then
+        return
+    end
+
     local handle_result = function(lspRes)
         local uri = lspRes.uri or lspRes.targetUri
         local range = lspRes.range or lspRes.targetRange
