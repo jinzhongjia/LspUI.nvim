@@ -44,6 +44,8 @@ function ClassController:New()
 
     api.nvim_create_augroup("LspUI_SubView", { clear = true })
 
+    api.nvim_create_augroup("LspUI_AutoClose", { clear = true })
+
     -- 保存为全局单例
     _controller_instance = obj
     return obj
@@ -512,6 +514,66 @@ function ClassController:_getCursorPosForUri(uri, range)
     return 1
 end
 
+---@private
+---@param params table
+---@return integer
+function ClassController:_findPositionFromParams(params)
+    local lnum = 0
+    local param_uri = params.textDocument.uri
+
+    local file_lnum = nil
+    local code_lnum = nil
+    local tmp = nil
+
+    for uri, data in pairs(self._lsp:GetData()) do
+        lnum = lnum + 1
+        if not data.fold then
+            for _, val in pairs(data.range) do
+                lnum = lnum + 1
+                if tools.compare_uri(uri, param_uri) then
+                    if not file_lnum then
+                        file_lnum = lnum
+                    end
+                    if val.start.line == params.position.line then
+                        if tmp then
+                            if
+                                math.abs(
+                                    val.start.character
+                                        - params.position.character
+                                ) < tmp
+                            then
+                                tmp = math.abs(
+                                    val.start.character
+                                        - params.position.character
+                                )
+                                code_lnum = lnum
+                            end
+                        else
+                            tmp = math.abs(
+                                val.start.character - params.position.character
+                            )
+                            code_lnum = lnum
+                        end
+                    end
+                end
+            end
+        end
+    end
+
+    if code_lnum then
+        return code_lnum
+    end
+    if file_lnum then
+        return file_lnum
+    end
+
+    local method = self._lsp:GetMethod()
+    if method and method.fold then
+        return 1
+    end
+    return 2
+end
+
 -- 公开API开始
 ---@param method_name string
 ---@param buffer_id integer
@@ -705,6 +767,47 @@ function ClassController:RenderViews()
         -- 如果找不到初始缓冲区，记录警告
         lib_notify.Warn("找不到可用的缓冲区来初始化主视图")
     end
+
+    -- 设置自动关闭功能
+    self:SetupAutoClose()
+end
+
+-- 添加新方法用于设置自动关闭功能
+function ClassController:SetupAutoClose()
+    -- 清除可能已存在的自动命令
+    api.nvim_clear_autocmds({ group = "LspUI_AutoClose" })
+
+    -- 如果两个视图都不存在，则不需要设置自动命令
+    if not (self._mainView:Valid() or self._subView:Valid()) then
+        return
+    end
+
+    local self_ref = self
+
+    -- 创建监控WinEnter事件的自动命令
+    api.nvim_create_autocmd("WinEnter", {
+        group = "LspUI_AutoClose",
+        callback = function()
+            -- 获取当前窗口ID
+            local current_win = api.nvim_get_current_win()
+
+            -- 获取MainView和SubView的窗口ID
+            local main_win = self_ref._mainView:GetWinID()
+            local sub_win = self_ref._subView:GetWinID()
+
+            -- 检查当前窗口是否是MainView或SubView
+            if current_win ~= main_win and current_win ~= sub_win then
+                -- 如果不是，则销毁视图
+                self_ref:ActionQuit()
+                return true -- 移除自动命令
+            end
+        end,
+        desc = tools.command_desc(
+            "Auto close views when cursor enters other windows"
+        ),
+    })
+
+    return self
 end
 
 ---@param cmd string|nil 可选的跳转命令
@@ -924,6 +1027,8 @@ function ClassController:ActionToggleMainView()
         -- 保存当前配置后隐藏
         self._mainView:SaveCurrentConfig():HideView()
     end
+
+    -- 在函数末尾添加
 end
 function ClassController:ActionToggleSubView()
     if not self._subView:Valid() then
@@ -962,6 +1067,8 @@ function ClassController:ActionToggleSubView()
         -- 保存当前配置后隐藏
         self._subView:SaveCurrentConfig():HideView()
     end
+
+    self:SetupAutoClose()
 end
 
 ---@param fold boolean 是否全部折叠
@@ -1000,66 +1107,6 @@ function ClassController:ActionBackToSubView()
     if self._subView:Valid() then
         self._subView:Focus()
     end
-end
-
----@private
----@param params table
----@return integer
-function ClassController:_findPositionFromParams(params)
-    local lnum = 0
-    local param_uri = params.textDocument.uri
-
-    local file_lnum = nil
-    local code_lnum = nil
-    local tmp = nil
-
-    for uri, data in pairs(self._lsp:GetData()) do
-        lnum = lnum + 1
-        if not data.fold then
-            for _, val in pairs(data.range) do
-                lnum = lnum + 1
-                if tools.compare_uri(uri, param_uri) then
-                    if not file_lnum then
-                        file_lnum = lnum
-                    end
-                    if val.start.line == params.position.line then
-                        if tmp then
-                            if
-                                math.abs(
-                                    val.start.character
-                                        - params.position.character
-                                ) < tmp
-                            then
-                                tmp = math.abs(
-                                    val.start.character
-                                        - params.position.character
-                                )
-                                code_lnum = lnum
-                            end
-                        else
-                            tmp = math.abs(
-                                val.start.character - params.position.character
-                            )
-                            code_lnum = lnum
-                        end
-                    end
-                end
-            end
-        end
-    end
-
-    if code_lnum then
-        return code_lnum
-    end
-    if file_lnum then
-        return file_lnum
-    end
-
-    local method = self._lsp:GetMethod()
-    if method and method.fold then
-        return 1
-    end
-    return 2
 end
 
 return ClassController
