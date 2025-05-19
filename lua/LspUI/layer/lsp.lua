@@ -329,4 +329,269 @@ function ClassLsp:diagnostic_vim_to_lsp(diagnostics)
     return result
 end
 
+ClassLsp.code_action_feature = lsp.protocol.Methods.textDocument_codeAction
+ClassLsp.exec_command_feature = lsp.protocol.Methods.workspace_executeCommand
+ClassLsp.code_action_resolve_feature = lsp.protocol.Methods.codeAction_resolve
+
+-- 获取支持代码操作的客户端
+function ClassLsp:GetCodeActionClients(buffer_id)
+    local clients = lsp.get_clients({
+        bufnr = buffer_id,
+        method = self.code_action_feature,
+    })
+
+    if vim.tbl_isempty(clients) then
+        return nil
+    end
+    return clients
+end
+
+-- 构建代码操作参数
+function ClassLsp:MakeCodeActionParams(buffer_id, client, is_visual_mode)
+    local mode = api.nvim_get_mode().mode
+    local params
+    local is_visual = is_visual_mode or (mode == "v" or mode == "V")
+    local offset_encoding = client and client.offset_encoding or "utf-16"
+
+    if is_visual then
+        -- 视觉模式参数逻辑
+        local start = vim.fn.getpos("v")
+        local end_ = vim.fn.getpos(".")
+        local start_row = start[2]
+        local start_col = start[3]
+        local end_row = end_[2]
+        local end_col = end_[3]
+
+        -- 规范化范围
+        if start_row == end_row and end_col < start_col then
+            end_col, start_col = start_col, end_col
+        elseif end_row < start_row then
+            start_row, end_row = end_row, start_row
+            start_col, end_col = end_col, start_col
+        end
+
+        if mode == "V" then
+            start_col = 1
+            local lines =
+                api.nvim_buf_get_lines(buffer_id, end_row - 1, end_row, true)
+            end_col = #lines[1]
+        end
+
+        params = lsp.util.make_given_range_params(
+            { start_row, start_col - 1 },
+            { end_row, end_col - 1 },
+            buffer_id,
+            offset_encoding
+        )
+    else
+        -- 普通模式参数
+        params = lsp.util.make_range_params(0, offset_encoding)
+    end
+
+    -- 添加上下文
+    local context = {
+        triggerKind = vim.lsp.protocol.CodeActionTriggerKind.Invoked,
+        diagnostics = self:diagnostic_vim_to_lsp(
+            vim.diagnostic.get(buffer_id, {
+                lnum = vim.fn.line(".") - 1,
+            })
+        ),
+    }
+    params.context = context
+
+    return params, is_visual
+end
+
+-- 获取Git签名操作
+function ClassLsp:GetGitsignsActions(
+    action_tuples,
+    buffer_id,
+    is_visual,
+    uri,
+    range
+)
+    local config = require("LspUI.config")
+    if not config.options.code_action.gitsigns then
+        return action_tuples
+    end
+
+    local status, gitsigns = pcall(require, "gitsigns")
+    if not status then
+        return action_tuples
+    end
+
+    local gitsigns_actions = gitsigns.get_actions()
+    for name, gitsigns_action in pairs(gitsigns_actions or {}) do
+        local title = string.format(
+            "%s%s",
+            string.sub(name, 1, 1),
+            string.sub(string.gsub(name, "_", " "), 2)
+        )
+
+        local func = gitsigns_action
+        if is_visual then
+            func = function()
+                gitsigns_action({ range.start.line, range["end"].line })
+            end
+        end
+
+        local do_func = function()
+            local bufnr = vim.uri_to_bufnr(uri)
+            api.nvim_buf_call(bufnr, func)
+        end
+
+        table.insert(action_tuples, {
+            action = { title = title },
+            buffer_id = buffer_id,
+            callback = do_func,
+        })
+    end
+
+    return action_tuples
+end
+
+-- 请求代码操作
+function ClassLsp:RequestCodeActions(buffer_id, params, callback, options)
+    options = options or {}
+    local register = require("LspUI.code_action.register")
+    local clients = self:GetCodeActionClients(buffer_id)
+
+    if not clients then
+        return false, "no client supports code_action"
+    end
+
+    local action_tuples = {}
+    local pending_requests = #clients
+    local is_visual = options.is_visual or false
+
+    -- 首先添加注册的操作
+    if not options.skip_registered then
+        local register_actions =
+            register.handle(params.textDocument.uri, params.range)
+        for _, val in pairs(register_actions) do
+            table.insert(action_tuples, {
+                action = { title = val.title },
+                buffer_id = buffer_id,
+                callback = val.action,
+            })
+        end
+    end
+
+    -- 检查是否需要添加git操作
+    if not options.skip_gitsigns then
+        action_tuples = self:GetGitsignsActions(
+            action_tuples,
+            buffer_id,
+            is_visual,
+            params.textDocument.uri,
+            params.range
+        )
+    end
+
+    -- 如果只需要注册的操作和git操作，可以直接返回
+    if options.skip_lsp and #action_tuples > 0 then
+        if callback then
+            callback(action_tuples)
+        end
+        return true
+    end
+
+    -- 请求LSP服务器的代码操作
+    for _, client in pairs(clients) do
+        client:request(
+            self.code_action_feature,
+            params,
+            function(err, result, _, _)
+                if err then
+                    require("LspUI.lib.notify").Warn(
+                        string.format("code action error: %s", err.message)
+                    )
+                else
+                    -- 处理结果
+                    for _, action in pairs(result or {}) do
+                        if action.title and action.title ~= "" then
+                            table.insert(action_tuples, {
+                                action = action,
+                                client = client,
+                                buffer_id = buffer_id,
+                            })
+                        end
+                    end
+                end
+
+                pending_requests = pending_requests - 1
+                if pending_requests == 0 and callback then
+                    callback(action_tuples)
+                end
+            end,
+            buffer_id
+        )
+    end
+
+    return true
+end
+
+-- 执行代码操作
+function ClassLsp:ExecCodeAction(action_tuple)
+    local callback = action_tuple.callback
+    if callback then
+        callback()
+        return true
+    end
+
+    local action = action_tuple.action
+    local client = action_tuple.client
+    if not client then
+        return false, "no client available"
+    end
+
+    -- 应用操作逻辑
+    if action.edit then
+        lsp.util.apply_workspace_edit(action.edit, client.offset_encoding)
+    end
+
+    if action.command then
+        local command = type(action.command) == "table" and action.command
+            or action
+        self:ExecCommand(client, command, action_tuple.buffer_id)
+    end
+
+    return true
+end
+
+-- 执行命令
+function ClassLsp:ExecCommand(client, command, buffer_id, handler)
+    local cmdname = command.command
+    local func = client.commands[cmdname] or lsp.commands[cmdname]
+
+    if func then
+        func(command, { bufnr = buffer_id, client_id = client.id })
+        return
+    end
+
+    -- 检查服务器是否支持该命令
+    local command_provider = client.server_capabilities.executeCommandProvider
+    local commands = type(command_provider) == "table"
+            and command_provider.commands
+        or {}
+
+    if not vim.list_contains(commands, cmdname) then
+        require("LspUI.lib.notify").Warn(
+            string.format(
+                "Language server `%s` does not support command `%s`",
+                client.name,
+                cmdname
+            )
+        )
+        return
+    end
+
+    local params = {
+        command = command.command,
+        arguments = command.arguments,
+    }
+
+    client:request(self.exec_command_feature, params, handler, buffer_id)
+end
+
 return ClassLsp
