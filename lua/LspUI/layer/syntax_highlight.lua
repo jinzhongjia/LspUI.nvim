@@ -54,6 +54,7 @@ function M.setup()
 end
 
 -- 获取一段文本在缓冲区中的字节偏移量
+---@diagnostic disable-next-line: unused-local, unused-function
 local function get_byte_offset(buf, row, col, text)
     local line = api.nvim_buf_get_lines(buf, row, row + 1, false)[1] or ""
     if col >= #line then
@@ -161,6 +162,7 @@ function M._attach_lang(buf, lang, regions)
     end
 
     -- 设置包含的区域
+    ---@diagnostic disable-next-line: invisible
     parser:set_included_regions({ formatted_regions })
 
     -- 创建或更新高亮器
