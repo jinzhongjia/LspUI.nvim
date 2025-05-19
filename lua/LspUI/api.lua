@@ -18,7 +18,7 @@ local M = {}
 
 M.api = {
     code_action = modules.code_action.run,
-    rename = modules.code_action.run,
+    rename = modules.rename.run,
     diagnostic = modules.diagnostic.run,
     hover = modules.hover.run,
     definition = modules.definition.run,
