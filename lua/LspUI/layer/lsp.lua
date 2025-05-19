@@ -76,7 +76,7 @@ function ClassLsp:SetMethod(method_name)
         self._method = self.methods[method_name]
         return true
     else
-       lib_notify.Error("Unsupported LSP method: " .. method_name) 
+        lib_notify.Error("Unsupported LSP method: " .. method_name)
         return false
     end
 end
@@ -343,6 +343,9 @@ end
 ClassLsp.code_action_feature = lsp.protocol.Methods.textDocument_codeAction
 ClassLsp.exec_command_feature = lsp.protocol.Methods.workspace_executeCommand
 ClassLsp.code_action_resolve_feature = lsp.protocol.Methods.codeAction_resolve
+ClassLsp.rename_feature = lsp.protocol.Methods.textDocument_rename
+-- stylua: ignore
+ClassLsp.prepare_rename_feature = lsp.protocol.Methods.textDocument_prepareRename
 
 -- 获取支持代码操作的客户端
 function ClassLsp:GetCodeActionClients(buffer_id)
@@ -603,6 +606,82 @@ function ClassLsp:ExecCommand(client, command, buffer_id, handler)
     }
 
     client:request(self.exec_command_feature, params, handler, buffer_id)
+end
+
+-- 获取支持重命名的客户端
+function ClassLsp:GetRenameClients(buffer_id)
+    local clients = lsp.get_clients({
+        bufnr = buffer_id,
+        method = self.rename_feature,
+    })
+
+    if vim.tbl_isempty(clients) then
+        return nil
+    end
+    return clients
+end
+
+-- 检查位置是否可以重命名
+function ClassLsp:CheckRenamePosition(buffer_id, params, callback)
+    local clients = self:GetRenameClients(buffer_id)
+    if not clients then
+       callback(false, nil, "No available renaming client") 
+        return
+    end
+
+    local valid_clients = {}
+    local remaining = #clients
+
+    for _, client in ipairs(clients) do
+        if client:supports_method(self.prepare_rename_feature) then
+            client:request(
+                self.prepare_rename_feature,
+                params,
+                function(err, result, _, _)
+                    remaining = remaining - 1
+
+                    if not err and result then
+                        table.insert(valid_clients, client)
+                    end
+
+                    if remaining == 0 then
+                        if #valid_clients > 0 then
+                            callback(true, valid_clients)
+                        else
+                           callback(false, nil, "This position cannot be renamed") 
+                        end
+                    end
+                end,
+                buffer_id
+            )
+        else
+            -- 客户端不支持预检查，假定位置有效
+            remaining = remaining - 1
+            table.insert(valid_clients, client)
+
+            if remaining == 0 then
+                callback(true, valid_clients)
+            end
+        end
+    end
+end
+
+-- 执行重命名操作
+function ClassLsp:ExecuteRename(clients, buffer_id, params)
+    local count = #clients
+    local completed = 0
+
+    for _, client in ipairs(clients) do
+        local handler = client.handlers[self.rename_feature]
+            or lsp.handlers[self.rename_feature]
+
+        client:request(self.rename_feature, params, function(...)
+            handler(...)
+            completed = completed + 1
+        end, buffer_id)
+    end
+
+    return true
 end
 
 return ClassLsp

@@ -1,4 +1,2 @@
 - lsp 的util复用
 - hover 简化
-- inlay hint 简化
-- rename 简化
