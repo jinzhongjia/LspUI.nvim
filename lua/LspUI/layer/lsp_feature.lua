@@ -1,6 +1,6 @@
 local command = require("LspUI.command")
 local config = require("LspUI.config")
-local layer_notify = require("LspUI.layer.notify")
+local notify = require("LspUI.layer.notify")
 local api = vim.api
 
 --- @class ClassLspFeature
@@ -93,7 +93,7 @@ function ClassLspFeature:Run(callback)
 
     -- 检查功能是否启用
     if not (feature_options.enable == true) then
-        layer_notify.Info(
+        notify.Info(
             string.format(
                 "%s feature is not enabled!",
                 self.name:sub(1, 1):upper() .. self.name:sub(2)
@@ -111,9 +111,7 @@ function ClassLspFeature:Run(callback)
         if callback then
             callback()
         else
-            layer_notify.Warn(
-                string.format("No client supports %s!", self.name)
-            )
+            notify.Warn(string.format("No client supports %s!", self.name))
         end
         return
     end
@@ -133,7 +131,7 @@ function ClassLspFeature:Run(callback)
             -- 调用接口
             interface.go(method_name, current_buffer, params)
         else
-            layer_notify.Error("无法找到LSP方法: " .. self.name)
+            notify.Error("Unable to find LSP method: " .. self.name)
         end
     end, 0)
 end

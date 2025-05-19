@@ -34,7 +34,7 @@ end
 -- run of rename
 M.run = function()
     if not config.options.rename.enable then
-       lib_notify.Info("Rename function is not enabled!") 
+        lib_notify.Info("Rename function is not enabled!")
         return
     end
 
@@ -45,7 +45,7 @@ M.run = function()
     local clients = lsp_handler:GetRenameClients(current_buffer)
 
     if not clients or #clients < 1 then
-       lib_notify.Warn("No clients supporting rename operation!") 
+        lib_notify.Warn("No clients supporting rename operation!")
         return
     end
 

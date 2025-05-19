@@ -13,21 +13,23 @@ return {
                 config.setup(user_config)
 
                 vim.schedule(function()
-                    -- 先初始化命令系统
+                    -- Initialize the command system first
                     if command and command.init then
                         command.init()
                     else
-                        lib_notify.Error("LspUI: 命令模块初始化失败")
+                        lib_notify.Error(
+                            "LspUI: Command module initialization failed"
+                        )
                     end
 
-                    -- 添加防御性检查和错误处理，确保每个模块都有init方法
+                    -- Add defensive checks and error handling to ensure each module has an init method
                     for name, module in pairs(modules) do
                         if module and type(module.init) == "function" then
                             local ok, err = pcall(module.init)
                             if not ok then
                                 lib_notify.Error(
                                     string.format(
-                                        "初始化模块 %s 失败: %s",
+                                        "Failed to initialize module %s: %s",
                                         name,
                                         err
                                     )
@@ -36,7 +38,7 @@ return {
                         else
                             lib_notify.Warn(
                                 string.format(
-                                    "模块 %s 缺少init方法或不是有效模块",
+                                    "Module %s is missing init method or is not a valid module",
                                     name
                                 )
                             )
