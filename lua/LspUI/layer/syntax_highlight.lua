@@ -155,7 +155,7 @@ function M._attach_lang(buf, lang, regions)
     -- 如果仍然失败，记录错误并返回
     if not ok then
         vim.notify_once(
-            "LspUI 无法为 " .. lang .. " 创建语法高亮",
+            "LspUI cannot create syntax highlighting for " .. lang,
             vim.log.levels.WARN
         )
         return

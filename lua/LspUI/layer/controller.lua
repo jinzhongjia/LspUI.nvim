@@ -3,7 +3,7 @@ local ClassLsp = require("LspUI.layer.lsp")
 local ClassMainView = require("LspUI.layer.main_view")
 local ClassSubView = require("LspUI.layer.sub_view")
 local config = require("LspUI.config")
-local lib_notify = require("LspUI.layer.notify")
+local notify = require("LspUI.layer.notify")
 local tools = require("LspUI.layer.tools")
 
 -- 添加全局单例实例
@@ -602,14 +602,14 @@ function ClassController:Go(method_name, buffer_id, params, origin_win)
     -- 发起LSP请求
     self._lsp:Request(buffer_id, params, function(data)
         if not data or vim.tbl_isempty(data) then
-            if method_name == ClassLsp.methods.incoming_calls.name then
-                lib_notify.Info("找不到调用此函数/方法的位置")
+           if method_name == ClassLsp.methods.incoming_calls.name then 
+                notify.Info("No references found for this function/method")
             elseif method_name == ClassLsp.methods.outgoing_calls.name then
-                lib_notify.Info(
-                    "找不到此函数/方法调用的其他位置"
+                notify.Info(
+                    "No calls found from this function/method"
                 )
             else
-                lib_notify.Info(string.format("找不到%s", method_name))
+                notify.Info(string.format("Could not find %s", method_name))
             end
             return
         end
@@ -662,7 +662,7 @@ function ClassController:Go(method_name, buffer_id, params, origin_win)
             })
             vim.cmd("norm! zz")
 
-            lib_notify.Info(
+            notify.Info(
                 string.format("Jumped to the only %s location", method_name)
             )
             return
@@ -776,7 +776,7 @@ function ClassController:RenderViews()
         self:_setupMainViewKeyBindings()
     else
         -- 如果找不到初始缓冲区，记录警告
-        lib_notify.Warn("找不到可用的缓冲区来初始化主视图")
+       notify.Warn("No available buffer found to initialize main view") 
     end
 
     -- 设置自动关闭功能
