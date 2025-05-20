@@ -1,12 +1,8 @@
-local lsp, fn, api = vim.lsp, vim.fn, vim.api
-local code_action_feature = lsp.protocol.Methods.textDocument_codeAction
-
-local code_action_register = require("LspUI.code_action.register")
+local fn, api = vim.fn, vim.api
+local ClassLsp = require("LspUI.layer.lsp")
 local config = require("LspUI.config")
 local global = require("LspUI.global")
-local lib_lsp = require("LspUI.lib.lsp")
-local lib_notify = require("LspUI.lib.notify")
-local lib_util = require("LspUI.lib.util")
+local tools = require("LspUI.layer.tools")
 
 local M = {}
 
@@ -16,12 +12,7 @@ local autogroup_name = "Lspui_lightBulb"
 --- @param buffer_id integer
 --- @return vim.lsp.Client[]|nil clients array or nil
 function M.get_clients(buffer_id)
-    local clients =
-        lsp.get_clients({ bufnr = buffer_id, method = code_action_feature })
-    if vim.tbl_isempty(clients) then
-        return nil
-    end
-    return clients
+    return ClassLsp:GetCodeActionClients(buffer_id)
 end
 
 -- render sign
@@ -45,7 +36,6 @@ end
 
 -- clear sign
 function M.clear_render()
-    -- TODO:Do you need to add pcall here???
     fn.sign_unplace(global.lightbulb.sign_group)
 end
 
@@ -76,80 +66,24 @@ function M.request(buffer_id, callback)
     if buffer_id ~= api.nvim_win_get_buf(api.nvim_get_current_win()) then
         return
     end
-    local context = {
-        triggerKind = vim.lsp.protocol.CodeActionTriggerKind.Invoked,
-        diagnostics = lib_lsp.diagnostic_vim_to_lsp(
-            vim.diagnostic.get(buffer_id, {
-                lnum = fn.line(".") - 1,
-            })
-        ),
+
+    -- 减少计算量，使用一次性回调
+    local __callback = tools.exec_once(callback)
+
+    -- 创建参数
+    local params = ClassLsp:MakeCodeActionParams(buffer_id)
+
+    -- 使用轻量级选项请求代码操作
+    local options = {
+        skip_lsp = false, -- 包括LSP服务器操作
+        skip_registered = false, -- 包括注册的操作
+        skip_gitsigns = false, -- 包括gitsigns操作
     }
 
-    -- reduce a little calculations
-    local __callback = lib_util.exec_once(callback)
-
-    -- here will Check for new content
-    -- TODO: maybe we can add more integreation
-    if config.options.code_action.gitsigns then
-        local status, gitsigns = pcall(require, "gitsigns")
-        if not status then
-            goto _continue
-        end
-        local gitsigns_actions = gitsigns.get_actions()
-        if gitsigns_actions and not vim.tbl_isempty(gitsigns_actions) then
-            __callback(true)
-            return
-        end
-        ::_continue::
-    end
-    local clients = M.get_clients(buffer_id)
-    if (not clients) or #clients < 1 then
-        return
-    end
-
-    local params = lsp.util.make_range_params(0, clients[1].offset_encoding)
-    params.context = context
-    -- stylua: ignore
-    local register_res =code_action_register.handle(params.textDocument.uri, params.range)
-
-    if not vim.tbl_isempty(register_res) then
-        __callback(true)
-        return
-    end
-
-    local tmp_number = 0
-
-    for _, client in pairs(clients or {}) do
-        local _tmp = function(err, result, _, _)
-            tmp_number = tmp_number + 1
-
-            if
-                err == nil
-                and result
-                and type(result) == "table"
-                and not vim.tbl_isempty(result)
-            then
-                __callback(true)
-                return
-            end
-
-            if err ~= nil then
-                lib_notify.Warn(
-                    string.format(
-                        "lightbulb meet error, server %s, error code is %d, msg is %s",
-                        client.name,
-                        err.code,
-                        err.message
-                    )
-                )
-            end
-
-            if tmp_number == #clients then
-                __callback(false)
-            end
-        end
-        client.request(code_action_feature, params, _tmp, buffer_id)
-    end
+    ClassLsp:RequestCodeActions(buffer_id, params, function(action_tuples)
+        -- 如果发现任何代码操作，显示灯泡
+        __callback(#action_tuples > 0)
+    end, options)
 end
 
 local function debounce_func(buffer_id)
@@ -171,10 +105,10 @@ local function debounce_func(buffer_id)
     if not config.options.lightbulb.debounce then
         return func
     elseif config.options.lightbulb.debounce == true then
-        return lib_util.debounce(func, 250)
+        return tools.debounce(func, 250)
     end
 
-    return lib_util.debounce(
+    return tools.debounce(
         func,
         ---@diagnostic disable-next-line: param-type-mismatch
         math.floor(config.options.lightbulb.debounce)
@@ -200,14 +134,14 @@ function M.autocmd()
             group = group_id,
             buffer = current_buffer,
             callback = vim.schedule_wrap(new_func),
-            desc = lib_util.command_desc("Lightbulb update when CursorHold"),
+            desc = tools.command_desc("Lightbulb update when CursorHold"),
         })
 
         api.nvim_create_autocmd({ "InsertEnter", "WinLeave" }, {
             group = group_id,
             buffer = current_buffer,
             callback = M.clear_render,
-            desc = lib_util.command_desc("Lightbulb update when InsertEnter"),
+            desc = tools.command_desc("Lightbulb update when InsertEnter"),
         })
 
         api.nvim_create_autocmd({ "BufDelete" }, {
@@ -216,7 +150,7 @@ function M.autocmd()
             callback = function()
                 api.nvim_del_augroup_by_id(group_id)
             end,
-            desc = lib_util.command_desc(
+            desc = tools.command_desc(
                 "Lightbulb delete autocmd when BufDelete"
             ),
         })
@@ -226,7 +160,7 @@ function M.autocmd()
     api.nvim_create_autocmd("LspAttach", {
         group = lightbulb_group,
         callback = _tmp,
-        desc = lib_util.command_desc("Lsp attach lightbulb cmd"),
+        desc = tools.command_desc("Lsp attach lightbulb cmd"),
     })
 end
 

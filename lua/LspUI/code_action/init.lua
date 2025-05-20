@@ -1,7 +1,7 @@
 local api = vim.api
 local command = require("LspUI.command")
 local config = require("LspUI.config")
-local lib_notify = require("LspUI.lib.notify")
+local lib_notify = require("LspUI.layer.notify")
 local util = require("LspUI.code_action.util")
 
 local M = {}
@@ -43,7 +43,7 @@ end
 -- run for a code action
 function M.run()
     if not config.options.code_action.enable then
-        lib_notify.Info("code_sction is not enabled!")
+        lib_notify.Info("code_action is not enabled!")
         return
     end
     -- get current buffer

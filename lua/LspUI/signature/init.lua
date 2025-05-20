@@ -1,6 +1,6 @@
 local api = vim.api
 local config = require("LspUI.config")
-local lib_notify = require("LspUI.lib.notify")
+local lib_notify = require("LspUI.layer.notify")
 local util = require("LspUI.signature.util")
 
 local M = {}
@@ -26,23 +26,12 @@ function M.init()
     }
 
     if config.options.signature.color.bg then
-        hl_val.fg = config.options.signature.color.bg
+        hl_val.bg = config.options.signature.color.bg -- 修复：正确设置背景色而不是覆盖前景色
     end
     api.nvim_set_hl(0, "LspUI_Signature", hl_val)
 
     -- init autocmd
     util.autocmd()
-end
-
-function M.deinit()
-    if not is_initialized then
-        lib_notify.Info("signature has been deinit")
-    end
-
-    is_initialized = false
-
-    -- remove autocmd
-    util.deautocmd()
 end
 
 function M.run()

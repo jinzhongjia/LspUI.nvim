@@ -3,7 +3,7 @@ local inlay_hint_feature = lsp.protocol.Methods.textDocument_inlayHint
 
 local command = require("LspUI.command")
 local config = require("LspUI.config")
-local lib_util = require("LspUI.lib.util")
+local tools = require("LspUI.layer.tools")
 
 local inlay_hint = lsp.inlay_hint.enable
 local inlay_hint_is_enabled = lsp.inlay_hint.is_enabled
@@ -11,41 +11,48 @@ local inlay_hint_is_enabled = lsp.inlay_hint.is_enabled
 local M = {}
 
 local autocmd_group = "Lspui_inlay_hint"
-
--- whether this module has initialized
-local is_initialized = false
-
 local command_key = "inlay_hint"
 
---- @type boolean
-local is_open
+-- 模块状态
+local is_initialized = false
+local is_open = false -- 确保变量有初始值
 
---- @param buffer_id integer
-local function set_inlay_hint(buffer_id)
-    ---@type string
-    local filetype = api.nvim_get_option_value("filetype", {
-        buf = buffer_id,
-    })
+-- 检查文件类型是否应该应用内联提示
+local function should_set_inlay_hint(filetype)
+    local options = config.options.inlay_hint.filter or {}
 
+    -- 确保 options 存在必要的字段
+    local whitelist = options.whitelist or {}
+    local blacklist = options.blacklist or {}
+
+    -- 白名单检查
     if
-        not vim.tbl_isempty(config.options.inlay_hint.filter.whitelist)
-        and not vim.tbl_contains(
-            config.options.inlay_hint.filter.whitelist,
-            filetype
-        )
+        not vim.tbl_isempty(whitelist)
+        and not vim.tbl_contains(whitelist, filetype)
     then
-        -- when whitelist is not empty, and filetype not exists in whitelist
+        return false
+    end
+
+    -- 黑名单检查
+    if
+        not vim.tbl_isempty(blacklist)
+        and vim.tbl_contains(blacklist, filetype)
+    then
+        return false
+    end
+
+    return true
+end
+
+-- 为单个缓冲区设置内联提示
+local function set_inlay_hint(buffer_id)
+    if not buffer_id or not api.nvim_buf_is_valid(buffer_id) then
         return
     end
 
-    if
-        not vim.tbl_isempty(config.options.inlay_hint.filter.blacklist)
-        and vim.tbl_contains(
-            config.options.inlay_hint.filter.blacklist,
-            filetype
-        )
-    then
-        -- when blacklist is not empty, and filetype exists in blacklist
+    local filetype = api.nvim_get_option_value("filetype", { buf = buffer_id })
+
+    if not should_set_inlay_hint(filetype) then
         return
     end
 
@@ -53,81 +60,74 @@ local function set_inlay_hint(buffer_id)
         bufnr = buffer_id,
         method = inlay_hint_feature,
     })
+
     if not vim.tbl_isempty(clients) then
-        if is_open == inlay_hint_is_enabled({ bufnr = buffer_id }) then
-            return
+        local current_state = inlay_hint_is_enabled({ bufnr = buffer_id })
+        if is_open ~= current_state then
+            inlay_hint(is_open, { bufnr = buffer_id })
         end
-        inlay_hint(is_open, {
-            bufnr = buffer_id,
-        })
     end
 end
 
--- init for inlay hint
-function M.init()
-    if not config.options.inlay_hint.enable then
-        return
+-- 应用于所有缓冲区
+local function apply_to_all_buffers()
+    local all_buffers = api.nvim_list_bufs()
+    for _, buffer_id in pairs(all_buffers) do
+        set_inlay_hint(buffer_id)
     end
+end
 
-    if is_initialized then
+-- 初始化模块
+function M.init()
+    if not config.options.inlay_hint.enable or is_initialized then
         return
     end
 
     is_initialized = true
-
-    -- when init the inlay_hint, open is true
     is_open = true
 
-    -- whether register the inlay_hint command
+    -- 注册命令
     if config.options.inlay_hint.command_enable then
         command.register_command(command_key, M.run, {})
     end
 
-    -- init for existed listed buffers
-    local all_buffers = api.nvim_list_bufs()
-    for _, buffer_id in pairs(all_buffers) do
-        set_inlay_hint(buffer_id)
-    end
+    -- 处理现有缓冲区
+    apply_to_all_buffers()
 
+    -- 设置自动命令
     local inlay_hint_group =
         api.nvim_create_augroup(autocmd_group, { clear = true })
-
     api.nvim_create_autocmd("LspAttach", {
         group = inlay_hint_group,
         callback = function(arg)
-            set_inlay_hint(arg.bufnr)
+            -- 确保有效的 buffer 编号
+            if arg and arg.buf then
+                set_inlay_hint(arg.buf)
+            end
+            -- 移除了 arg.bufnr 检查，因为它未定义
         end,
-        desc = lib_util.command_desc("inlay hint"),
+        desc = tools.command_desc("inlay hint"),
     })
 end
 
--- run for inlay_hint
+-- 切换内联提示状态
 function M.run()
     is_open = not is_open
-
-    local all_buffers = api.nvim_list_bufs()
-    for _, buffer_id in pairs(all_buffers) do
-        set_inlay_hint(buffer_id)
-    end
+    apply_to_all_buffers()
 end
 
--- deinit for inlay_hint
+-- 清理模块
 function M.deinit()
     if not is_initialized then
         return
     end
 
     is_initialized = false
-
     is_open = false
 
-    local all_buffers = api.nvim_list_bufs()
-    for _, buffer_id in pairs(all_buffers) do
-        set_inlay_hint(buffer_id)
-    end
-
+    -- 确保关闭所有内联提示
+    apply_to_all_buffers()
     api.nvim_del_augroup_by_name(autocmd_group)
-
     command.unregister_command(command_key)
 end
 
