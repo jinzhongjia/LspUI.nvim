@@ -614,12 +614,16 @@ function ClassController:Go(method_name, buffer_id, params, origin_win)
             return
         end
 
-        -- 计算结果总数
+        -- 计算结果总数和URI数量
         local total_results = 0
+        local uri_count = 0
         local single_uri, single_range
+        local only_uri
 
         -- 遍历所有URI的结果
         for uri, item in pairs(data) do
+            uri_count = uri_count + 1
+            only_uri = uri -- 记录URI，如果只有一个文件会用到
             total_results = total_results + #item.range
 
             -- 如果只有一个结果，记录它的位置信息
@@ -627,8 +631,9 @@ function ClassController:Go(method_name, buffer_id, params, origin_win)
                 single_uri = uri
                 single_range = item.range[1]
             elseif total_results > 1 then
-                -- 一旦发现多于一个结果，停止记录
-                break
+                -- 一旦发现多于一个结果，仍继续计数，我们需要得到总结果数和URI数
+                single_uri = nil
+                single_range = nil
             end
         end
 
@@ -663,7 +668,14 @@ function ClassController:Go(method_name, buffer_id, params, origin_win)
             return
         end
 
-        -- 多于一个结果时，渲染视图
+        -- 如果只有一个文件但有多个结果，自动展开该文件（适用于所有方法）
+        if uri_count == 1 and only_uri then
+            -- 确保该URI的fold状态为false（展开）
+            if data[only_uri] then
+                data[only_uri].fold = false
+            end
+        end
+
         -- 渲染视图，无论视图是否已存在
         self:RenderViews()
 
@@ -682,7 +694,6 @@ function ClassController:Go(method_name, buffer_id, params, origin_win)
         end
     end)
 end
-
 function ClassController:RenderViews()
     -- 检查视图是否存在
     local mainViewValid = self._mainView and self._mainView:Valid()
