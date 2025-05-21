@@ -18,22 +18,53 @@ M.init = function()
         end
 
         if command_store[key] then
-            pcall(command_store[key].run, cmd_args)
+            -- 修改：传递所有参数
+            pcall(command_store[key].run, unpack(cmd_args))
         else
             notify.Warn(string.format("command %s not exist!", key))
         end
     end, {
-        range = true,
         nargs = "*",
-        complete = function(_, cmdline, _)
-            local cmd = fn.split(cmdline)
+        desc = "LspUI commands",
+        complete = function(ArgLead, CmdLine, CursorPos)
+            local args = vim.split(CmdLine, "%s+")
+            local n = #args
 
-            if #cmd <= 1 then
-                return vim.tbl_keys(command_store)
+            -- 如果只有一个参数 (LspUI 命令本身)，或者第二个参数正在被补全
+            if n <= 1 or (n == 2 and CmdLine:match("%s+$")) then
+                local result = {}
+                for cmd, _ in pairs(command_store) do
+                    if ArgLead == "" or cmd:find(ArgLead, 1, true) then
+                        table.insert(result, cmd)
+                    end
+                end
+                table.sort(result)
+                return result
+            -- 如果已经输入了子命令，并且该子命令有定义补全选项
+            elseif n >= 2 then
+                local subcmd = args[2]
+                if command_store[subcmd] and command_store[subcmd].args then
+                    local completes = command_store[subcmd].args
+                    if type(completes) == "function" then
+                        return completes(ArgLead, CmdLine, CursorPos)
+                    elseif type(completes) == "table" then
+                        local result = {}
+                        local current_arg = args[n]
+                        for _, v in ipairs(completes) do
+                            if
+                                current_arg == ""
+                                or v:find(current_arg, 1, true)
+                            then
+                                table.insert(result, v)
+                            end
+                        end
+                        return result
+                    end
+                end
+                return {}
             end
 
-            local args = vim.tbl_get(command_store, cmd[2], "args")
-            return args or {}
+            return {}
         end,
     })
 end
@@ -41,7 +72,7 @@ end
 -- register command
 --- @param command_key string
 --- @param run function
---- @param args string[]
+--- @param args string[]|function
 M.register_command = function(command_key, run, args)
     command_store[command_key] = { run = run, args = args }
 end

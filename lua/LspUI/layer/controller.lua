@@ -602,12 +602,10 @@ function ClassController:Go(method_name, buffer_id, params, origin_win)
     -- 发起LSP请求
     self._lsp:Request(buffer_id, params, function(data)
         if not data or vim.tbl_isempty(data) then
-           if method_name == ClassLsp.methods.incoming_calls.name then 
+            if method_name == ClassLsp.methods.incoming_calls.name then
                 notify.Info("No references found for this function/method")
             elseif method_name == ClassLsp.methods.outgoing_calls.name then
-                notify.Info(
-                    "No calls found from this function/method"
-                )
+                notify.Info("No calls found from this function/method")
             else
                 notify.Info(string.format("Could not find %s", method_name))
             end
@@ -637,8 +635,24 @@ function ClassController:Go(method_name, buffer_id, params, origin_win)
             end
         end
 
-        -- 如果只有一个结果，直接跳转
+        -- 如果只有一个结果，检查是否就是当前位置
         if total_results == 1 and single_uri and single_range then
+            -- 检查是否为当前位置 (相同文件和相同位置)
+            local current_uri = vim.uri_from_bufnr(buffer_id)
+            local is_current_position = tools.compare_uri(
+                current_uri,
+                single_uri
+            ) and single_range.start.line == params.position.line and math.abs(
+                single_range.start.character - params.position.character
+            ) <= 3 -- 允许小范围偏差
+
+            if is_current_position then
+                notify.Info(
+                    string.format("This is the only %s position", method_name)
+                )
+                return
+            end
+
             -- 执行标签栈
             tools.save_position_to_jumplist()
 
@@ -663,7 +677,7 @@ function ClassController:Go(method_name, buffer_id, params, origin_win)
             vim.cmd("norm! zz")
 
             notify.Info(
-                string.format("Jumped to the only %s location", method_name)
+                string.format("已跳转到唯一的%s位置", method_name)
             )
             return
         end
@@ -694,6 +708,7 @@ function ClassController:Go(method_name, buffer_id, params, origin_win)
         end
     end)
 end
+
 function ClassController:RenderViews()
     -- 检查视图是否存在
     local mainViewValid = self._mainView and self._mainView:Valid()
@@ -776,7 +791,7 @@ function ClassController:RenderViews()
         self:_setupMainViewKeyBindings()
     else
         -- 如果找不到初始缓冲区，记录警告
-       notify.Warn("No available buffer found to initialize main view") 
+        notify.Warn("No available buffer found to initialize main view")
     end
 
     -- 设置自动关闭功能

@@ -34,6 +34,11 @@ local function cleanStringConcise(str)
     return str:match("^%s*(.-)%s*$"):gsub("%.+$", "")
 end
 
+-- 确保删除旧的自动命令组
+local function clean_autocmds()
+    pcall(api.nvim_del_augroup_by_name, autocmd_group)
+end
+
 -- render the float window
 --- @param action "prev"|"next"
 function M.render(action)
@@ -95,8 +100,7 @@ function M.render(action)
         table.insert(content, msg)
     end
 
-    local width =
-        math.min(max_width, math.floor(tools.get_max_width() * 0.6))
+    local width = math.min(max_width, math.floor(tools.get_max_width() * 0.6))
 
     if diagnostic.source then
         local msg =
@@ -141,9 +145,11 @@ function M.render(action)
         view:Footer(cleanStringConcise(diagnostic.source), "right")
     end
 
+    -- 销毁旧视图和清理旧的自动命令
     if diagnostic_view then
         diagnostic_view:Destroy()
     end
+    clean_autocmds()
 
     vim.cmd("normal! m'")
     api.nvim_win_set_cursor(current_window, { next_row + 1, next_col })
@@ -169,9 +175,13 @@ end
 -- autocmd for diagnostic
 --- @param buffer_id integer original buffer id, not float window's buffer id
 function M.autocmd(buffer_id)
+    -- 确保清理旧的自动命令
+    clean_autocmds()
+
     local group = api.nvim_create_augroup(autocmd_group, { clear = true })
     local new_buffer = diagnostic_view:GetBufID()
     local win_id = diagnostic_view:GetWinID()
+
     api.nvim_create_autocmd("BufEnter", {
         group = group,
         callback = function()
@@ -179,19 +189,22 @@ function M.autocmd(buffer_id)
             if current_buffer == new_buffer then
                 return
             end
-            diagnostic_view:Destroy()
-            api.nvim_del_augroup_by_name(autocmd_group)
+            if diagnostic_view and diagnostic_view:GetWinID() == win_id then
+                diagnostic_view:Destroy()
+            end
+            clean_autocmds()
         end,
     })
+
     api.nvim_create_autocmd({ "CursorMoved", "CursorMovedI", "InsertEnter" }, {
         buffer = buffer_id,
-        group = autocmd_group,
+        group = group,
         callback = function()
             -- 只有当前的 diagnostic view的window id 没变，才会触发关闭操作
             if diagnostic_view and diagnostic_view:GetWinID() == win_id then
                 diagnostic_view:Destroy()
             end
-            api.nvim_del_augroup_by_name(autocmd_group)
+            clean_autocmds()
         end,
         desc = tools.command_desc("diagnostic, auto close windows"),
     })
