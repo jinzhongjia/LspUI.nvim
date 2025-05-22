@@ -677,7 +677,7 @@ function ClassController:Go(method_name, buffer_id, params, origin_win)
             vim.cmd("norm! zz")
 
             notify.Info(
-                string.format("已跳转到唯一的%s位置", method_name)
+               string.format("Jumped to the only %s location", method_name) 
             )
             return
         end
