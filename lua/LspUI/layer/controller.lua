@@ -113,25 +113,7 @@ function ClassController:_generateSubViewContent()
         local file_full_name = vim.uri_to_fname(uri)
         local file_name = vim.fn.fnamemodify(file_full_name, ":t")
 
-        -- 改进文件类型检测
-        local filetype = vim.filetype.match({ filename = file_full_name }) or ""
-
-        -- 添加特殊处理和调试
-        if not filetype or filetype == "" then
-            -- NOTE: 如果无法通过文件类型检测获取到文件类型，则尝试从文件扩展名推断
-
-            -- 尝试从扩展名推断
-            local ext = vim.fn.fnamemodify(file_full_name, ":e")
-            if ext == "ts" then
-                filetype = "typescript"
-            elseif ext == "tsx" then
-                filetype = "typescriptreact"
-            elseif ext == "js" then
-                filetype = "javascript"
-            elseif ext == "jsx" then
-                filetype = "javascriptreact"
-            end
-        end
+        local filetype = tools.detect_filetype(file_full_name)
 
         -- 计算相对路径，用于extmark
         local rel_path = ""

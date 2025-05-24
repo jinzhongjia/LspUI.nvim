@@ -236,4 +236,24 @@ function M.exec_once(callback)
     end
 end
 
+function M.detect_filetype(file_path)
+    local filetype = vim.filetype.match({ filename = file_path }) or ""
+
+    if not filetype or filetype == "" then
+        local ext = vim.fn.fnamemodify(file_path, ":e")
+        local ext_map = {
+            ts = "typescript",
+            tsx = "typescriptreact",
+            js = "javascript",
+            jsx = "javascriptreact",
+            py = "python",
+            rb = "ruby",
+            -- 更全面的映射表
+        }
+        filetype = ext_map[ext] or ""
+    end
+
+    return filetype
+end
+
 return M
