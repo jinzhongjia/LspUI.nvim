@@ -132,6 +132,11 @@ function ClassLsp:Request(buffer_id, params, callback)
                     end
                 end
 
+                -- 对结果进行排序
+                if has_valid_result then
+                    data = self:_sortLspResults(data)
+                end
+
                 self._datas = data
 
                 -- 调用回调函数
@@ -208,6 +213,17 @@ function ClassLsp:_requestCallHierarchy(buffer_id, params, callback)
                         pending_requests = pending_requests - 1
                         if pending_requests == 0 then
                             all_complete = true
+
+                            -- 对调用层次结果进行排序
+                            if not vim.tbl_isempty(data) then
+                                data = self:_sortLspResults(data)
+
+                                -- 对每个文件内的调用层次范围进行额外排序
+                                for _, item in pairs(data) do
+                                    self:_sortCallHierarchyRanges(item.range)
+                                end
+                            end
+
                             self._datas = data
                             if callback then
                                 callback(data)
@@ -352,7 +368,7 @@ function ClassLsp:_processLspResult(result, data)
             end
         end
 
-        -- 只有当不重复时才添加
+        -- 只有当不重复时才添加（不在这里排序，统一在最后排序）
         if not is_duplicate then
             table.insert(data[uri].range, new_range)
         end
@@ -361,7 +377,7 @@ function ClassLsp:_processLspResult(result, data)
     -- 处理单个结果或多个结果
     if result.uri then
         handle_result(result)
-    elseif tools.islist(result) then -- 使用辅助函数检查是否为列表
+    elseif tools.islist(result) then
         for _, response in ipairs(result) do
             handle_result(response)
         end
@@ -389,6 +405,86 @@ function ClassLsp:_rangesEqual(range1, range2)
             == range2.selection_finish.character
 
     return main_equal and selection_equal
+end
+
+--- 对 LSP 结果进行排序
+---@private
+---@param data LspUIPositionWrap 要排序的数据
+---@return LspUIPositionWrap 排序后的数据
+function ClassLsp:_sortLspResults(data)
+    -- 创建一个包含 URI 和数据的数组用于排序
+    local sorted_entries = {}
+
+    for uri, item in pairs(data) do
+        table.insert(sorted_entries, {
+            uri = uri,
+            data = item,
+            filename = vim.fn.fnamemodify(vim.uri_to_fname(uri), ":t"), -- 提取文件名用于排序
+            filepath = vim.uri_to_fname(uri), -- 完整路径作为备用排序键
+        })
+    end
+
+    -- 按文件名排序
+    table.sort(sorted_entries, function(a, b)
+        -- 首先按文件名排序
+        if a.filename ~= b.filename then
+            return a.filename < b.filename
+        end
+        -- 如果文件名相同，按完整路径排序
+        return a.filepath < b.filepath
+    end)
+
+    -- 对每个文件内的范围进行排序
+    for _, entry in ipairs(sorted_entries) do
+        self:_sortRangesInFile(entry.data.range)
+    end
+
+    -- 重新构建有序的数据结构
+    local sorted_data = {}
+    for _, entry in ipairs(sorted_entries) do
+        sorted_data[entry.uri] = entry.data
+    end
+
+    return sorted_data
+end
+
+--- 对单个文件内的范围进行排序
+---@private
+---@param ranges LspUIRange[] 要排序的范围数组
+function ClassLsp:_sortRangesInFile(ranges)
+    table.sort(ranges, function(a, b)
+        -- 首先按行号排序
+        if a.start.line ~= b.start.line then
+            return a.start.line < b.start.line
+        end
+
+        -- 同一行内按字符位置排序
+        if a.start.character ~= b.start.character then
+            return a.start.character < b.start.character
+        end
+
+        -- 如果起始位置相同，按结束位置排序
+        if a.finish.line ~= b.finish.line then
+            return a.finish.line < b.finish.line
+        end
+
+        return a.finish.character < b.finish.character
+    end)
+end
+
+--- 对调用层次结果进行排序（重载方法）
+---@private
+---@param ranges table[] 调用层次范围数组
+function ClassLsp:_sortCallHierarchyRanges(ranges)
+    table.sort(ranges, function(a, b)
+        -- 首先按行号排序
+        if a.start.line ~= b.start.line then
+            return a.start.line < b.start.line
+        end
+
+        -- 同一行内按字符位置排序
+        return a.start.character < b.start.character
+    end)
 end
 
 --- 将 Vim 诊断格式转换为 LSP 诊断格式
