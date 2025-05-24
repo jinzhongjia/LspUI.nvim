@@ -2,7 +2,6 @@
 local api, fn = vim.api, vim.fn
 local ClassView = require("LspUI.layer.view")
 local syntax_highlight = require("LspUI.layer.syntax_highlight")
-local tools = require("LspUI.layer.tools")
 
 --- @class ClassSubView: ClassView
 --- @field _data LspUIPositionWrap
@@ -98,19 +97,27 @@ function ClassSubView:ApplySyntaxHighlight(code_regions)
         return self
     end
 
+    -- 检查是否有数据
+    if not code_regions or vim.tbl_isempty(code_regions) then
+        return self
+    end
+
     -- 格式化数据为treesitter需要的格式
     local regions = {}
 
     for lang, entries in pairs(code_regions) do
-        if lang ~= "" then
+        if lang and lang ~= "" then
             regions[lang] = {}
 
-            for _, entry in ipairs(entries) do
-                -- 使用Treesitter兼容的格式
-                table.insert(regions[lang], {
-                    { entry.line, entry.col_start }, -- [start_row, start_col]
-                    { entry.line, entry.col_end }, -- [end_row, end_col]
-                })
+            for i, entry in ipairs(entries) do
+                -- 验证条目数据
+                if entry.line and entry.col_start and entry.col_end then
+                    -- 使用Treesitter兼容的格式
+                    table.insert(regions[lang], {
+                        { entry.line, entry.col_start }, -- [start_row, start_col]
+                        { entry.line, entry.col_end }, -- [end_row, end_col]
+                    })
+                end
             end
         end
     end

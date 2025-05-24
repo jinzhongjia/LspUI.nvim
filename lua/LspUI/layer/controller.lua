@@ -113,8 +113,25 @@ function ClassController:_generateSubViewContent()
         local file_full_name = vim.uri_to_fname(uri)
         local file_name = vim.fn.fnamemodify(file_full_name, ":t")
 
-        -- 确定文件类型
+        -- 改进文件类型检测
         local filetype = vim.filetype.match({ filename = file_full_name }) or ""
+
+        -- 添加特殊处理和调试
+        if not filetype or filetype == "" then
+            -- NOTE: 如果无法通过文件类型检测获取到文件类型，则尝试从文件扩展名推断
+
+            -- 尝试从扩展名推断
+            local ext = vim.fn.fnamemodify(file_full_name, ":e")
+            if ext == "ts" then
+                filetype = "typescript"
+            elseif ext == "tsx" then
+                filetype = "typescriptreact"
+            elseif ext == "js" then
+                filetype = "javascript"
+            elseif ext == "jsx" then
+                filetype = "javascriptreact"
+            end
+        end
 
         -- 计算相对路径，用于extmark
         local rel_path = ""
@@ -187,25 +204,19 @@ function ClassController:_generateSubViewContent()
             local line_code = vim.fn.trim(lines[row] or "")
             local code_fmt = string.format("   %s", line_code)
 
-            -- 如果未折叠，添加到内容
             if not item.fold then
-                -- 当前行在内容中的索引
                 table.insert(content, code_fmt)
 
-                if filetype ~= "" then
-                    local line_content = content[#content] -- 获取刚添加的内容
-                    table.insert(syntax_regions[filetype], {
-                        line = #content - 1, -- 行号 (0-based)
-                        col_start = 3, -- 开始列（跳过前导空格）
-                        col_end = #line_content, -- 结束列（使用实际内容长度）
-                    })
-                end
-            end
+                if filetype and filetype ~= "" then
+                    local line_content = content[#content]
+                    local region_data = {
+                        line = #content - 1,
+                        col_start = 3,
+                        col_end = #line_content,
+                    }
 
-            -- 更新最大宽度
-            local code_fmt_length = vim.fn.strdisplaywidth(code_fmt)
-            if code_fmt_length > max_width then
-                max_width = code_fmt_length
+                    table.insert(syntax_regions[filetype], region_data)
+                end
             end
         end
     end

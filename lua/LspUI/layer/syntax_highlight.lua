@@ -1,3 +1,4 @@
+local notify = require("LspUI.layer.notify")
 local api = vim.api
 
 local M = {}
@@ -89,44 +90,63 @@ function M._attach_lang(buf, lang, regions)
         return
     end
 
+    -- 应用语言名称映射
+    local mapped_lang = lang
+
     M.cache[buf] = M.cache[buf] or {}
+
+    -- 验证regions数据
+    if not regions or #regions == 0 then
+        return
+    end
 
     -- 格式化regions为Treesitter期望的格式
     local formatted_regions = {}
 
     for _, region in ipairs(regions) do
+        -- 验证region格式
+        if not region or not region[1] or not region[2] then
+            notify.Warn("LspUI: Invalid region format for " .. lang)
+            goto continue
+        end
+
         local start_row, start_col = region[1][1], region[1][2]
         local end_row, end_col = region[2][1], region[2][2]
 
-        -- 获取字节偏移量
+        -- 验证行列号
+        if start_row < 0 or start_col < 0 or end_row < 0 or end_col < 0 then
+            goto continue
+        end
+
+        -- 获取字节偏移量（保持原有逻辑）
         local start_byte = api.nvim_buf_get_offset(buf, start_row) + start_col
         local end_byte
 
         if end_row == start_row then
-            -- 同一行的情况
             local line = api.nvim_buf_get_lines(
                 buf,
                 start_row,
                 start_row + 1,
                 false
             )[1] or ""
-            -- 确保不超出行长度
             local effective_end_col = math.min(end_col, #line)
             end_byte = api.nvim_buf_get_offset(buf, end_row) + effective_end_col
         else
-            -- 跨行的情况
             local end_line = api.nvim_buf_get_lines(
                 buf,
                 end_row,
                 end_row + 1,
                 false
             )[1] or ""
-            -- 确保不超出行长度
             local effective_end_col = math.min(end_col, #end_line)
             end_byte = api.nvim_buf_get_offset(buf, end_row) + effective_end_col
         end
 
-        -- 添加格式化后的区域
+        -- 确保字节偏移量有效
+        if start_byte >= end_byte then
+            goto continue
+        end
+
         table.insert(formatted_regions, {
             start_row,
             start_col,
@@ -135,28 +155,42 @@ function M._attach_lang(buf, lang, regions)
             end_col,
             end_byte,
         })
+
+        ::continue::
+    end
+
+    if #formatted_regions == 0 then
+        return
     end
 
     -- 尝试创建解析器
     local ok, parser
-    if lang == "markdown" then
-        ok, parser =
-            pcall(vim.treesitter.languagetree.new, buf, "markdown_inline")
-    else
-        ok, parser = pcall(vim.treesitter.languagetree.new, buf, lang)
-    end
+    local tried_langs = {}
 
-    -- 如果创建失败，尝试使用基本语言
-    if not ok and lang:find("%.") then
-        local base_lang = lang:match("^[^%.]+")
+    -- 首先尝试映射后的语言
+    ok, parser = pcall(vim.treesitter.languagetree.new, buf, mapped_lang)
+    table.insert(tried_langs, mapped_lang)
+
+    -- 如果失败且包含点号，尝试基本语言
+    if not ok and mapped_lang:find("%.") then
+        local base_lang = mapped_lang:match("^[^%.]+")
         ok, parser = pcall(vim.treesitter.languagetree.new, buf, base_lang)
+        table.insert(tried_langs, base_lang)
     end
 
-    -- 如果仍然失败，记录错误并返回
+    -- 如果仍然失败，尝试原始语言名
+    if not ok and mapped_lang ~= lang then
+        ok, parser = pcall(vim.treesitter.languagetree.new, buf, lang)
+        table.insert(tried_langs, lang)
+    end
+
     if not ok then
-        vim.notify_once(
-            "LspUI cannot create syntax highlighting for " .. lang,
-            vim.log.levels.WARN
+        notify.Warn(
+            string.format(
+                "LspUI cannot create syntax highlighting for %s (tried: %s)",
+                lang,
+                table.concat(tried_langs, ", ")
+            )
         )
         return
     end
@@ -178,7 +212,6 @@ function M._attach_lang(buf, lang, regions)
         M.cache[buf][lang].enabled = true
     end
 end
-
 -- 从缓冲区中移除高亮器
 function M.detach(buf)
     if M.cache[buf] then
