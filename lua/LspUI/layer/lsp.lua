@@ -220,7 +220,7 @@ function ClassLsp:_requestCallHierarchy(buffer_id, params, callback)
     )
 end
 
--- 添加处理调用层次结果的方法
+-- 修改处理调用层次结果的方法
 ---@private
 ---@param results table 调用层次结果
 ---@param data LspUIPositionWrap 处理结果存放表
@@ -244,20 +244,67 @@ function ClassLsp:_processCallHierarchyResult(results, data, is_incoming)
         if is_incoming and call.fromRanges and #call.fromRanges > 0 then
             -- 对于入站调用，使用 fromRanges 中的所有位置
             for _, range in ipairs(call.fromRanges) do
-                table.insert(data[uri].range, {
+                local new_range = {
                     start = range.start,
                     finish = range["end"],
-                })
+                }
+
+                -- 检查是否已存在相同的范围
+                local is_duplicate = false
+                for _, existing_range in ipairs(data[uri].range) do
+                    if
+                        self:_callHierarchyRangesEqual(
+                            existing_range,
+                            new_range
+                        )
+                    then
+                        is_duplicate = true
+                        break
+                    end
+                end
+
+                -- 只有当不重复时才添加
+                if not is_duplicate then
+                    table.insert(data[uri].range, new_range)
+                end
             end
         else
             -- 对于出站调用或没有 fromRanges 的入站调用，使用项目的选择范围或范围
             local range = item.selectionRange or item.range
-            table.insert(data[uri].range, {
+            local new_range = {
                 start = range.start,
                 finish = range["end"],
-            })
+            }
+
+            -- 检查是否已存在相同的范围
+            local is_duplicate = false
+            for _, existing_range in ipairs(data[uri].range) do
+                if
+                    self:_callHierarchyRangesEqual(existing_range, new_range)
+                then
+                    is_duplicate = true
+                    break
+                end
+            end
+
+            -- 只有当不重复时才添加
+            if not is_duplicate then
+                table.insert(data[uri].range, new_range)
+            end
         end
     end
+end
+
+-- 添加调用层次范围比较方法
+---@private
+---@param range1 table 第一个范围
+---@param range2 table 第二个范围
+---@return boolean 是否相等
+function ClassLsp:_callHierarchyRangesEqual(range1, range2)
+    return range1.start.line == range2.start.line
+        and range1.start.character == range2.start.character
+        and range1.finish.line == range2.finish.line
+        and range1.finish.character == range2.finish.character
 end
 
 ---@private
@@ -285,7 +332,8 @@ function ClassLsp:_processLspResult(result, data)
             }
         end
 
-        table.insert(data[uri].range, {
+        -- 创建新的范围对象
+        local new_range = {
             start = range.start,
             finish = range["end"],
             -- 新增：保存选择范围，用于精确跳转
@@ -293,7 +341,21 @@ function ClassLsp:_processLspResult(result, data)
                 or range.start,
             selection_finish = selection_range and selection_range["end"]
                 or range["end"],
-        })
+        }
+
+        -- 检查是否已存在相同的范围
+        local is_duplicate = false
+        for _, existing_range in ipairs(data[uri].range) do
+            if self:_rangesEqual(existing_range, new_range) then
+                is_duplicate = true
+                break
+            end
+        end
+
+        -- 只有当不重复时才添加
+        if not is_duplicate then
+            table.insert(data[uri].range, new_range)
+        end
     end
 
     -- 处理单个结果或多个结果
@@ -304,6 +366,29 @@ function ClassLsp:_processLspResult(result, data)
             handle_result(response)
         end
     end
+end
+
+-- 添加新的私有方法用于比较两个范围是否相等
+---@private
+---@param range1 table 第一个范围
+---@param range2 table 第二个范围
+---@return boolean 是否相等
+function ClassLsp:_rangesEqual(range1, range2)
+    -- 比较主要范围
+    local main_equal = range1.start.line == range2.start.line
+        and range1.start.character == range2.start.character
+        and range1.finish.line == range2.finish.line
+        and range1.finish.character == range2.finish.character
+
+    -- 比较选择范围
+    local selection_equal = range1.selection_start.line
+            == range2.selection_start.line
+        and range1.selection_start.character == range2.selection_start.character
+        and range1.selection_finish.line == range2.selection_finish.line
+        and range1.selection_finish.character
+            == range2.selection_finish.character
+
+    return main_equal and selection_equal
 end
 
 --- 将 Vim 诊断格式转换为 LSP 诊断格式
