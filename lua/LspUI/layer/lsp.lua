@@ -272,6 +272,8 @@ function ClassLsp:_processLspResult(result, data)
     local handle_result = function(lspRes)
         local uri = lspRes.uri or lspRes.targetUri
         local range = lspRes.range or lspRes.targetRange
+        local selection_range = lspRes.targetSelectionRange
+            or lspRes.selectionRange
         local uri_buffer = vim.uri_to_bufnr(uri)
 
         if not data[uri] then
@@ -286,6 +288,11 @@ function ClassLsp:_processLspResult(result, data)
         table.insert(data[uri].range, {
             start = range.start,
             finish = range["end"],
+            -- 新增：保存选择范围，用于精确跳转
+            selection_start = selection_range and selection_range.start
+                or range.start,
+            selection_finish = selection_range and selection_range["end"]
+                or range["end"],
         })
     end
 

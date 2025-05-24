@@ -637,14 +637,49 @@ function ClassController:Go(method_name, buffer_id, params, origin_win)
 
         -- 如果只有一个结果，检查是否就是当前位置
         if total_results == 1 and single_uri and single_range then
-            -- 检查是否为当前位置 (相同文件和相同位置)
+            -- 检查是否为当前位置 (相同文件和光标在范围内)
             local current_uri = vim.uri_from_bufnr(buffer_id)
-            local is_current_position = tools.compare_uri(
-                current_uri,
-                single_uri
-            ) and single_range.start.line == params.position.line and math.abs(
-                single_range.start.character - params.position.character
-            ) <= 3 -- 允许小范围偏差
+            local is_same_file = tools.compare_uri(current_uri, single_uri)
+
+            local is_current_position = false
+            if is_same_file then
+                local cursor_line = params.position.line
+                local cursor_char = params.position.character
+
+                -- 优先检查选择范围，如果没有则使用完整范围
+                local check_range = {
+                    start = single_range.selection_start or single_range.start,
+                    finish = single_range.selection_finish
+                        or single_range.finish,
+                }
+
+                -- 检查光标是否在范围内
+                if
+                    cursor_line >= check_range.start.line
+                    and cursor_line <= check_range.finish.line
+                then
+                    if
+                        cursor_line == check_range.start.line
+                        and cursor_line == check_range.finish.line
+                    then
+                        -- 单行范围：检查字符位置
+                        is_current_position = cursor_char
+                                >= check_range.start.character
+                            and cursor_char <= check_range.finish.character
+                    elseif cursor_line == check_range.start.line then
+                        -- 起始行：光标需要在起始字符之后
+                        is_current_position = cursor_char
+                            >= check_range.start.character
+                    elseif cursor_line == check_range.finish.line then
+                        -- 结束行：光标需要在结束字符之前
+                        is_current_position = cursor_char
+                            <= check_range.finish.character
+                    else
+                        -- 中间行：光标在范围内
+                        is_current_position = true
+                    end
+                end
+            end
 
             if is_current_position then
                 notify.Info(
@@ -669,15 +704,15 @@ function ClassController:Go(method_name, buffer_id, params, origin_win)
                 )
             end
 
-            -- 设置光标位置
-            api.nvim_win_set_cursor(0, {
-                single_range.start.line + 1,
-                single_range.start.character,
-            })
+            -- 设置光标位置 - 使用选择范围而不是整个范围
+            local cursor_line = single_range.selection_start.line + 1
+            local cursor_col = single_range.selection_start.character
+
+            api.nvim_win_set_cursor(0, { cursor_line, cursor_col })
             vim.cmd("norm! zz")
 
             notify.Info(
-               string.format("Jumped to the only %s location", method_name) 
+                string.format("Jumped to the only %s location", method_name)
             )
             return
         end
@@ -857,7 +892,7 @@ function ClassController:ActionJump(cmd)
         end)
     end
 
-    -- 清除高亮 - 添加这一行确保高亮被清除
+    -- 清除高亮
     if self._mainView:Valid() then
         self._mainView:ClearHighlight()
     end
@@ -868,7 +903,7 @@ function ClassController:ActionJump(cmd)
     end
 
     -- 关闭视图
-    self._subView:Destroy() -- 会同时销毁绑定的mainView
+    self._subView:Destroy()
 
     -- 执行跳转
     if cmd then
@@ -891,11 +926,11 @@ function ClassController:ActionJump(cmd)
         )
     end
 
-    -- 设置光标位置
-    api.nvim_win_set_cursor(0, {
-        item.range.start.line + 1,
-        item.range.start.character,
-    })
+    -- 设置光标位置 - 使用选择范围
+    local cursor_line = item.range.selection_start.line + 1
+    local cursor_col = item.range.selection_start.character
+
+    api.nvim_win_set_cursor(0, { cursor_line, cursor_col })
     vim.cmd("norm! zz")
 end
 
