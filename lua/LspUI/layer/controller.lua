@@ -104,6 +104,12 @@ function ClassController:_generateSubViewContent()
         return result
     end
 
+    -- 统一显示路径格式的辅助函数（新增）
+    local function normalize_display_path(path)
+        -- 仅统一使用正斜杠，不改变大小写，不添加结尾斜杠
+        return path:gsub("\\", "/")
+    end
+
     -- 获取并规范化当前工作目录
     local cwd = normalize_path(vim.fn.getcwd())
 
@@ -120,7 +126,7 @@ function ClassController:_generateSubViewContent()
         local norm_file_path =
             normalize_path(vim.fn.fnamemodify(file_full_name, ":p"))
 
-        -- 在 _generateSubViewContent 函数中修改以下代码
+        -- 修改路径显示逻辑
         if norm_file_path:sub(1, #cwd) == cwd then
             -- 如果文件在工作目录下，显示相对路径
             local rel_to_cwd = file_full_name:sub(#vim.fn.getcwd() + 1)
@@ -130,8 +136,13 @@ function ClassController:_generateSubViewContent()
                 rel_to_cwd = rel_to_cwd:sub(2)
             end
 
+            -- 统一路径分隔符为正斜杠
+            rel_to_cwd = normalize_display_path(rel_to_cwd)
+
             -- 获取相对路径的目录部分
             local rel_dir = vim.fn.fnamemodify(rel_to_cwd, ":h")
+            -- 确保目录路径也使用正斜杠
+            rel_dir = normalize_display_path(rel_dir)
 
             -- 总是以 ./ 开头显示
             if rel_dir == "." then
@@ -140,8 +151,9 @@ function ClassController:_generateSubViewContent()
                 rel_path = " (./" .. rel_dir .. ")" -- 文件在子目录
             end
         else
-            -- 否则显示绝对目录路径
+            -- 否则显示绝对目录路径，统一使用正斜杠
             local dir = vim.fn.fnamemodify(file_full_name, ":h")
+            dir = normalize_display_path(dir)
             rel_path = " (" .. dir .. ")"
         end
 
