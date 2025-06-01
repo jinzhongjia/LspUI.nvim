@@ -46,7 +46,7 @@ function ClassSubView:PinBuffer()
     if not self:Valid() then
         return self
     end
-    api.nvim_set_option_value("winfibuf", true, { win = self._windowId })
+    api.nvim_set_option_value("winfixbuf", true, { win = self._windowId })
     return self
 end
 
@@ -56,7 +56,7 @@ function ClassSubView:UnPinBuffer()
     if not self:Valid() then
         return self
     end
-    api.nvim_set_option_value("winfibuf", false, { win = self._windowId })
+    api.nvim_set_option_value("winfixbuf", false, { win = self._windowId })
     return self
 end
 

@@ -790,6 +790,7 @@ function ClassController:RenderViews()
     -- 如果副视图不存在，渲染它
     if not subViewValid then
         self._subView:Render()
+        self._subView:PinBuffer()
     end
 
     -- 获取第一个URI对应的缓冲区作为MainView的初始缓冲区
@@ -1115,6 +1116,7 @@ function ClassController:ActionToggleSubView()
 
         -- 渲染视图
         self._subView:Render()
+        self._subView:PinBuffer()
 
         self._subView:SetZIndex(100)
 
