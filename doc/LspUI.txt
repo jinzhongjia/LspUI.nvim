@@ -1,0 +1,508 @@
+*lspui.txt*	For Neovim >= 0.11.0	Last change: 2025 June 07
+
+==============================================================================
+Table of Contents				*lspui-contents*
+
+1. Introduction				|lspui-introduction|
+2. Requirements				|lspui-requirements|  
+3. Installation				|lspui-installation|
+4. Configuration			|lspui-configuration|
+5. Commands				|lspui-commands|
+6. API					|lspui-api|
+7. Modules				|lspui-modules|
+8. Keybindings				|lspui-keybindings|
+9. License				|lspui-license|
+
+==============================================================================
+1. Introduction					*lspui-introduction*
+
+LspUI.nvim is a plugin that wraps Neovim LSP operations with a nicer UI.
+It provides custom implementations of common LSP functions with great 
+out-of-the-box UI and potentially better performance than builtin 
+Neovim functions.
+
+Features:
+- Custom implementations of common LSP functions
+- Great out of the box UI  
+- Better performance due to reimplementation of builtins
+- Supported LSP features:
+  - Code Action (with plugin registration support)
+  - Rename
+  - Hover
+  - Show Diagnostics  
+  - Definition
+  - Type Definition
+  - Declaration
+  - Reference
+  - Implementation
+  - Inlay Hint
+  - Signature Help
+  - Call Hierarchy
+  - Lightbulb indicator
+
+==============================================================================
+2. Requirements					*lspui-requirements*
+
+- Neovim >= 0.11.0
+- LSP clients configured and running
+- Optional: A markdown plugin for hover feature like:
+  - render-markdown.nvim 
+  - markview.nvim
+
+==============================================================================
+3. Installation					*lspui-installation*
+
+Using lazy.nvim: >lua
+    {
+      "jinzhongjia/LspUI.nvim",
+      branch = "main",
+      config = function()
+        require("LspUI").setup({
+          -- config options go here
+        })
+      end
+    }
+<
+
+Using packer.nvim: >lua
+    use {
+      "jinzhongjia/LspUI.nvim",
+      branch = 'main',
+      config = function()
+        require("LspUI").setup({
+          -- config options go here
+        })
+      end
+    }
+<
+
+==============================================================================
+4. Configuration				*lspui-configuration*
+
+Basic setup: >lua
+    require("LspUI").setup()
+<
+
+Full configuration with defaults: >lua
+    require("LspUI").setup({
+      -- Rename module
+      rename = {
+        enable = true,
+        command_enable = true,
+        auto_select = true,
+        key_binding = {
+          exec = "<CR>",
+          quit = "<ESC>",
+        },
+        transparency = 0,
+      },
+      
+      -- Lightbulb module  
+      lightbulb = {
+        enable = true,
+        is_cached = true,
+        icon = "💡",
+        debounce = 250,
+      },
+      
+      -- Code action module
+      code_action = {
+        enable = true,
+        command_enable = true,
+        gitsigns = true,
+        key_binding = {
+          exec = "<cr>",
+          prev = "k", 
+          next = "j",
+          quit = "q",
+        },
+        transparency = 0,
+      },
+      
+      -- Diagnostic module
+      diagnostic = {
+        enable = true,
+        command_enable = true,
+        transparency = 0,
+      },
+      
+      -- Hover module
+      hover = {
+        enable = true,
+        command_enable = true,
+        key_binding = {
+          prev = "p",
+          next = "n", 
+          quit = "q",
+        },
+        transparency = 0,
+      },
+      
+      -- Inlay hint module
+      inlay_hint = {
+        enable = true,
+        command_enable = true,
+        filter = {
+          whitelist = {},
+          blacklist = {},
+        },
+      },
+      
+      -- Definition module
+      definition = {
+        enable = true,
+        command_enable = true,
+      },
+      
+      -- Type definition module
+      type_definition = {
+        enable = true,
+        command_enable = true,
+      },
+      
+      -- Declaration module  
+      declaration = {
+        enable = true,
+        command_enable = true,
+      },
+      
+      -- Implementation module
+      implementation = {
+        enable = true,
+        command_enable = true,
+      },
+      
+      -- Reference module
+      reference = {
+        enable = true,
+        command_enable = true,
+      },
+      
+      -- Call hierarchy module
+      call_hierarchy = {
+        enable = true,
+        command_enable = true,
+      },
+      
+      -- Signature module
+      signature = {
+        enable = false,
+        icon = "✨",
+        color = {
+          fg = "#FF8C00",
+          bg = nil,
+        },
+        debounce = 300,
+      },
+      
+      -- Position keybindings for definition-like features
+      pos_keybind = {
+        main = {
+          back = "<leader>l",
+          hide_secondary = "<leader>h",
+        },
+        secondary = {
+          jump = "o",
+          jump_split = "sh",
+          jump_vsplit = "sv", 
+          jump_tab = "t",
+          toggle_fold = "<Cr>",
+          next_entry = "J",
+          prev_entry = "K",
+          quit = "q",
+          hide_main = "<leader>h",
+          fold_all = "w",
+          expand_all = "e",
+          enter = "<leader>l",
+        },
+        transparency = 0,
+      },
+    })
+<
+
+==============================================================================
+5. Commands					*lspui-commands*
+
+All commands are prefixed with `LspUI`:
+
+:LspUI					Display version information
+
+:LspUI hover				Open LSP hover window above cursor
+
+:LspUI rename				Rename the symbol below the cursor
+
+:LspUI code_action			Open code action selection prompt
+
+:LspUI diagnostic next			Go to the next diagnostic
+
+:LspUI diagnostic prev			Go to the previous diagnostic
+
+:LspUI definition			Open the definition
+
+:LspUI type_definition			Open the type definition
+
+:LspUI declaration			Open the declaration
+
+:LspUI reference			Open the reference
+
+:LspUI implementation			Open the implementation
+
+:LspUI inlay_hint			Toggle inlay hint on/off
+
+:LspUI call_hierarchy incoming		Show incoming calls
+
+:LspUI call_hierarchy outgoing		Show outgoing calls
+
+==============================================================================
+6. API						*lspui-api*
+
+LspUI provides a programmatic API for integration: >lua
+    local api = require("LspUI").api
+    
+    -- Available API functions:
+    api.code_action()		-- Show code actions
+    api.rename()		-- Rename symbol
+    api.diagnostic("next")	-- Next diagnostic  
+    api.diagnostic("prev")	-- Previous diagnostic
+    api.hover()			-- Show hover
+    api.definition()		-- Go to definition
+    api.type_definition()	-- Go to type definition
+    api.declaration()		-- Go to declaration
+    api.reference()		-- Show references
+    api.implementation()	-- Show implementations
+    api.inlay_hint()		-- Toggle inlay hints
+    api.call_hierarchy()	-- Call hierarchy
+    api.signature()		-- Get signature info for statusline
+<
+
+==============================================================================
+7. Modules					*lspui-modules*
+
+						*lspui-rename*
+Rename Module~
+Provides enhanced symbol renaming with a floating window interface.
+
+Configuration: >lua
+    rename = {
+      enable = true,           -- Enable the module
+      command_enable = true,   -- Enable :LspUI rename command  
+      auto_select = true,      -- Auto-select text in rename window
+      key_binding = {
+        exec = "<CR>",         -- Execute rename
+        quit = "<ESC>",        -- Cancel rename
+      },
+      transparency = 0,        -- Window transparency
+    }
+<
+
+						*lspui-lightbulb*
+Lightbulb Module~
+Shows a lightbulb indicator when code actions are available.
+
+Configuration: >lua
+    lightbulb = {
+      enable = true,           -- Enable the module
+      is_cached = true,        -- Cache code actions for performance
+      icon = "💡",            -- Lightbulb icon
+      debounce = 250,          -- Debounce time in milliseconds
+    }
+<
+
+						*lspui-code-action*
+Code Action Module~
+Enhanced code action interface with better UI.
+
+Configuration: >lua
+    code_action = {
+      enable = true,           -- Enable the module
+      command_enable = true,   -- Enable :LspUI code_action command
+      gitsigns = true,         -- Include gitsigns actions
+      key_binding = {
+        exec = "<cr>",         -- Execute action
+        prev = "k",            -- Previous action
+        next = "j",            -- Next action
+        quit = "q",            -- Quit menu
+      },
+      transparency = 0,        -- Window transparency
+    }
+<
+
+						*lspui-diagnostic*
+Diagnostic Module~
+Enhanced diagnostic display with floating windows.
+
+Configuration: >lua
+    diagnostic = {
+      enable = true,           -- Enable the module
+      command_enable = true,   -- Enable :LspUI diagnostic command
+      transparency = 0,        -- Window transparency
+    }
+<
+
+						*lspui-hover*
+Hover Module~
+Enhanced hover information display.
+
+Configuration: >lua
+    hover = {
+      enable = true,           -- Enable the module
+      command_enable = true,   -- Enable :LspUI hover command
+      key_binding = {
+        prev = "p",            -- Previous hover
+        next = "n",            -- Next hover
+        quit = "q",            -- Close hover
+      },
+      transparency = 0,        -- Window transparency
+    }
+<
+
+						*lspui-inlay-hint*
+Inlay Hint Module~
+Toggle inlay hints with filtering support.
+
+Configuration: >lua
+    inlay_hint = {
+      enable = true,           -- Enable the module
+      command_enable = true,   -- Enable :LspUI inlay_hint command
+      filter = {
+        whitelist = {},        -- Only show for these filetypes
+        blacklist = {},        -- Hide for these filetypes
+      },
+    }
+<
+
+						*lspui-definition*
+Definition Module~
+Enhanced go-to-definition with UI improvements.
+
+Configuration: >lua
+    definition = {
+      enable = true,           -- Enable the module
+      command_enable = true,   -- Enable :LspUI definition command
+    }
+<
+
+						*lspui-type-definition*
+Type Definition Module~
+Enhanced go-to-type-definition.
+
+Configuration: >lua
+    type_definition = {
+      enable = true,           -- Enable the module
+      command_enable = true,   -- Enable :LspUI type_definition command
+    }
+<
+
+						*lspui-declaration*
+Declaration Module~
+Enhanced go-to-declaration.
+
+Configuration: >lua
+    declaration = {
+      enable = true,           -- Enable the module
+      command_enable = true,   -- Enable :LspUI declaration command
+    }
+<
+
+						*lspui-implementation*
+Implementation Module~
+Enhanced go-to-implementation.
+
+Configuration: >lua
+    implementation = {
+      enable = true,           -- Enable the module
+      command_enable = true,   -- Enable :LspUI implementation command
+    }
+<
+
+						*lspui-reference*
+Reference Module~
+Enhanced find references with better UI.
+
+Configuration: >lua
+    reference = {
+      enable = true,           -- Enable the module
+      command_enable = true,   -- Enable :LspUI reference command
+    }
+<
+
+						*lspui-call-hierarchy*
+Call Hierarchy Module~
+Show incoming and outgoing call hierarchies.
+
+Configuration: >lua
+    call_hierarchy = {
+      enable = true,           -- Enable the module
+      command_enable = true,   -- Enable :LspUI call_hierarchy command
+    }
+<
+
+						*lspui-signature*
+Signature Module~
+Show function signature help as virtual text.
+
+Configuration: >lua
+    signature = {
+      enable = false,          -- Enable the module (disabled by default)
+      icon = "✨",            -- Icon for signature display
+      color = {
+        fg = "#FF8C00",        -- Foreground color
+        bg = nil,              -- Background color
+      },
+      debounce = 300,          -- Debounce time in milliseconds
+    }
+<
+
+==============================================================================
+8. Keybindings					*lspui-keybindings*
+
+Position Keybindings~
+For definition, type_definition, declaration, reference, implementation:
+
+						*lspui-pos-keybind*
+Main View Keybindings: >
+    <leader>l          Back to secondary view
+    <leader>h          Hide/show secondary view
+<
+
+Secondary View Keybindings: >
+    o                  Jump to location
+    sh                 Jump in horizontal split
+    sv                 Jump in vertical split  
+    t                  Jump in new tab
+    <CR>               Toggle fold
+    J                  Next entry
+    K                  Previous entry
+    q                  Quit
+    <leader>h          Hide/show main view
+    w                  Fold all
+    e                  Expand all
+    <leader>l          Enter main view
+<
+
+Hover Keybindings: >
+    p                  Previous hover
+    n                  Next hover
+    q                  Close hover window
+<
+
+Code Action Keybindings: >
+    <cr>               Execute action
+    k                  Previous action
+    j                  Next action
+    q                  Quit menu
+    1-9                Execute numbered action
+<
+
+Rename Keybindings: >
+    <CR>               Execute rename
+    <ESC>              Cancel rename
+<
+
+==============================================================================
+9. License					*lspui-license*
+
+MIT License
+
+==============================================================================
+vim:tw=78:ts=8:ft=help:norl:
