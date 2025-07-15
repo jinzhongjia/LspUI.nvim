@@ -25,7 +25,7 @@ local signature_handler
 --- @param _ string|nil client name
 --- @return signature_info? res len will not be zero
 local function build_signature_info(help, _)
-    if not help or #help.signatures == 0 then
+    if not help or not help.signatures or #help.signatures == 0 then
         return nil
     end
 
