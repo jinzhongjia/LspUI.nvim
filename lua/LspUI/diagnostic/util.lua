@@ -180,6 +180,9 @@ end
 -- check and open code actions if available
 --- @param buffer_id integer
 function M.check_and_open_code_actions(buffer_id)
+    -- Capture the current diagnostic view to avoid race conditions
+    local view_at_request_time = diagnostic_view
+
     -- Check if code_action module is enabled
     if not config.options.code_action.enable then
         return
@@ -191,9 +194,20 @@ function M.check_and_open_code_actions(buffer_id)
         return
     end
 
+    -- Find the best client for offset encoding (prefer utf-16, fallback to first client)
+    local selected_client = clients[1]
+    for _, client in ipairs(clients) do
+        if client.offset_encoding == "utf-16" then
+            selected_client = client
+            break
+        end
+    end
+
     -- Get range params for current cursor position
-    local params, is_visual =
-        code_action_util.get_range_params(buffer_id, clients[1].offset_encoding)
+    local params, is_visual = code_action_util.get_range_params(
+        buffer_id,
+        selected_client.offset_encoding
+    )
 
     -- Request code actions
     code_action_util.get_action_tuples(
@@ -204,10 +218,12 @@ function M.check_and_open_code_actions(buffer_id)
         function(action_tuples)
             -- Only open if there are code actions available
             if action_tuples and not vim.tbl_isempty(action_tuples) then
-                -- Close diagnostic window first if it exists
-                if diagnostic_view then
-                    diagnostic_view:Destroy()
-                    diagnostic_view = nil
+                -- Close diagnostic window first if it exists and is the one from when we started
+                if view_at_request_time and view_at_request_time:Valid() then
+                    view_at_request_time:Destroy()
+                    if diagnostic_view == view_at_request_time then
+                        diagnostic_view = nil
+                    end
                 end
                 -- Open code actions
                 code_action_util.render(action_tuples)
