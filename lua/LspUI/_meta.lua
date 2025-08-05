@@ -21,6 +21,7 @@
 --- @class LspUI_diagnostic_config
 --- @field enable boolean? whether enable `diagnostic` module
 --- @field command_enable boolean? whether enable command for `diagnostic`
+--- @field auto_open boolean? whether auto open code action when diagnostic has code actions
 --- @field transparency number? transparency for diagnostic
 
 --- @class LspUI_hover_config

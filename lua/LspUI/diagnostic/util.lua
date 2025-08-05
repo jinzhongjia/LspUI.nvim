@@ -1,10 +1,10 @@
 local api, fn = vim.api, vim.fn
 local ClassView = require("LspUI.layer.view")
+local code_action_util = require("LspUI.code_action.util")
 local config = require("LspUI.config")
 local notify = require("LspUI.layer.notify")
 local tools = require("LspUI.layer.tools")
 local M = {}
-
 --- @class LspUI-highlightgroup
 --- @field severity 1|2|3|4
 --- @field lnum integer
@@ -169,7 +169,51 @@ function M.render(action)
     -- Forced delay of autocmd mounting
     vim.schedule(function()
         M.autocmd(current_buffer)
+
+        -- Check if auto_open is enabled and try to open code actions
+        if config.options.diagnostic.auto_open then
+            M.check_and_open_code_actions(current_buffer)
+        end
     end)
+end
+
+-- check and open code actions if available
+--- @param buffer_id integer
+function M.check_and_open_code_actions(buffer_id)
+    -- Check if code_action module is enabled
+    if not config.options.code_action.enable then
+        return
+    end
+
+    -- Get clients that support code actions
+    local clients = code_action_util.get_clients(buffer_id)
+    if not clients or vim.tbl_isempty(clients) then
+        return
+    end
+
+    -- Get range params for current cursor position
+    local params, is_visual =
+        code_action_util.get_range_params(buffer_id, clients[1].offset_encoding)
+
+    -- Request code actions
+    code_action_util.get_action_tuples(
+        clients,
+        params,
+        buffer_id,
+        is_visual,
+        function(action_tuples)
+            -- Only open if there are code actions available
+            if action_tuples and not vim.tbl_isempty(action_tuples) then
+                -- Close diagnostic window first if it exists
+                if diagnostic_view then
+                    diagnostic_view:Destroy()
+                    diagnostic_view = nil
+                end
+                -- Open code actions
+                code_action_util.render(action_tuples)
+            end
+        end
+    )
 end
 
 -- autocmd for diagnostic

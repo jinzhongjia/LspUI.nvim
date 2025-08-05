@@ -41,6 +41,7 @@ local default_code_action_config = {
 local default_diagnostic_config = {
     enable = true,
     command_enable = true,
+    auto_open = false,
     transparency = default_transparency,
 }
 

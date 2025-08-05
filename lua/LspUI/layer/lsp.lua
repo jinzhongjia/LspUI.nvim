@@ -191,7 +191,8 @@ function ClassLsp:_requestCallHierarchy(buffer_id, params, callback)
                     { item = hierarchy_item },
                     function(call_results, _, _)
                         if
-                            all_complete or not api.nvim_buf_is_valid(buffer_id)
+                            all_complete
+                            or not api.nvim_buf_is_valid(buffer_id)
                         then
                             return
                         end
