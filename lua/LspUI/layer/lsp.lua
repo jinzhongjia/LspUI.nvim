@@ -359,6 +359,11 @@ function ClassLsp:_processLspResult(result, data)
                 or range["end"],
         }
 
+        -- 如果是 reference 方法，判断是读还是写
+        if self._method.name == "reference" then
+            new_range.access_type = self:_detectReferenceType(uri_buffer, new_range)
+        end
+
         -- 检查是否已存在相同的范围
         local is_duplicate = false
         for _, existing_range in ipairs(data[uri].range) do
@@ -405,6 +410,63 @@ function ClassLsp:_rangesEqual(range1, range2)
             == range2.selection_finish.character
 
     return main_equal and selection_equal
+end
+
+--- 检测 reference 是读还是写
+---@private
+---@param buffer_id integer 缓冲区ID
+---@param range table 范围对象
+---@return string "read" 或 "write"
+function ClassLsp:_detectReferenceType(buffer_id, range)
+    -- 获取引用所在的行
+    local line = api.nvim_buf_get_lines(
+        buffer_id,
+        range.start.line,
+        range.start.line + 1,
+        false
+    )[1]
+    
+    if not line then
+        return "read"
+    end
+    
+    -- 获取引用在行中的位置
+    local start_col = range.start.character
+    local end_col = range.finish.character
+    local ref_text = string.sub(line, start_col + 1, end_col)
+    
+    -- 检查常见的写入模式
+    local write_patterns = {
+        -- 赋值语句
+        "^%s*" .. vim.pesc(ref_text) .. "%s*=",
+        "^%s*local%s+" .. vim.pesc(ref_text) .. "%s*=",
+        "^%s*" .. vim.pesc(ref_text) .. "%s*,%s*[%w_]+%s*=",
+        -- 函数定义
+        "^%s*function%s+" .. vim.pesc(ref_text),
+        "^%s*local%s+function%s+" .. vim.pesc(ref_text),
+        -- 方法定义
+        "^%s*function%s+[%w_.:]+:" .. vim.pesc(ref_text),
+        -- 作为左值的表字段
+        "%." .. vim.pesc(ref_text) .. "%s*=",
+        "%[%s*['\"]" .. vim.pesc(ref_text) .. "['\"]%s*%]%s*=",
+        -- 自增/自减操作（适用于其他语言）
+        vim.pesc(ref_text) .. "%s*%+%+",
+        vim.pesc(ref_text) .. "%s*%-%-",
+        "%+%+%s*" .. vim.pesc(ref_text),
+        "%-%-*%s*" .. vim.pesc(ref_text),
+        -- 复合赋值
+        vim.pesc(ref_text) .. "%s*[%+%-*/%%&|^]%s*=",
+    }
+    
+    -- 检查是否匹配写入模式
+    for _, pattern in ipairs(write_patterns) do
+        if string.match(line, pattern) then
+            return "write"
+        end
+    end
+    
+    -- 默认为读取
+    return "read"
 end
 
 --- 对 LSP 结果进行排序

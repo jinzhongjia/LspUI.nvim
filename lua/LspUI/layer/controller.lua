@@ -186,12 +186,121 @@ function ClassController:_generateSubViewContent()
             table.insert(uri_rows, range.start.line)
         end
 
-        -- 获取代码行内容
-        local lines = tools.GetUriLines(item.buffer_id, uri, uri_rows)
+        -- 对于 reference 方法，分组处理读写引用
+        if self._lsp:GetMethod().name == "reference" and config.options.reference.separate_read_write then
+            -- 分离读写引用
+            local read_ranges = {}
+            local write_ranges = {}
+            
+            for _, range in ipairs(item.range) do
+                if range.access_type == "write" then
+                    table.insert(write_ranges, range)
+                else
+                    table.insert(read_ranges, range)
+                end
+            end
+            
+            -- 先渲染写引用
+            if #write_ranges > 0 and not item.fold then
+                table.insert(content, "   ▪ Writes:")
+                table.insert(extmarks, {
+                    line = #content - 1,
+                    text = " (" .. #write_ranges .. ")",
+                    hl_group = "Number",
+                })
+            end
+            
+            local write_rows = {}
+            for _, range in ipairs(write_ranges) do
+                table.insert(write_rows, range.start.line)
+            end
+            
+            local write_lines = tools.GetUriLines(item.buffer_id, uri, write_rows)
+            
+            for idx, row in ipairs(write_rows) do
+                local line_code = vim.fn.trim(write_lines[row] or "")
+                local code_fmt = string.format("     %s", line_code)
+                
+                if not item.fold then
+                    table.insert(content, code_fmt)
+                    
+                    if filetype and filetype ~= "" then
+                        local line_content = content[#content]
+                        local region_data = {
+                            line = #content - 1,
+                            col_start = 5,
+                            col_end = #line_content,
+                        }
+                        table.insert(syntax_regions[filetype], region_data)
+                    end
+                end
+            end
+            
+            -- 再渲染读引用
+            if #read_ranges > 0 and not item.fold then
+                table.insert(content, "   ▪ Reads:")
+                table.insert(extmarks, {
+                    line = #content - 1,
+                    text = " (" .. #read_ranges .. ")",
+                    hl_group = "Number",
+                })
+            end
+            
+            local read_rows = {}
+            for _, range in ipairs(read_ranges) do
+                table.insert(read_rows, range.start.line)
+            end
+            
+            local read_lines = tools.GetUriLines(item.buffer_id, uri, read_rows)
+            
+            for idx, row in ipairs(read_rows) do
+                local line_code = vim.fn.trim(read_lines[row] or "")
+                local code_fmt = string.format("     %s", line_code)
+                
+                if not item.fold then
+                    table.insert(content, code_fmt)
+                    
+                    if filetype and filetype ~= "" then
+                        local line_content = content[#content]
+                        local region_data = {
+                            line = #content - 1,
+                            col_start = 5,
+                            col_end = #line_content,
+                        }
+                        table.insert(syntax_regions[filetype], region_data)
+                    end
+                end
+            end
+        else
+            -- 原有的渲染逻辑
+            -- 获取代码行内容
+            local lines = tools.GetUriLines(item.buffer_id, uri, uri_rows)
 
-        -- 初始化该语言的语法高亮区域
-        if not syntax_regions[filetype] and filetype ~= "" then
-            syntax_regions[filetype] = {}
+            -- 初始化该语言的语法高亮区域
+            if not syntax_regions[filetype] and filetype ~= "" then
+                syntax_regions[filetype] = {}
+            end
+
+            for _, row in pairs(uri_rows) do
+                local line_code = vim.fn.trim(lines[row] or "")
+                local code_fmt = string.format("   %s", line_code)
+
+                -- 只有在展开状态时才添加内容
+                if not item.fold then
+                    table.insert(content, code_fmt)
+
+                    if filetype and filetype ~= "" then
+                        local line_content = content[#content]
+                        local region_data = {
+                            line = #content - 1,
+                            col_start = 3,
+                            col_end = #line_content,
+                        }
+
+                        table.insert(syntax_regions[filetype], region_data)
+                    end
+                end
+            end
         end
 
         for _, row in pairs(uri_rows) do
@@ -457,11 +566,49 @@ function ClassController:_getLspPositionByLnum(lnum)
 
         -- 文件内容行
         if not item.fold then
-            for _, range in ipairs(item.range) do
-                if currentLine == lnum then
-                    return uri, range
+            -- 检查是否是 reference 模式且启用了读写分离
+            if self._lsp:GetMethod().name == "reference" and config.options.reference.separate_read_write then
+                -- 分离读写引用
+                local write_ranges = {}
+                local read_ranges = {}
+                
+                for _, range in ipairs(item.range) do
+                    if range.access_type == "write" then
+                        table.insert(write_ranges, range)
+                    else
+                        table.insert(read_ranges, range)
+                    end
                 end
-                currentLine = currentLine + 1
+                
+                -- 处理写引用
+                if #write_ranges > 0 then
+                    currentLine = currentLine + 1 -- "Writes:" 标题行
+                    for _, range in ipairs(write_ranges) do
+                        if currentLine == lnum then
+                            return uri, range
+                        end
+                        currentLine = currentLine + 1
+                    end
+                end
+                
+                -- 处理读引用
+                if #read_ranges > 0 then
+                    currentLine = currentLine + 1 -- "Reads:" 标题行
+                    for _, range in ipairs(read_ranges) do
+                        if currentLine == lnum then
+                            return uri, range
+                        end
+                        currentLine = currentLine + 1
+                    end
+                end
+            else
+                -- 原有逻辑
+                for _, range in ipairs(item.range) do
+                    if currentLine == lnum then
+                        return uri, range
+                    end
+                    currentLine = currentLine + 1
+                end
             end
         end
     end
@@ -494,15 +641,55 @@ function ClassController:_getCursorPosForUri(uri, range)
                 return fileHeaderLine
             end
 
-            -- 文件未折叠，继续查找匹配的范围行
-            for _, itemRange in ipairs(item.range) do
-                if
-                    itemRange.start.line == range.start.line
-                    and itemRange.start.character == range.start.character
-                then
-                    return currentLine
+            -- 检查是否是 reference 模式且启用了读写分离
+            if self._lsp:GetMethod().name == "reference" and config.options.reference.separate_read_write then
+                -- 分离读写引用
+                local write_ranges = {}
+                local read_ranges = {}
+                
+                for _, r in ipairs(item.range) do
+                    if r.access_type == "write" then
+                        table.insert(write_ranges, r)
+                    else
+                        table.insert(read_ranges, r)
+                    end
                 end
-                currentLine = currentLine + 1
+                
+                -- 处理写引用
+                if #write_ranges > 0 then
+                    currentLine = currentLine + 1 -- "Writes:" 标题行
+                    for _, itemRange in ipairs(write_ranges) do
+                        if itemRange.start.line == range.start.line
+                            and itemRange.start.character == range.start.character
+                        then
+                            return currentLine
+                        end
+                        currentLine = currentLine + 1
+                    end
+                end
+                
+                -- 处理读引用
+                if #read_ranges > 0 then
+                    currentLine = currentLine + 1 -- "Reads:" 标题行
+                    for _, itemRange in ipairs(read_ranges) do
+                        if itemRange.start.line == range.start.line
+                            and itemRange.start.character == range.start.character
+                        then
+                            return currentLine
+                        end
+                        currentLine = currentLine + 1
+                    end
+                end
+            else
+                -- 原有逻辑：文件未折叠，继续查找匹配的范围行
+                for _, itemRange in ipairs(item.range) do
+                    if itemRange.start.line == range.start.line
+                        and itemRange.start.character == range.start.character
+                    then
+                        return currentLine
+                    end
+                    currentLine = currentLine + 1
+                end
             end
 
             -- 如果没找到匹配的范围，返回文件标题行
@@ -511,8 +698,30 @@ function ClassController:_getCursorPosForUri(uri, range)
 
         -- 如果不是目标URI，跳过其范围行
         if not item.fold then
-            currentLine = currentLine + #item.range
-        end
+            -- 检查是否是 reference 模式且启用了读写分离
+            if self._lsp:GetMethod().name == "reference" and config.options.reference.separate_read_write then
+                -- 分离读写引用来计算行数
+                local write_count = 0
+                local read_count = 0
+                
+                for _, r in ipairs(item.range) do
+                    if r.access_type == "write" then
+                        write_count = write_count + 1
+                    else
+                        read_count = read_count + 1
+                    end
+                end
+                
+                if write_count > 0 then
+                    currentLine = currentLine + 1 + write_count -- "Writes:" 标题行 + 写引用行
+                end
+                
+                if read_count > 0 then
+                    currentLine = currentLine + 1 + read_count -- "Reads:" 标题行 + 读引用行
+                end
+            else
+                currentLine = currentLine + #item.range
+            end
     end
 
     -- 默认返回第一行

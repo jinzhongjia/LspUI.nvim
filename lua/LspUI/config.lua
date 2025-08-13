@@ -94,6 +94,7 @@ local default_implementation_config = {
 local default_reference_config = {
     enable = true,
     command_enable = true,
+    separate_read_write = true,  -- 新增：是否分离显示读写引用
 }
 
 --- @type LspUI_pos_keybind_config

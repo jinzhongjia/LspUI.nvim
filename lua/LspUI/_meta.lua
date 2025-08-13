@@ -66,6 +66,7 @@
 --- @class LspUI_reference_config
 --- @field enable boolean? whether enable `reference` module
 --- @field command_enable boolean? whether enable command for `definition`
+--- @field separate_read_write boolean? whether separate read and write references
 
 --- @class LspUI_call_hierarchy_config
 --- @field enable boolean? whether enable `call_hierarchy` module
