@@ -99,6 +99,11 @@ local function setup_view_bindings(
             return
         end
 
+        -- 如果设置了固定宽度，则不调整窗口大小
+        if config.options.rename.fixed_width then
+            return
+        end
+
         local now_name = api.nvim_get_current_line()
         local len = calculate_length(now_name)
 
@@ -139,7 +144,13 @@ end
 ---@param old_name string 原始名称
 ---@param position_param table LSP位置参数
 local function render_rename_view(clients, buffer_id, old_name, position_param)
-    local width = calculate_length(old_name)
+    -- 根据配置决定宽度
+    local width
+    if config.options.rename.fixed_width then
+        width = config.options.rename.width
+    else
+        width = calculate_length(old_name)
+    end
 
     local view = ClassView:New(true)
         :BufContent(0, -1, { old_name })

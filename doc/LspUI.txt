@@ -291,6 +291,8 @@ Configuration: >lua
         exec = "<CR>",         -- Execute rename
         quit = "<ESC>",        -- Cancel rename
       },
+      fixed_width = false,     -- Whether the input box width is fixed
+      width = 30,              -- The fixed width of input box (only works when fixed_width is true)
       transparency = 0,        -- Window transparency
     }
 <

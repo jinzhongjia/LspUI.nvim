@@ -2,6 +2,8 @@
 --- @field enable boolean? whether enable `rename` module
 --- @field command_enable boolean? whether enable command for `rename`
 --- @field auto_select boolean? whether select all string in float window
+--- @field fixed_width boolean? whether the input box width is fixed (default: false)
+--- @field width number? the fixed width of input box (only works when fixed_width is true)
 --- @field key_binding { exec: string?, quit: string? }? keybind for `rename`
 --- @field transparency number? transparency for rename
 
