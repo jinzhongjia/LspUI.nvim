@@ -8,6 +8,13 @@ M.cache = {}
 -- 创建命名空间
 local ns = api.nvim_create_namespace("LspUI.syntax_highlight")
 
+-- 语言映射表：将 filetype 映射到 treesitter parser 名称
+local language_map = {
+    typescriptreact = "tsx",
+    javascriptreact = "jsx",
+    -- 可以根据需要添加更多映射
+}
+
 -- 封装 Treesitter 高亮器方法
 local function wrap_method(method_name)
     return function(_, win, buf, ...)
@@ -91,7 +98,7 @@ function M._attach_lang(buf, lang, regions)
     end
 
     -- 应用语言名称映射
-    local mapped_lang = lang
+    local mapped_lang = language_map[lang] or lang
 
     M.cache[buf] = M.cache[buf] or {}
 
