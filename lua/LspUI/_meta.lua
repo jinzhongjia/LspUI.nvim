@@ -5,6 +5,7 @@
 --- @field fixed_width boolean? whether the input box width is fixed (default: false)
 --- @field width number? the fixed width of input box (only works when fixed_width is true)
 --- @field key_binding { exec: string?, quit: string? }? keybind for `rename`
+--- @field border "none"|"single"|"double"|"rounded"|"solid"|"shadow"|string[]? border style for rename window
 --- @field transparency number? transparency for rename
 
 --- @class LspUI_lightbulb_config
@@ -18,17 +19,20 @@
 --- @field command_enable boolean? whether enable command for `lightbulb`
 --- @field gitsigns boolean? whether enable gitsigns support?
 --- @field key_binding { exec: string?, prev: string?, next: string?, quit: string? }? keybind for `code_action`
+--- @field border "none"|"single"|"double"|"rounded"|"solid"|"shadow"|string[]? border style for code action window
 --- @field transparency number? transparency for code action
 
 --- @class LspUI_diagnostic_config
 --- @field enable boolean? whether enable `diagnostic` module
 --- @field command_enable boolean? whether enable command for `diagnostic`
+--- @field border "none"|"single"|"double"|"rounded"|"solid"|"shadow"|string[]? border style for diagnostic window
 --- @field transparency number? transparency for diagnostic
 
 --- @class LspUI_hover_config
 --- @field enable boolean? whether enable `hover` module
 --- @field command_enable boolean? whether enable command for `hover`
 --- @field key_binding { prev: string?, next: string?, quit: string? }? keybind for `hover`
+--- @field border "none"|"single"|"double"|"rounded"|"solid"|"shadow"|string[]? border style for hover window
 --- @field transparency number? transparency for hover
 
 --- @class LspUI_inlay_hint_config
@@ -37,7 +41,7 @@
 --- @field filter { whitelist: string[]?, blacklist:string[]? }? the filter of blacklist and whitelist, should be filetype list
 
 -- this is just for some keybind like definition, type definition, declaration, reference, implementation
---- @alias LspUI_pos_keybind_config { secondary: { jump: string?, jump_tab: string?, jump_split: string?, jump_vsplit: string?, toggle_fold: string?, next_entry: string?, prev_entry: string?, quit:string?, hide_main:string?, fold_all:string?, expand_all:string?, enter: string? }?, main: { back: string?, hide_secondary: string? }? , transparency: number? }
+--- @alias LspUI_pos_keybind_config { secondary: { jump: string?, jump_tab: string?, jump_split: string?, jump_vsplit: string?, toggle_fold: string?, next_entry: string?, prev_entry: string?, quit:string?, hide_main:string?, fold_all:string?, expand_all:string?, enter: string? }?, main: { back: string?, hide_secondary: string? }? , transparency: number?, main_border: ("none"|"single"|"double"|"rounded"|"solid"|"shadow"|string[])?, secondary_border: ("none"|"single"|"double"|"rounded"|"solid"|"shadow"|string[])? }
 -- TODO: change this
 
 -- TODO: replace above LspUI_pos_keybind_config with LspUI_pos_config
@@ -48,6 +52,8 @@
 --- @field secondary_keybind  { jump: string?, jump_tab: string?, jump_split: string?, jump_vsplit: string?, quit:string?, hide_main:string?, fold_all:string?, expand_all:string?, enter: string? }? secondary view keybind
 --- @field main_keybind { back: string?, hide_secondary: string? }? main view keybind
 --- @field transparency number? transparency for pos_config
+--- @field main_border "none"|"single"|"double"|"rounded"|"solid"|"shadow"|string[]? border style for main view window
+--- @field secondary_border "none"|"single"|"double"|"rounded"|"solid"|"shadow"|string[]? border style for secondary view window
 
 --- @class LspUI_definition_config
 --- @field enable boolean? whether enable `definition` module

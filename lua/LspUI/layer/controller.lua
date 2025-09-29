@@ -778,7 +778,7 @@ function ClassController:RenderViews()
 
     self._subView:Updates(function()
         self._subView
-            :Border("single")
+            :Border(config.options.pos_keybind.secondary_border)
             :Style("minimal")
             :Relative("editor")
             :Size(width, height)
@@ -806,7 +806,7 @@ function ClassController:RenderViews()
 
         self._mainView:Updates(function()
             self._mainView
-                :Border("none")
+                :Border(config.options.pos_keybind.main_border)
                 :Relative("editor")
                 :Size(
                     api.nvim_get_option_value("columns", {}) - 2,
@@ -1067,7 +1067,7 @@ function ClassController:ActionToggleMainView()
             -- 更新配置
             self._mainView:Updates(function()
                 self._mainView
-                    :Border("none")
+                    :Border(config.options.pos_keybind.main_border)
                     :Relative("editor")
                     :Size(
                         api.nvim_get_option_value("columns", {}) - 2,
@@ -1105,7 +1105,7 @@ function ClassController:ActionToggleSubView()
         -- 更新配置
         self._subView:Updates(function()
             self._subView
-                :Border("single")
+                :Border(config.options.pos_keybind.secondary_border)
                 :Style("minimal")
                 :Relative("editor")
                 :Size(width, height)
