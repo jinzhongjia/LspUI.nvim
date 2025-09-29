@@ -4,6 +4,7 @@ local hover_feature = lsp.protocol.Methods.textDocument_hover
 local ClassView = require("LspUI.layer.view")
 local notify = require("LspUI.layer.notify")
 local tools = require("LspUI.layer.tools")
+local config = require("LspUI.config")
 
 --- @class ClassHover
 --- @field private _view ClassView|nil 当前的 hover 视图
@@ -197,7 +198,7 @@ function ClassHover:Render(hover_tuple, hover_tuple_number, options)
         :Title(title, "right")
         :Size(hover_tuple.width, hover_tuple.height)
         :Relative("cursor")
-        :Border("rounded")
+        :Border(config.options.hover.border)
         :Style("minimal")
         :Focusable(true)
         :Enter(false)
