@@ -14,6 +14,7 @@ local default_rename_config = {
         quit = "<ESC>",
     },
     transparency = default_transparency,
+    border = "rounded",
 }
 
 --- @type LspUI_lightbulb_config
@@ -37,6 +38,7 @@ local default_code_action_config = {
         quit = "q",
     },
     transparency = default_transparency,
+    border = "rounded",
 }
 
 --- @type LspUI_diagnostic_config
@@ -44,6 +46,7 @@ local default_diagnostic_config = {
     enable = true,
     command_enable = true,
     transparency = default_transparency,
+    border = "rounded",
 }
 
 --- @type LspUI_hover_config
@@ -56,6 +59,7 @@ local default_hover_config = {
         quit = "q",
     },
     transparency = default_transparency,
+    border = "rounded",
 }
 
 --- @type LspUI_inlay_hint_config
@@ -119,6 +123,8 @@ local default_pos_keybind_config = {
         enter = "<leader>l",
     },
     transparency = default_transparency,
+    main_border = "none",
+    secondary_border = "single",
 }
 
 -- Now, this is not available
@@ -142,6 +148,8 @@ local default_pos_config = {
         enter = "<leader>l",
     },
     transparency = default_transparency,
+    main_border = "none",
+    secondary_border = "single",
 }
 
 -- TODO: now, this is not avaiable
