@@ -83,9 +83,10 @@ function M.render(action)
     for _, message in pairs(messages) do
         --- @type string
         local msg = message
-        local msg_len = fn.strdisplaywidth(msg)
-        if msg_len > max_width then
-            max_width = msg_len
+        local msg_display_width = fn.strdisplaywidth(msg)
+        local msg_byte_len = #msg  -- 字节长度用于高亮
+        if msg_display_width > max_width then
+            max_width = msg_display_width
         end
         table.insert(
             highlight_groups,
@@ -94,7 +95,7 @@ function M.render(action)
                 severity = diagnostic.severity,
                 lnum = #content,
                 col = 0,
-                end_col = msg_len,
+                end_col = msg_byte_len,
             }
         )
         table.insert(content, msg)
