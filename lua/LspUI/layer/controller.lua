@@ -358,24 +358,6 @@ function ClassController:_setupMainViewKeyBindings()
 end
 
 ---@private
----Update the footer to show current entry position
-function ClassController:_updateFooter()
-    if not self._subView:Valid() then
-        return
-    end
-
-    local total, current = self:_getEntryPosition()
-    local footer_text
-    if current > 0 then
-        footer_text = string.format(" Entry %d/%d ", current, total)
-    else
-        footer_text = string.format(" Total: %d ", total)
-    end
-
-    self._subView:Footer(footer_text, "right")
-end
-
----@private
 function ClassController:_onCursorMoved()
     local lnum = vim.fn.line(".")
     local uri, range = self:_getLspPositionByLnum(lnum)
@@ -391,9 +373,6 @@ function ClassController:_onCursorMoved()
         range = range,
         is_file_header = (range == nil),
     }
-
-    -- Update footer to show current position
-    self:_updateFooter()
 
     -- 只有当选中了具体代码行且主视图有效时才更新主视图
     if range and self._mainView:Valid() then
@@ -488,48 +467,6 @@ function ClassController:_getLspPositionByLnum(lnum)
     end
 
     return nil, nil
-end
-
----@private
----@return integer total_entries Total number of entries across all URIs
----@return integer current_entry Current entry position (1-indexed), or 0 if on a file header
-function ClassController:_getEntryPosition()
-    local data = self._lsp:GetData()
-    local lnum = vim.fn.line(".")
-    local currentLine = 1
-    local currentEntry = 0
-    local totalEntries = 0
-
-    -- First pass: count total entries
-    for _, item in pairs(data) do
-        totalEntries = totalEntries + #item.range
-    end
-
-    -- Second pass: find current entry position
-    for _, item in pairs(data) do
-        -- Check if on file header line
-        if currentLine == lnum then
-            return totalEntries, 0
-        end
-        currentLine = currentLine + 1
-
-        -- Process content lines
-        if not item.fold then
-            for _ in ipairs(item.range) do
-                currentEntry = currentEntry + 1
-                if currentLine == lnum then
-                    return totalEntries, currentEntry
-                end
-                currentLine = currentLine + 1
-            end
-        else
-            -- If folded, still count entries but don't increment currentLine for them
-            currentEntry = currentEntry + #item.range
-        end
-    end
-
-    -- If we're on an invalid position, return 0 for current
-    return totalEntries, 0
 end
 
 ---@private
@@ -839,13 +776,6 @@ function ClassController:RenderViews()
     -- 创建副视图或更新现有副视图
     local width, height = self:_generateSubViewContent()
 
-    -- Calculate initial footer text
-    local total_entries = 0
-    for _, item in pairs(self._lsp:GetData()) do
-        total_entries = total_entries + #item.range
-    end
-    local initial_footer = string.format(" Total: %d ", total_entries)
-
     self._subView:Updates(function()
         self._subView
             :Border(config.options.pos_keybind.secondary_border)
@@ -855,7 +785,6 @@ function ClassController:RenderViews()
             :Pos(0, api.nvim_get_option_value("columns", {}) - width - 2)
             :Winbl(config.options.pos_keybind.transparency)
             :Title(self._lsp:GetMethod().name, "center")
-            :Footer(initial_footer, "right")
     end)
 
     -- 如果副视图不存在，渲染它
@@ -1175,13 +1104,6 @@ function ClassController:ActionToggleSubView()
         -- 先完全重新生成内容
         local width, height = self:_generateSubViewContent()
 
-        -- Calculate footer text
-        local total_entries = 0
-        for _, item in pairs(self._lsp:GetData()) do
-            total_entries = total_entries + #item.range
-        end
-        local footer_text = string.format(" Total: %d ", total_entries)
-
         -- 更新配置
         self._subView:Updates(function()
             self._subView
@@ -1192,7 +1114,6 @@ function ClassController:ActionToggleSubView()
                 :Pos(0, api.nvim_get_option_value("columns", {}) - width - 2)
                 :Winbl(config.options.pos_keybind.transparency)
                 :Title(self._lsp:GetMethod().name, "center")
-                :Footer(footer_text, "right")
         end)
 
         -- 渲染视图
@@ -1245,9 +1166,6 @@ function ClassController:ActionFoldAll(fold)
         local lnum = self:_getCursorPosForUri(current_uri)
         ---@diagnostic disable-next-line: param-type-mismatch
         api.nvim_win_set_cursor(self._subView:GetWinID(), { lnum, 0 })
-
-        -- 更新footer显示
-        self:_updateFooter()
     end
 end
 
