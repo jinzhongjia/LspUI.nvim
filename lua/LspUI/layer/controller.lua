@@ -507,7 +507,10 @@ function ClassController:_getEntryPosition()
 
     -- Second pass: find current entry position
     for _, item in pairs(data) do
-        -- Skip file header line
+        -- Check if on file header line
+        if currentLine == lnum then
+            return totalEntries, 0
+        end
         currentLine = currentLine + 1
 
         -- Process content lines
@@ -525,7 +528,7 @@ function ClassController:_getEntryPosition()
         end
     end
 
-    -- If we're on a file header or invalid position, return 0 for current
+    -- If we're on an invalid position, return 0 for current
     return totalEntries, 0
 end
 
