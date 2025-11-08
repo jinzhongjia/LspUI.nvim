@@ -17,6 +17,7 @@ local _controller_instance = nil
 ---@field _current_item {uri: string, buffer_id: integer, range: LspUIRange?}
 ---@field origin_win integer?
 ---@field _search_state table
+---@field _virtual_scroll table
 local ClassController = {
     ---@diagnostic disable-next-line: assign-type-mismatch
     _lsp = nil,
@@ -27,9 +28,61 @@ local ClassController = {
     _current_item = {},
     _debounce_delay = 50, -- 50ms 的防抖延迟
     _search_state = nil, -- 搜索状态
+    _virtual_scroll = {
+        enabled = false,            -- 是否启用虚拟滚动
+        threshold = 500,            -- 超过此数量的项目启用虚拟滚动
+        chunk_size = 200,           -- 每次渲染的文件数
+        loaded_file_count = 0,      -- 已加载的文件数
+        total_file_count = 0,       -- 总文件数
+        load_more_threshold = 50,   -- 距离底部多少行时触发加载
+        uri_list = {},              -- 有序的 URI 列表
+        is_loading = false,         -- 是否正在加载
+    },
 }
 
 ClassController.__index = ClassController
+
+--- 统计总文件数和总行数
+---@param data table LSP 数据
+---@return integer, integer 文件数，总行数（展开后）
+local function count_items(data)
+    local file_count = 0
+    local total_lines = 0
+    
+    for _, item in pairs(data) do
+        file_count = file_count + 1
+        total_lines = total_lines + 1  -- 文件标题行
+        
+        if not item.fold then
+            total_lines = total_lines + #item.range  -- 代码行
+        end
+    end
+    
+    return file_count, total_lines
+end
+
+--- 将数据按 URI 排序并切片
+---@param data table LSP 数据
+---@param start_file integer 开始文件索引 (0-based)
+---@param end_file integer 结束文件索引 (不包含)
+---@return table 切片后的数据 {uri -> item}
+local function slice_data_by_files(data, start_file, end_file)
+    -- 先获取并排序所有 URI（确保顺序稳定）
+    local uri_list = {}
+    for uri in pairs(data) do
+        table.insert(uri_list, uri)
+    end
+    table.sort(uri_list)
+    
+    -- 切片
+    local sliced = {}
+    for i = start_file + 1, math.min(end_file, #uri_list) do
+        local uri = uri_list[i]
+        sliced[uri] = data[uri]
+    end
+    
+    return sliced, uri_list
+end
 
 ---@return ClassController
 function ClassController:New()
@@ -45,6 +98,18 @@ function ClassController:New()
     obj._mainView = ClassMainView:New(false)
     obj._subView = ClassSubView:New(true)
     obj._search_state = search.new_state() -- 初始化搜索状态
+    
+    -- 初始化虚拟滚动状态
+    obj._virtual_scroll = {
+        enabled = false,
+        threshold = 500,
+        chunk_size = 200,
+        loaded_file_count = 0,
+        total_file_count = 0,
+        load_more_threshold = 50,
+        uri_list = {},
+        is_loading = false,
+    }
 
     api.nvim_create_augroup("LspUI_SubView", { clear = true })
 
@@ -66,6 +131,78 @@ function ClassController:_generateSubViewContent()
         self._subView:SwitchBuffer(bufId)
     end
 
+    -- 统计文件数量
+    local file_count, _ = count_items(data)
+    
+    -- 判断是否需要启用虚拟滚动
+    local use_virtual_scroll = file_count > self._virtual_scroll.threshold
+    
+    if use_virtual_scroll then
+        return self:_generateSubViewContentVirtual(data, bufId, file_count)
+    else
+        return self:_generateSubViewContentFull(data, bufId)
+    end
+end
+
+--- 完整渲染（小列表）
+---@private
+function ClassController:_generateSubViewContentFull(data, bufId)
+    -- 禁用虚拟滚动
+    self._virtual_scroll.enabled = false
+    
+    -- 直接调用渲染函数
+    return self:_renderSubViewData(data, bufId)
+end
+
+--- 虚拟渲染（大列表，分批加载）
+---@private
+function ClassController:_generateSubViewContentVirtual(data, bufId, total_file_count)
+    -- 启用虚拟滚动
+    self._virtual_scroll.enabled = true
+    self._virtual_scroll.total_file_count = total_file_count
+    
+    -- 获取有序的 URI 列表
+    local uri_list = {}
+    for uri in pairs(data) do
+        table.insert(uri_list, uri)
+    end
+    table.sort(uri_list)
+    self._virtual_scroll.uri_list = uri_list
+    
+    -- 初始只加载前 chunk_size 个文件
+    local chunk_size = self._virtual_scroll.chunk_size
+    local end_idx = math.min(chunk_size, total_file_count)
+    
+    -- 切片数据
+    local sliced_data = {}
+    for i = 1, end_idx do
+        local uri = uri_list[i]
+        sliced_data[uri] = data[uri]
+    end
+    
+    -- 调用完整渲染函数渲染切片数据
+    local width, height = self:_renderSubViewData(sliced_data, bufId)
+    
+    -- 添加"加载更多"提示
+    if end_idx < total_file_count then
+        local remaining = total_file_count - end_idx
+        api.nvim_set_option_value("modifiable", true, { buf = bufId })
+        api.nvim_buf_set_lines(bufId, -1, -1, false, {
+            "",
+            string.format("... (还有 %d 个文件未加载，向下滚动自动加载)", remaining)
+        })
+        api.nvim_set_option_value("modifiable", false, { buf = bufId })
+        height = height + 2
+    end
+    
+    self._virtual_scroll.loaded_file_count = end_idx
+    
+    return width, height
+end
+
+--- 渲染数据到 SubView（核心渲染逻辑，被完整渲染和虚拟渲染共用）
+---@private
+function ClassController:_renderSubViewData(data, bufId)
     -- 允许修改缓冲区
     api.nvim_set_option_value("modifiable", true, { buf = bufId })
 
@@ -95,105 +232,74 @@ function ClassController:_generateSubViewContent()
 
     -- 统一路径格式的辅助函数
     local function normalize_path(path)
-        -- 统一使用正斜杠作为路径分隔符
         local result = path:gsub("\\", "/")
-        -- Windows 系统转为小写以进行不区分大小写的比较
         if vim.fn.has("win32") == 1 then
             result = result:lower()
         end
-        -- 确保路径以斜杠结束
         if result:sub(-1) ~= "/" then
             result = result .. "/"
         end
         return result
     end
 
-    -- 统一显示路径格式的辅助函数（新增）
     local function normalize_display_path(path)
-        -- 仅统一使用正斜杠，不改变大小写，不添加结尾斜杠
         return path:gsub("\\", "/")
     end
 
-    -- 获取并规范化当前工作目录
     local cwd = normalize_path(vim.fn.getcwd())
 
-    -- 生成内容
+    -- 生成内容（与原逻辑相同）
     for uri, item in pairs(data) do
-        -- 文件名格式化
         local file_full_name = vim.uri_to_fname(uri)
         local file_name = vim.fn.fnamemodify(file_full_name, ":t")
-
         local filetype = tools.detect_filetype(file_full_name)
 
-        -- 计算相对路径，用于extmark
         local rel_path = ""
-        local norm_file_path =
-            normalize_path(vim.fn.fnamemodify(file_full_name, ":p"))
+        local norm_file_path = normalize_path(vim.fn.fnamemodify(file_full_name, ":p"))
 
-        -- 修改路径显示逻辑
         if norm_file_path:sub(1, #cwd) == cwd then
-            -- 如果文件在工作目录下，显示相对路径
             local rel_to_cwd = file_full_name:sub(#vim.fn.getcwd() + 1)
-
-            -- 去除可能存在的开头斜杠
             if rel_to_cwd:sub(1, 1) == "/" or rel_to_cwd:sub(1, 1) == "\\" then
                 rel_to_cwd = rel_to_cwd:sub(2)
             end
-
-            -- 统一路径分隔符为正斜杠
             rel_to_cwd = normalize_display_path(rel_to_cwd)
-
-            -- 获取相对路径的目录部分
             local rel_dir = vim.fn.fnamemodify(rel_to_cwd, ":h")
-            -- 确保目录路径也使用正斜杠
             rel_dir = normalize_display_path(rel_dir)
-
-            -- 总是以 ./ 开头显示
             if rel_dir == "." then
-                rel_path = " (./)" -- 文件在工作区根目录
+                rel_path = " (./)"
             else
-                rel_path = " (./" .. rel_dir .. ")" -- 文件在子目录
+                rel_path = " (./" .. rel_dir .. ")"
             end
         else
-            -- 否则显示绝对目录路径，统一使用正斜杠
             local dir = vim.fn.fnamemodify(file_full_name, ":h")
             dir = normalize_display_path(dir)
             rel_path = " (" .. dir .. ")"
         end
 
-        -- 构建文件行格式
-        local file_fmt =
-            string.format(" %s %s", item.fold and "▶" or "▼", file_name)
-
-        -- 添加到内容
+        local file_fmt = string.format(" %s %s", item.fold and "▶" or "▼", file_name)
         table.insert(content, file_fmt)
-        table.insert(hl_lines, #content) -- 记录需要高亮的行号
+        table.insert(hl_lines, #content)
 
-        -- 存储extmark信息，等内容全部添加完后再设置
         if rel_path ~= "" then
             table.insert(extmarks, {
-                line = #content - 1, -- 行号从0开始
+                line = #content - 1,
                 text = rel_path,
                 hl_group = "Comment",
             })
         end
 
-        -- 更新最大宽度
         local file_fmt_len = vim.fn.strdisplaywidth(file_fmt)
         if file_fmt_len > max_width then
             max_width = file_fmt_len
         end
 
-        -- 收集行号
         local uri_rows = {}
         for _, range in ipairs(item.range) do
             table.insert(uri_rows, range.start.line)
         end
 
-        -- 获取代码行内容
         local lines = tools.GetUriLines(item.buffer_id, uri, uri_rows)
 
-        -- 初始化该语言的语法高亮区域
         if not syntax_regions[filetype] and filetype ~= "" then
             syntax_regions[filetype] = {}
         end
@@ -212,7 +318,6 @@ function ClassController:_generateSubViewContent()
                         col_start = 3,
                         col_end = #line_content,
                     }
-
                     table.insert(syntax_regions[filetype], region_data)
                 end
             end
@@ -229,7 +334,6 @@ function ClassController:_generateSubViewContent()
     local subViewNamespace = api.nvim_create_namespace("LspUISubView")
     api.nvim_buf_clear_namespace(bufId, subViewNamespace, 0, -1)
 
-    -- 对文件名行应用高亮
     for _, lnum in pairs(hl_lines) do
         vim.highlight.range(
             bufId,
@@ -243,9 +347,8 @@ function ClassController:_generateSubViewContent()
 
     -- 添加所有extmark
     for _, mark in ipairs(extmarks) do
-        -- 检查行是否有效
         if mark.line >= 0 and mark.line < #content then
-            local line_content = content[mark.line + 1] or "" -- +1因为lua索引从1开始
+            local line_content = content[mark.line + 1] or ""
             api.nvim_buf_set_extmark(
                 bufId,
                 extmark_ns,
@@ -264,15 +367,13 @@ function ClassController:_generateSubViewContent()
 
     -- 计算适当的宽度
     local res_width = max_width + 2 > 30 and 30 or max_width + 2
-    local max_columns =
-        math.floor(api.nvim_get_option_value("columns", {}) * 0.3)
+    local max_columns = math.floor(api.nvim_get_option_value("columns", {}) * 0.3)
 
-    -- 确保宽度至少满足工作区路径显示需要
     if max_columns > res_width then
         res_width = max_columns
     end
 
-    return res_width, #content + 1 -- 高度就是内容行数+1
+    return res_width, #content + 1
 end
 
 ---@private
@@ -436,6 +537,246 @@ function ClassController:_onCursorMoved()
         -- 设置高亮
         self._mainView:SetHighlight({ range })
     end
+    
+    -- 检查是否需要加载更多（虚拟滚动）
+    if self._virtual_scroll.enabled then
+        self:_checkAndLoadMore()
+    end
+end
+
+--- 检查并加载更多内容（虚拟滚动）
+---@private
+function ClassController:_checkAndLoadMore()
+    -- 如果已经全部加载或正在加载，跳过
+    if self._virtual_scroll.is_loading then
+        return
+    end
+    
+    if self._virtual_scroll.loaded_file_count >= self._virtual_scroll.total_file_count then
+        return
+    end
+    
+    local winid = self._subView:GetWinID()
+    local bufnr = self._subView:GetBufID()
+    
+    if not winid or not bufnr then
+        return
+    end
+    
+    -- 获取当前光标位置和总行数
+    local cursor_line = api.nvim_win_get_cursor(winid)[1]
+    local total_lines = api.nvim_buf_line_count(bufnr)
+    
+    -- 如果距离底部小于阈值，触发加载
+    if total_lines - cursor_line < self._virtual_scroll.load_more_threshold then
+        self:_loadMoreItems()
+    end
+end
+
+--- 加载更多项目（虚拟滚动）
+---@private
+function ClassController:_loadMoreItems()
+    if self._virtual_scroll.is_loading then
+        return
+    end
+    
+    self._virtual_scroll.is_loading = true
+    
+    local vs = self._virtual_scroll
+    local data = self._lsp:GetData()
+    local bufnr = self._subView:GetBufID()
+    
+    if not bufnr then
+        self._virtual_scroll.is_loading = false
+        return
+    end
+    
+    -- 计算要加载的范围
+    local start_idx = vs.loaded_file_count + 1
+    local end_idx = math.min(start_idx + vs.chunk_size - 1, vs.total_file_count)
+    
+    -- 获取要加载的 URI
+    local uri_list = vs.uri_list
+    local new_data = {}
+    for i = start_idx, end_idx do
+        local uri = uri_list[i]
+        if data[uri] then
+            new_data[uri] = data[uri]
+        end
+    end
+    
+    -- 移除旧的提示行
+    api.nvim_set_option_value("modifiable", true, { buf = bufnr })
+    local line_count = api.nvim_buf_line_count(bufnr)
+    if line_count >= 2 then
+        api.nvim_buf_set_lines(bufnr, line_count - 2, line_count, false, {})
+    end
+    
+    -- 生成新内容并追加（复用渲染逻辑）
+    local append_start_line = api.nvim_buf_line_count(bufnr)
+    local width, height = self:_appendSubViewData(new_data, bufnr, append_start_line)
+    
+    -- 添加新的提示（如果还有更多）
+    if end_idx < vs.total_file_count then
+        local remaining = vs.total_file_count - end_idx
+        api.nvim_buf_set_lines(bufnr, -1, -1, false, {
+            "",
+            string.format("... (还有 %d 个文件未加载，向下滚动自动加载)", remaining)
+        })
+    end
+    
+    api.nvim_set_option_value("modifiable", false, { buf = bufnr })
+    
+    -- 更新状态
+    vs.loaded_file_count = end_idx
+    vs.is_loading = false
+    
+    -- 更新窗口大小
+    local total_height = api.nvim_buf_line_count(bufnr)
+    self._subView:Size(width, total_height)
+end
+
+--- 追加数据到 SubView（用于虚拟滚动动态加载）
+---@private
+function ClassController:_appendSubViewData(data, bufId, start_line)
+    -- 这个函数类似 _renderSubViewData，但是追加内容而不是替换
+    local extmark_ns = api.nvim_create_namespace("LspUIPathExtmarks")
+    local hl_lines = {}
+    local content = {}
+    local extmarks = {}
+    local max_width = 30  -- 默认最小宽度
+    local syntax_regions = {}
+    
+    -- 复用路径处理函数
+    local function normalize_path(path)
+        local result = path:gsub("\\", "/")
+        if vim.fn.has("win32") == 1 then
+            result = result:lower()
+        end
+        if result:sub(-1) ~= "/" then
+            result = result .. "/"
+        end
+        return result
+    end
+    
+    local function normalize_display_path(path)
+        return path:gsub("\\", "/")
+    end
+    
+    local cwd = normalize_path(vim.fn.getcwd())
+    
+    -- 生成内容
+    for uri, item in pairs(data) do
+        local file_full_name = vim.uri_to_fname(uri)
+        local file_name = vim.fn.fnamemodify(file_full_name, ":t")
+        local filetype = tools.detect_filetype(file_full_name)
+        
+        local rel_path = ""
+        local norm_file_path = normalize_path(vim.fn.fnamemodify(file_full_name, ":p"))
+        
+        if norm_file_path:sub(1, #cwd) == cwd then
+            local rel_to_cwd = file_full_name:sub(#vim.fn.getcwd() + 1)
+            if rel_to_cwd:sub(1, 1) == "/" or rel_to_cwd:sub(1, 1) == "\\" then
+                rel_to_cwd = rel_to_cwd:sub(2)
+            end
+            rel_to_cwd = normalize_display_path(rel_to_cwd)
+            local rel_dir = vim.fn.fnamemodify(rel_to_cwd, ":h")
+            rel_dir = normalize_display_path(rel_dir)
+            if rel_dir == "." then
+                rel_path = " (./)"
+            else
+                rel_path = " (./" .. rel_dir .. ")"
+            end
+        else
+            local dir = vim.fn.fnamemodify(file_full_name, ":h")
+            dir = normalize_display_path(dir)
+            rel_path = " (" .. dir .. ")"
+        end
+        
+        local file_fmt = string.format(" %s %s", item.fold and "▶" or "▼", file_name)
+        table.insert(content, file_fmt)
+        table.insert(hl_lines, start_line + #content)
+        
+        if rel_path ~= "" then
+            table.insert(extmarks, {
+                line = start_line + #content - 1,
+                text = rel_path,
+                hl_group = "Comment",
+            })
+        end
+        
+        local file_fmt_len = vim.fn.strdisplaywidth(file_fmt)
+        if file_fmt_len > max_width then
+            max_width = file_fmt_len
+        end
+        
+        local uri_rows = {}
+        for _, range in ipairs(item.range) do
+            table.insert(uri_rows, range.start.line)
+        end
+        
+        local lines = tools.GetUriLines(item.buffer_id, uri, uri_rows)
+        
+        if not syntax_regions[filetype] and filetype ~= "" then
+            syntax_regions[filetype] = {}
+        end
+        
+        for _, row in pairs(uri_rows) do
+            local line_code = vim.fn.trim(lines[row] or "")
+            local code_fmt = string.format("   %s", line_code)
+            
+            if not item.fold then
+                table.insert(content, code_fmt)
+                
+                if filetype and filetype ~= "" then
+                    local line_content = content[#content]
+                    local region_data = {
+                        line = start_line + #content - 1,
+                        col_start = 3,
+                        col_end = #line_content,
+                    }
+                    table.insert(syntax_regions[filetype], region_data)
+                end
+            end
+        end
+    end
+    
+    -- 追加内容
+    api.nvim_buf_set_lines(bufId, start_line, start_line, false, content)
+    
+    -- 应用语法高亮
+    self._subView:ApplySyntaxHighlight(syntax_regions)
+    
+    -- 设置高亮
+    local subViewNamespace = api.nvim_create_namespace("LspUISubView")
+    for _, lnum in pairs(hl_lines) do
+        vim.highlight.range(
+            bufId,
+            subViewNamespace,
+            "Directory",
+            { lnum - 1, 3 },
+            { lnum - 1, -1 },
+            { priority = vim.highlight.priorities.user }
+        )
+    end
+    
+    -- 添加 extmark
+    for _, mark in ipairs(extmarks) do
+        local line_content = api.nvim_buf_get_lines(bufId, mark.line, mark.line + 1, false)[1] or ""
+        api.nvim_buf_set_extmark(
+            bufId,
+            extmark_ns,
+            mark.line,
+            #line_content,
+            {
+                virt_text = { { mark.text, mark.hl_group } },
+                virt_text_pos = "eol",
+            }
+        )
+    end
+    
+    local res_width = max_width + 2 > 30 and 30 or max_width + 2
+    return res_width, #content
 end
 
 --- @private
@@ -971,6 +1312,26 @@ function ClassController:ActionToggleFold()
 
     if not data[uri] then
         return
+    end
+    
+    -- 如果启用了虚拟滚动，需要确保该文件已加载
+    if self._virtual_scroll.enabled then
+        local uri_index = nil
+        for i, u in ipairs(self._virtual_scroll.uri_list) do
+            if u == uri then
+                uri_index = i
+                break
+            end
+        end
+        
+        -- 如果该文件未加载，需要先加载到该位置
+        if uri_index and uri_index > self._virtual_scroll.loaded_file_count then
+            -- 加载到该文件为止
+            while self._virtual_scroll.loaded_file_count < uri_index and 
+                  self._virtual_scroll.loaded_file_count < self._virtual_scroll.total_file_count do
+                self:_loadMoreItems()
+            end
+        end
     end
 
     -- 切换折叠状态
