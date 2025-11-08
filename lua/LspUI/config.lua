@@ -102,6 +102,18 @@ local default_reference_config = {
     command_enable = true,
 }
 
+--- @type LspUI_jump_history_config
+local default_jump_history_config = {
+    enable = true,              -- 是否启用跳转历史功能
+    max_size = 50,              -- 最大历史记录数量
+    command_enable = true,      -- 是否启用 :LspUI history 命令
+    keybind = "<leader>lh",     -- 显示历史列表的快捷键
+    smart_jumplist = {
+        min_distance = 5,       -- 同文件跳转的最小行距（小于此距离不记录）
+        cross_file_only = false, -- 是否只记录跨文件跳转
+    },
+}
+
 --- @type LspUI_pos_keybind_config
 local default_pos_keybind_config = {
     main = {
@@ -185,6 +197,7 @@ local default_config = {
     declaration = default_declaration_config,
     implementation = default_implementation_config,
     reference = default_reference_config,
+    jump_history = default_jump_history_config,
     pos_keybind = default_pos_keybind_config,
     call_hierarchy = default_call_hierarchy_config,
     signature = default_signature_config,

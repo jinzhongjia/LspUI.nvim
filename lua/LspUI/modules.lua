@@ -12,4 +12,5 @@ return {
     inlay_hint = require("LspUI.inlay_hint"),
     call_hierarchy = require("LspUI.call_hierarchy"),
     signature = require("LspUI.signature"),
+    jump_history = require("LspUI.jump_history"),
 }
