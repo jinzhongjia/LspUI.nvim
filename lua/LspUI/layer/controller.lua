@@ -5,6 +5,7 @@ local ClassSubView = require("LspUI.layer.sub_view")
 local config = require("LspUI.config")
 local notify = require("LspUI.layer.notify")
 local tools = require("LspUI.layer.tools")
+local search = require("LspUI.layer.search")
 
 -- 添加全局单例实例
 local _controller_instance = nil
@@ -15,6 +16,7 @@ local _controller_instance = nil
 ---@field _subView ClassSubView
 ---@field _current_item {uri: string, buffer_id: integer, range: LspUIRange?}
 ---@field origin_win integer?
+---@field _search_state table
 local ClassController = {
     ---@diagnostic disable-next-line: assign-type-mismatch
     _lsp = nil,
@@ -24,6 +26,7 @@ local ClassController = {
     _subView = nil,
     _current_item = {},
     _debounce_delay = 50, -- 50ms 的防抖延迟
+    _search_state = nil, -- 搜索状态
 }
 
 ClassController.__index = ClassController
@@ -41,6 +44,7 @@ function ClassController:New()
     obj._lsp = ClassLsp:New()
     obj._mainView = ClassMainView:New(false)
     obj._subView = ClassSubView:New(true)
+    obj._search_state = search.new_state() -- 初始化搜索状态
 
     api.nvim_create_augroup("LspUI_SubView", { clear = true })
 
@@ -314,6 +318,19 @@ function ClassController:_setupSubViewKeyBindings()
         end,
         [config.options.pos_keybind.secondary.enter] = function()
             self:ActionEnterMainView()
+        end,
+        -- 搜索功能键绑定
+        ["/"] = function()
+            self:ActionSearch()
+        end,
+        ["n"] = function()
+            self:ActionSearchNext()
+        end,
+        ["N"] = function()
+            self:ActionSearchPrev()
+        end,
+        ["<ESC>"] = function()
+            self:ActionClearSearch()
         end,
     }
 
@@ -1179,6 +1196,110 @@ function ClassController:ActionBackToSubView()
     if self._subView:Valid() then
         self._subView:Focus()
     end
+end
+
+-- ============================================
+-- 搜索功能
+-- ============================================
+
+--- 进入搜索模式
+function ClassController:ActionSearch()
+    local bufnr = self._subView:GetBufID()
+    if not bufnr then
+        return
+    end
+
+    search.enter_search_mode(
+        bufnr,
+        self._search_state,
+        -- 搜索变化回调
+        function(state)
+            self:_updateSearchStatus()
+            -- 跳转到第一个匹配
+            if state.match_count > 0 then
+                self:ActionSearchNext()
+            end
+        end,
+        -- 退出回调
+        function(state)
+            self:_updateSearchStatus()
+        end
+    )
+end
+
+--- 跳转到下一个匹配
+function ClassController:ActionSearchNext()
+    if not self._search_state.enabled or self._search_state.match_count == 0 then
+        return
+    end
+
+    local winid = self._subView:GetWinID()
+    if not winid then
+        return
+    end
+
+    local current_line = api.nvim_win_get_cursor(winid)[1] - 1
+    local next_line = search.next_match(self._search_state, current_line)
+
+    if next_line then
+        api.nvim_win_set_cursor(winid, { next_line + 1, 0 })
+        vim.cmd("norm! zz") -- 居中显示
+    end
+end
+
+--- 跳转到上一个匹配
+function ClassController:ActionSearchPrev()
+    if not self._search_state.enabled or self._search_state.match_count == 0 then
+        return
+    end
+
+    local winid = self._subView:GetWinID()
+    if not winid then
+        return
+    end
+
+    local current_line = api.nvim_win_get_cursor(winid)[1] - 1
+    local prev_line = search.prev_match(self._search_state, current_line)
+
+    if prev_line then
+        api.nvim_win_set_cursor(winid, { prev_line + 1, 0 })
+        vim.cmd("norm! zz") -- 居中显示
+    end
+end
+
+--- 清除搜索
+function ClassController:ActionClearSearch()
+    local bufnr = self._subView:GetBufID()
+    if bufnr then
+        search.clear_search(bufnr, self._search_state)
+        self:_updateSearchStatus()
+    end
+end
+
+--- 更新搜索状态显示
+function ClassController:_updateSearchStatus()
+    local status = search.get_status_line(self._search_state)
+    
+    if not self._subView:Valid() then
+        return
+    end
+
+    local winid = self._subView:GetWinID()
+    local current_winbar = vim.wo[winid].winbar or ""
+    
+    -- 移除旧的搜索状态
+    current_winbar = current_winbar:gsub("%s*%[Search:.-]%s*", "")
+    
+    -- 添加新的搜索状态
+    if status ~= "" then
+        if current_winbar ~= "" then
+            current_winbar = current_winbar .. " " .. status
+        else
+            current_winbar = status
+        end
+    end
+    
+    vim.wo[winid].winbar = current_winbar
 end
 
 return ClassController
