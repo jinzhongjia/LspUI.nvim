@@ -109,6 +109,11 @@ function ClassController:New()
         load_more_threshold = 50,
         uri_list = {},
         is_loading = false,
+        -- 搜索过滤模式
+        search_mode = false,           -- 是否在搜索过滤模式
+        matched_uri_list = {},         -- 匹配的 URI 列表（有序）
+        loaded_match_count = 0,        -- 已加载的匹配数
+        total_match_count = 0,         -- 总匹配数
     }
 
     api.nvim_create_augroup("LspUI_SubView", { clear = true })
@@ -594,12 +599,24 @@ function ClassController:_loadMoreItems()
         return
     end
     
-    -- 计算要加载的范围
-    local start_idx = vs.loaded_file_count + 1
-    local end_idx = math.min(start_idx + vs.chunk_size - 1, vs.total_file_count)
+    -- 根据是否在搜索模式选择不同的加载策略
+    local start_idx, end_idx, uri_list, total_count
+    
+    if vs.search_mode then
+        -- 搜索过滤模式:从匹配列表加载
+        uri_list = vs.matched_uri_list
+        start_idx = vs.loaded_match_count + 1
+        total_count = vs.total_match_count
+        end_idx = math.min(start_idx + vs.chunk_size - 1, total_count)
+    else
+        -- 普通虚拟滚动模式:从完整列表加载
+        uri_list = vs.uri_list
+        start_idx = vs.loaded_file_count + 1
+        total_count = vs.total_file_count
+        end_idx = math.min(start_idx + vs.chunk_size - 1, total_count)
+    end
     
     -- 获取要加载的 URI
-    local uri_list = vs.uri_list
     local new_data = {}
     for i = start_idx, end_idx do
         local uri = uri_list[i]
@@ -620,19 +637,35 @@ function ClassController:_loadMoreItems()
     local width, height = self:_appendSubViewData(new_data, bufnr, append_start_line)
     
     -- 添加新的提示（如果还有更多）
-    if end_idx < vs.total_file_count then
-        local remaining = vs.total_file_count - end_idx
+    if end_idx < total_count then
+        local remaining = total_count - end_idx
+        local tip_text = vs.search_mode
+            and string.format("... (还有 %d 个匹配的文件未显示，向下滚动加载)", remaining)
+            or string.format("... (还有 %d 个文件未加载，向下滚动自动加载)", remaining)
+            
         api.nvim_buf_set_lines(bufnr, -1, -1, false, {
             "",
-            string.format("... (还有 %d 个文件未加载，向下滚动自动加载)", remaining)
+            tip_text
         })
     end
     
     api.nvim_set_option_value("modifiable", false, { buf = bufnr })
     
     -- 更新状态
-    vs.loaded_file_count = end_idx
+    if vs.search_mode then
+        vs.loaded_match_count = end_idx
+    else
+        vs.loaded_file_count = end_idx
+    end
     vs.is_loading = false
+    
+    -- 重新应用搜索高亮(如果在搜索模式)
+    if self._search_state.enabled then
+        self:_reapplySearchHighlight()
+    end
+    
+    -- 更新状态显示
+    self:_updateSearchStatus()
     
     -- 更新窗口大小
     local total_height = api.nvim_buf_line_count(bufnr)
@@ -1582,22 +1615,87 @@ function ClassController:ActionSearch()
         return
     end
 
-    search.enter_search_mode(
-        bufnr,
-        self._search_state,
-        -- 搜索变化回调
-        function(state)
-            self:_updateSearchStatus()
-            -- 跳转到第一个匹配
-            if state.match_count > 0 then
-                self:ActionSearchNext()
-            end
-        end,
-        -- 退出回调
-        function(state)
-            self:_updateSearchStatus()
+    local vs = self._virtual_scroll
+    
+    -- 虚拟滚动模式下搜索全部数据
+    if vs.enabled then
+        -- 获取当前数据
+        local data = self._lsp:GetData()
+        
+        if not data then
+            return
         end
-    )
+        
+        -- 进入搜索输入
+        search.enter_search_mode(
+            bufnr,
+            self._search_state,
+            -- 搜索变化回调
+            function(state)
+                if state.pattern and state.pattern ~= "" then
+                    -- 搜索全部数据并切换到过滤模式
+                    local matched_uris = self:_searchInAllData(state.pattern)
+                    
+                    vs.search_mode = true
+                    vs.matched_uri_list = matched_uris
+                    vs.loaded_match_count = 0
+                    vs.total_match_count = #matched_uris
+                    
+                    -- 重新渲染 (只显示匹配的文件)
+                    self:_generateSubViewContentSearchFiltered(data, bufnr)
+                    
+                    -- 重新应用搜索高亮
+                    self:_reapplySearchHighlight()
+                end
+                
+                self:_updateSearchStatus()
+                
+                -- 跳转到第一个匹配
+                if state.match_count > 0 then
+                    self:ActionSearchNext()
+                end
+            end,
+            -- 退出回调
+            function(state)
+                -- 退出搜索模式,恢复完整视图
+                if vs.search_mode then
+                    vs.search_mode = false
+                    vs.matched_uri_list = {}
+                    vs.loaded_match_count = 0
+                    vs.total_match_count = 0
+                    
+                    -- 重新生成完整内容
+                    local data_full = self._lsp:GetData()
+                    
+                    if data_full then
+                        -- 重新计算并渲染
+                        vs.loaded_file_count = 0
+                        self:_generateSubViewContent(data_full)
+                    end
+                end
+                
+                self:_updateSearchStatus()
+            end
+        )
+    else
+        -- 非虚拟滚动模式,使用原有逻辑
+        search.enter_search_mode(
+            bufnr,
+            self._search_state,
+            -- 搜索变化回调
+            function(state)
+                self:_updateSearchStatus()
+                -- 跳转到第一个匹配
+                if state.match_count > 0 then
+                    self:ActionSearchNext()
+                end
+            end,
+            -- 退出回调
+            function(state)
+                self:_updateSearchStatus()
+            end
+        )
+    end
 end
 
 --- 跳转到下一个匹配
@@ -1666,9 +1764,114 @@ function ClassController:_reapplySearchHighlight()
     self:_updateSearchStatus()
 end
 
+--- 在完整 LSP 数据中搜索匹配的文件（用于虚拟滚动场景）
+---@private
+---@param pattern string 搜索模式
+---@return table 匹配的 URI 列表（有序）
+function ClassController:_searchInAllData(pattern)
+    local data = self._lsp:GetData()
+    local matched_uris = {}
+    local pattern_lower = pattern:lower()
+    
+    -- 遍历所有文件
+    for uri, item in pairs(data) do
+        local has_match = false
+        
+        -- 检查文件名是否匹配
+        local file_full_name = vim.uri_to_fname(uri)
+        local file_name = vim.fn.fnamemodify(file_full_name, ":t")
+        
+        if file_name:lower():find(pattern_lower, 1, true) then
+            has_match = true
+        else
+            -- 检查代码行是否匹配
+            local uri_rows = {}
+            for _, range in ipairs(item.range) do
+                table.insert(uri_rows, range.start.line)
+            end
+            
+            local lines = tools.GetUriLines(item.buffer_id, uri, uri_rows)
+            
+            for _, row in pairs(uri_rows) do
+                local line_code = lines[row] or ""
+                if line_code:lower():find(pattern_lower, 1, true) then
+                    has_match = true
+                    break
+                end
+            end
+        end
+        
+        if has_match then
+            table.insert(matched_uris, uri)
+        end
+    end
+    
+    -- 排序保持顺序稳定
+    table.sort(matched_uris)
+    
+    return matched_uris
+end
+
+--- 虚拟滚动 + 搜索过滤模式渲染
+---@private
+---@param data table LSP 数据
+---@param bufId integer Buffer ID
+---@return integer, integer 宽度和高度
+function ClassController:_generateSubViewContentSearchFiltered(data, bufId)
+    local vs = self._virtual_scroll
+    local matched_uris = vs.matched_uri_list
+    local chunk_size = vs.chunk_size
+    local end_idx = math.min(vs.loaded_match_count + chunk_size, #matched_uris)
+    
+    -- 如果是第一次加载，从头开始
+    if vs.loaded_match_count == 0 then
+        end_idx = math.min(chunk_size, #matched_uris)
+    end
+    
+    -- 只渲染匹配的文件
+    local filtered_data = {}
+    for i = 1, end_idx do
+        local uri = matched_uris[i]
+        if data[uri] then
+            filtered_data[uri] = data[uri]
+        end
+    end
+    
+    -- 渲染
+    local width, height = self:_renderSubViewData(filtered_data, bufId)
+    
+    -- 添加提示
+    if end_idx < #matched_uris then
+        api.nvim_set_option_value("modifiable", true, { buf = bufId })
+        api.nvim_buf_set_lines(bufId, -1, -1, false, {
+            "",
+            string.format("... (还有 %d 个匹配的文件未显示，向下滚动加载)", 
+                         #matched_uris - end_idx)
+        })
+        api.nvim_set_option_value("modifiable", false, { buf = bufId })
+        height = height + 2
+    end
+    
+    vs.loaded_match_count = end_idx
+    vs.total_match_count = #matched_uris
+    
+    return width, height
+end
+
 --- 更新搜索状态显示
 function ClassController:_updateSearchStatus()
-    local status = search.get_status_line(self._search_state)
+    local vs = self._virtual_scroll
+    local virtual_scroll_info = nil
+    
+    -- 如果是虚拟滚动搜索过滤模式,传递信息
+    if vs.enabled and vs.search_mode and vs.total_match_count > 0 then
+        virtual_scroll_info = {
+            loaded = vs.loaded_match_count,
+            total = vs.total_match_count
+        }
+    end
+    
+    local status = search.get_status_line(self._search_state, virtual_scroll_info)
     
     if not self._subView:Valid() then
         return

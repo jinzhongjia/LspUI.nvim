@@ -193,8 +193,9 @@ end
 
 --- 获取搜索状态字符串
 ---@param state SearchState
+---@param virtual_scroll_info table? 虚拟滚动信息 {loaded: number, total: number}
 ---@return string
-function M.get_status_line(state)
+function M.get_status_line(state, virtual_scroll_info)
     if not state.enabled then
         return ""
     end
@@ -205,6 +206,18 @@ function M.get_status_line(state)
 
     if state.match_count == 0 then
         return string.format(" [Search: '%s' - No matches] ", state.pattern)
+    end
+
+    -- 虚拟滚动搜索过滤模式
+    if virtual_scroll_info and virtual_scroll_info.total > 0 then
+        return string.format(
+            " [Search: '%s' - %d/%d matches] (显示 %d/%d 文件) ",
+            state.pattern,
+            state.match_count,
+            state.total_count,
+            virtual_scroll_info.loaded,
+            virtual_scroll_info.total
+        )
     end
 
     return string.format(
