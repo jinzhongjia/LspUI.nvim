@@ -15,6 +15,8 @@ local language_map = {
     -- 可以根据需要添加更多映射
 }
 
+local TSHighlighter = vim.treesitter.highlighter
+
 -- 封装 Treesitter 高亮器方法
 local function wrap_method(method_name)
     return function(_, win, buf, ...)
@@ -24,12 +26,12 @@ local function wrap_method(method_name)
 
         for _, hl in pairs(M.cache[buf] or {}) do
             if hl.enabled then
-                vim.treesitter.highlighter.active[buf] = hl.highlighter
-                vim.treesitter.highlighter[method_name](_, win, buf, ...)
+                TSHighlighter.active[buf] = hl.highlighter
+                TSHighlighter[method_name](_, win, buf, ...)
             end
         end
 
-        vim.treesitter.highlighter.active[buf] = nil
+        TSHighlighter.active[buf] = nil
     end
 end
 
@@ -44,10 +46,19 @@ function M.setup()
     M.did_setup = true
 
     -- 注册装饰提供程序
-    api.nvim_set_decoration_provider(ns, {
-        on_win = wrap_method("_on_win"),
-        on_line = wrap_method("_on_line"),
-    })
+    -- 兼容新旧版本的 Neovim
+    -- https://github.com/neovim/neovim/commit/5edbabdbec0ac3fba33be8afc008845130158583
+    if TSHighlighter._on_range then
+        api.nvim_set_decoration_provider(ns, {
+            on_win = wrap_method("_on_win"),
+            on_range = wrap_method("_on_range"),
+        })
+    else
+        api.nvim_set_decoration_provider(ns, {
+            on_win = wrap_method("_on_win"),
+            on_line = wrap_method("_on_line"),
+        })
+    end
 
     -- 创建自动命令清理缓存
     api.nvim_create_autocmd("BufWipeout", {
@@ -56,7 +67,8 @@ function M.setup()
             { clear = true }
         ),
         callback = function(ev)
-            M.cache[ev.buf] = nil
+            -- 使用 detach 来完整清理资源
+            M.detach(ev.buf)
         end,
     })
 end
@@ -99,6 +111,11 @@ function M._attach_lang(buf, lang, regions)
 
     -- 应用语言名称映射
     local mapped_lang = language_map[lang] or lang
+    
+    -- 特殊处理 markdown：使用 markdown_inline
+    if mapped_lang == "markdown" then
+        mapped_lang = "markdown_inline"
+    end
 
     M.cache[buf] = M.cache[buf] or {}
 
@@ -170,6 +187,15 @@ function M._attach_lang(buf, lang, regions)
         return
     end
 
+    -- 如果已经存在该语言的高亮器，更新 regions
+    if M.cache[buf][lang] then
+        local parser = M.cache[buf][lang].parser
+        -- 注意：set_included_regions 需要外层数组包装
+        parser:set_included_regions({ vim.deepcopy(formatted_regions) })
+        M.cache[buf][lang].enabled = true
+        return
+    end
+
     -- 尝试创建解析器
     local ok, parser
     local tried_langs = {}
@@ -202,28 +228,37 @@ function M._attach_lang(buf, lang, regions)
         return
     end
 
-    -- 设置包含的区域
+    -- 设置包含的区域，使用 deepcopy 避免引用问题
+    -- 注意：set_included_regions 需要外层数组包装（table<integer, Range6[]>）
     ---@diagnostic disable-next-line: invisible
-    parser:set_included_regions({ formatted_regions })
+    parser:set_included_regions({ vim.deepcopy(formatted_regions) })
 
-    -- 创建或更新高亮器
-    if not M.cache[buf][lang] then
-        M.cache[buf][lang] = {
-            parser = parser,
-            highlighter = vim.treesitter.highlighter.new(parser),
-            enabled = true,
-        }
-    else
-        local old_parser = M.cache[buf][lang].parser
-        old_parser:set_included_regions({ formatted_regions })
-        M.cache[buf][lang].enabled = true
-    end
+    -- 创建高亮器
+    M.cache[buf][lang] = {
+        parser = parser,
+        highlighter = TSHighlighter.new(parser),
+        enabled = true,
+    }
 end
+
 -- 从缓冲区中移除高亮器
 function M.detach(buf)
-    if M.cache[buf] then
-        M.cache[buf] = nil
+    if not M.cache[buf] then
+        return
     end
+
+    -- 清理所有语言的 parser 和 highlighter
+    for lang, cache_entry in pairs(M.cache[buf]) do
+        -- 销毁 parser（LanguageTree 有 destroy 方法）
+        if cache_entry.parser and cache_entry.parser.destroy then
+            pcall(cache_entry.parser.destroy, cache_entry.parser)
+        end
+        -- highlighter 可能没有显式的 destroy 方法，
+        -- 但清理引用和 GC 会处理它
+    end
+
+    -- 清理缓存
+    M.cache[buf] = nil
 end
 
 return M

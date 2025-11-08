@@ -97,6 +97,11 @@ function ClassSubView:ApplySyntaxHighlight(code_regions)
         return self
     end
 
+    local bufid = self:GetBufID()
+    
+    -- 先清理旧的语法高亮，避免残留数据导致高亮错误
+    syntax_highlight.detach(bufid)
+
     -- 检查是否有数据
     if not code_regions or vim.tbl_isempty(code_regions) then
         return self
@@ -124,7 +129,7 @@ function ClassSubView:ApplySyntaxHighlight(code_regions)
 
     -- 应用语法高亮
     if not vim.tbl_isempty(regions) then
-        require("LspUI.layer.syntax_highlight").attach(self:GetBufID(), regions)
+        syntax_highlight.attach(bufid, regions)
     end
 
     return self
