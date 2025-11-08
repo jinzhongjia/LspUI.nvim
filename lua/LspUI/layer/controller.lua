@@ -431,7 +431,10 @@ function ClassController:_setupSubViewKeyBindings()
             self:ActionSearchPrev()
         end,
         ["<ESC>"] = function()
-            self:ActionClearSearch()
+            -- ESC 只在搜索启用时清除搜索，否则不做任何操作
+            if self._search_state.enabled then
+                self:ActionClearSearch()
+            end
         end,
     }
 
@@ -1340,6 +1343,9 @@ function ClassController:ActionToggleFold()
     -- 重新生成SubView内容
     local width, height = self:_generateSubViewContent()
     self._subView:Size(width, height)
+    
+    -- 重新应用搜索高亮（如果搜索已启用）
+    self:_reapplySearchHighlight()
 
     -- 设置光标位置到适当的行
     local lnum = self:_getCursorPosForUri(uri, currentRange)
@@ -1504,6 +1510,9 @@ function ClassController:ActionToggleSubView()
 
         -- 恢复键映射
         self:_setupSubViewKeyBindings()
+        
+        -- 重新应用搜索高亮
+        self:_reapplySearchHighlight()
 
         -- 恢复光标位置
         if self._current_item and self._current_item.uri then
@@ -1539,6 +1548,9 @@ function ClassController:ActionFoldAll(fold)
         -- 重新渲染
         local width, height = self:_generateSubViewContent()
         self._subView:Size(width, height)
+        
+        -- 重新应用搜索高亮
+        self:_reapplySearchHighlight()
 
         -- 恢复光标位置
         local lnum = self:_getCursorPosForUri(current_uri)
@@ -1635,6 +1647,23 @@ function ClassController:ActionClearSearch()
         search.clear_search(bufnr, self._search_state)
         self:_updateSearchStatus()
     end
+end
+
+--- 重新应用搜索高亮（在重新生成内容后调用）
+---@private
+function ClassController:_reapplySearchHighlight()
+    if not self._search_state.enabled or self._search_state.pattern == "" then
+        return
+    end
+    
+    local bufnr = self._subView:GetBufID()
+    if not bufnr then
+        return
+    end
+    
+    -- 重新应用搜索匹配和高亮
+    search.update_matches(bufnr, self._search_state, true)
+    self:_updateSearchStatus()
 end
 
 --- 更新搜索状态显示
