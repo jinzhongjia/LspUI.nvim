@@ -180,7 +180,52 @@ end
 function M.save_position_to_jumplist()
     -- 使用 m' 命令将当前位置添加到 jumplist
     -- 这相当于在当前位置设置一个匿名标记
-    api.nvim_command("normal! m'")
+    pcall(api.nvim_command, "normal! m'")
+end
+
+--- 跳转后确保目标位置被记录到 jumplist
+--- 使用 vim.schedule 延迟执行，避免干扰当前跳转
+--- @return nil
+function M.save_target_to_jumplist()
+    vim.schedule(function()
+        -- 确保目标位置也被记录
+        pcall(api.nvim_command, "normal! m'")
+    end)
+end
+
+--- 智能判断是否需要添加到 jumplist
+--- @param target_buf integer 目标 buffer ID
+--- @param target_line integer 目标行号（1-based）
+--- @param config table? 配置选项 {min_distance: integer, cross_file_only: boolean}
+--- @return boolean 是否已添加到 jumplist
+function M.smart_save_to_jumplist(target_buf, target_line, config)
+    config = config or {}
+    local min_distance = config.min_distance or 5
+    local cross_file_only = config.cross_file_only or false
+    
+    local current_buf = api.nvim_get_current_buf()
+    local current_pos = api.nvim_win_get_cursor(0)
+    local current_line = current_pos[1]
+    
+    -- 1. 跨文件跳转：必须记录
+    if current_buf ~= target_buf then
+        pcall(api.nvim_command, "normal! m'")
+        return true
+    end
+    
+    -- 2. 如果配置为只记录跨文件跳转，则跳过同文件
+    if cross_file_only then
+        return false
+    end
+    
+    -- 3. 同文件但距离较远（> min_distance 行）：记录
+    if math.abs(current_line - target_line) > min_distance then
+        pcall(api.nvim_command, "normal! m'")
+        return true
+    end
+    
+    -- 4. 同文件且距离很近：不记录（避免污染 jumplist）
+    return false
 end
 
 -- generate command description

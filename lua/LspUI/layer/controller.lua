@@ -6,6 +6,7 @@ local config = require("LspUI.config")
 local notify = require("LspUI.layer.notify")
 local tools = require("LspUI.layer.tools")
 local search = require("LspUI.layer.search")
+local jump_history = require("LspUI.layer.jump_history")
 
 -- 添加全局单例实例
 local _controller_instance = nil
@@ -18,6 +19,7 @@ local _controller_instance = nil
 ---@field origin_win integer?
 ---@field _search_state table
 ---@field _virtual_scroll table
+---@field _jump_history_state table
 local ClassController = {
     ---@diagnostic disable-next-line: assign-type-mismatch
     _lsp = nil,
@@ -28,6 +30,8 @@ local ClassController = {
     _current_item = {},
     _debounce_delay = 50, -- 50ms 的防抖延迟
     _search_state = nil, -- 搜索状态
+    _jump_history_state = nil, -- 跳转历史状态
+    _current_method_name = nil, -- 当前 LSP 方法名
     _virtual_scroll = {
         enabled = false,            -- 是否启用虚拟滚动
         threshold = 500,            -- 超过此数量的项目启用虚拟滚动
@@ -99,6 +103,12 @@ function ClassController:New()
     obj._subView = ClassSubView:New(true)
     obj._search_state = search.new_state() -- 初始化搜索状态
     
+    -- 初始化跳转历史（使用配置）
+    local history_config = config.options.jump_history or {}
+    local max_size = history_config.max_size or 50
+    obj._jump_history_state = jump_history.new_state(max_size)
+    obj._jump_history_state.enabled = history_config.enable ~= false
+    
     -- 初始化虚拟滚动状态
     obj._virtual_scroll = {
         enabled = false,
@@ -123,6 +133,12 @@ function ClassController:New()
     -- 保存为全局单例
     _controller_instance = obj
     return obj
+end
+
+--- 获取全局控制器实例
+---@return ClassController?
+function ClassController:GetInstance()
+    return _controller_instance
 end
 
 ---@private
@@ -194,7 +210,7 @@ function ClassController:_generateSubViewContentVirtual(data, bufId, total_file_
         api.nvim_set_option_value("modifiable", true, { buf = bufId })
         api.nvim_buf_set_lines(bufId, -1, -1, false, {
             "",
-            string.format("... (还有 %d 个文件未加载，向下滚动自动加载)", remaining)
+            string.format("... (%d more files, scroll down to load)", remaining)
         })
         api.nvim_set_option_value("modifiable", false, { buf = bufId })
         height = height + 2
@@ -640,8 +656,8 @@ function ClassController:_loadMoreItems()
     if end_idx < total_count then
         local remaining = total_count - end_idx
         local tip_text = vs.search_mode
-            and string.format("... (还有 %d 个匹配的文件未显示，向下滚动加载)", remaining)
-            or string.format("... (还有 %d 个文件未加载，向下滚动自动加载)", remaining)
+            and string.format("... (%d more matched files, scroll down to load)", remaining)
+            or string.format("... (%d more files, scroll down to load)", remaining)
             
         api.nvim_buf_set_lines(bufnr, -1, -1, false, {
             "",
@@ -996,6 +1012,9 @@ function ClassController:Go(method_name, buffer_id, params, origin_win)
         return
     end
 
+    -- 保存当前方法名（用于历史记录）
+    self._current_method_name = method_name
+
     self.origin_win = origin_win or api.nvim_get_current_win()
 
     -- 发起LSP请求
@@ -1087,13 +1106,36 @@ function ClassController:Go(method_name, buffer_id, params, origin_win)
                 return
             end
 
-            -- 执行标签栈
-            tools.save_position_to_jumplist()
+            -- 准备跳转信息
+            local target_line = single_range.selection_start.line + 1
+            local target_col = single_range.selection_start.character
+            local target_buf = vim.uri_to_bufnr(single_uri)
+
+            -- 获取配置
+            local history_config = config.options.jump_history or {}
+            local smart_config = history_config.smart_jumplist or {}
+
+            -- 1️⃣ 记录到原生 jumplist（智能判断）
+            tools.smart_save_to_jumplist(target_buf, target_line, {
+                min_distance = smart_config.min_distance or 5,
+                cross_file_only = smart_config.cross_file_only or false,
+            })
+
+            -- 2️⃣ 记录到增强历史（如果启用）
+            if self._jump_history_state.enabled then
+                local history_item = jump_history.create_item({
+                    uri = single_uri,
+                    line = target_line,
+                    col = target_col,
+                    buffer_id = target_buf,
+                    lsp_type = method_name,
+                })
+                jump_history.add_item(self._jump_history_state, history_item)
+            end
 
             -- 打开文件
-            local uri_buffer_id = vim.uri_to_bufnr(single_uri)
-            if tools.buffer_is_listed(uri_buffer_id) then
-                vim.cmd(string.format("buffer %s", uri_buffer_id))
+            if tools.buffer_is_listed(target_buf) then
+                vim.cmd(string.format("buffer %s", target_buf))
             else
                 vim.cmd(
                     string.format(
@@ -1104,10 +1146,11 @@ function ClassController:Go(method_name, buffer_id, params, origin_win)
             end
 
             -- 设置光标位置 - 使用选择范围而不是整个范围
-            local cursor_line = single_range.selection_start.line + 1
-            local cursor_col = single_range.selection_start.character
-
-            api.nvim_win_set_cursor(0, { cursor_line, cursor_col })
+            api.nvim_win_set_cursor(0, { target_line, target_col })
+            
+            -- 3️⃣ 确保目标位置也被记录
+            tools.save_target_to_jumplist()
+            
             vim.cmd("norm! zz")
 
             notify.Info(
@@ -1288,10 +1331,35 @@ function ClassController:ActionJump(cmd)
         return
     end
 
+    -- 准备跳转目标信息
+    local target_line = item.range.selection_start.line + 1
+    local target_col = item.range.selection_start.character
+    local target_buf = item.buffer_id
+
+    -- 获取配置
+    local history_config = config.options.jump_history or {}
+    local smart_config = history_config.smart_jumplist or {}
+
+    -- 1️⃣ 记录到原生 jumplist（智能判断）
     if api.nvim_win_is_valid(self.origin_win) then
         api.nvim_win_call(self.origin_win, function()
-            tools.save_position_to_jumplist()
+            tools.smart_save_to_jumplist(target_buf, target_line, {
+                min_distance = smart_config.min_distance or 5,
+                cross_file_only = smart_config.cross_file_only or false,
+            })
         end)
+    end
+
+    -- 2️⃣ 记录到增强历史（如果启用）
+    if self._jump_history_state.enabled then
+        local history_item = jump_history.create_item({
+            uri = item.uri,
+            line = target_line,
+            col = target_col,
+            buffer_id = target_buf,
+            lsp_type = self._current_method_name or "unknown",
+        })
+        jump_history.add_item(self._jump_history_state, history_item)
     end
 
     -- 清除高亮
@@ -1329,10 +1397,11 @@ function ClassController:ActionJump(cmd)
     end
 
     -- 设置光标位置 - 使用选择范围
-    local cursor_line = item.range.selection_start.line + 1
-    local cursor_col = item.range.selection_start.character
-
-    api.nvim_win_set_cursor(0, { cursor_line, cursor_col })
+    api.nvim_win_set_cursor(0, { target_line, target_col })
+    
+    -- 3️⃣ 确保目标位置也被记录到 jumplist
+    tools.save_target_to_jumplist()
+    
     vim.cmd("norm! zz")
 end
 
@@ -1747,6 +1816,162 @@ function ClassController:ActionClearSearch()
     end
 end
 
+-- ============================================
+-- 跳转历史功能
+-- ============================================
+
+--- 显示跳转历史列表
+function ClassController:ActionShowHistory()
+    local state = self._jump_history_state
+    
+    if not state or not state.enabled then
+        notify.Info("Jump history is not enabled")
+        return
+    end
+    
+    -- 获取显示内容
+    local lines = jump_history.get_display_lines(state)
+    
+    -- 创建浮动窗口
+    local buf = api.nvim_create_buf(false, true)
+    api.nvim_buf_set_option(buf, "bufhidden", "wipe")
+    api.nvim_buf_set_option(buf, "buftype", "nofile")
+    api.nvim_buf_set_lines(buf, 0, -1, false, lines)
+    api.nvim_buf_set_option(buf, "modifiable", false)
+    
+    -- 计算窗口大小
+    local width = 100
+    local height = math.min(#lines, 20)
+    
+    -- 居中位置
+    local ui = api.nvim_list_uis()[1]
+    local win_opts = {
+        relative = "editor",
+        width = width,
+        height = height,
+        col = (ui.width - width) / 2,
+        row = (ui.height - height) / 2,
+        style = "minimal",
+        border = "rounded",
+        title = " Jump History ",
+        title_pos = "center",
+    }
+    
+    local win = api.nvim_open_win(buf, true, win_opts)
+    api.nvim_win_set_option(win, "winhl", "Normal:Normal,FloatBorder:FloatBorder")
+    
+    -- 设置光标到最新记录（第3行，跳过标题）
+    if #state.items > 0 then
+        api.nvim_win_set_cursor(win, {3, 0})
+    end
+    
+    -- 设置语法高亮
+    vim.cmd([[
+        syntax match HistoryTime /\[\d\d:\d\d:\d\d\]/
+        syntax match HistoryType /│\s*\zs\w\+\ze\s*│/
+        syntax match HistoryFile /│\s*\zs[^│]\+\.lua:\d\+\ze\s*│/
+        syntax match HistorySeparator /[─│]/
+        
+        highlight default link HistoryTime Comment
+        highlight default link HistoryType Keyword
+        highlight default link HistoryFile Directory
+        highlight default link HistorySeparator Comment
+    ]])
+    
+    -- 绑定快捷键
+    local function close_window()
+        if api.nvim_win_is_valid(win) then
+            api.nvim_win_close(win, true)
+        end
+    end
+    
+    local function jump_to_history()
+        local cursor = api.nvim_win_get_cursor(win)
+        local line_num = cursor[1]
+        
+        -- 获取对应的历史项索引
+        local item_index = jump_history.get_item_index_from_display_line(line_num, #state.items)
+        
+        if item_index and state.items[item_index] then
+            local item = state.items[item_index]
+            
+            -- 关闭历史窗口
+            close_window()
+            
+            -- 跳转到历史位置
+            local target_buf = item.buffer_id
+            if not api.nvim_buf_is_valid(target_buf) then
+                target_buf = vim.uri_to_bufnr(item.uri)
+            end
+            
+            -- 打开文件
+            if tools.buffer_is_listed(target_buf) then
+                vim.cmd(string.format("buffer %s", target_buf))
+            else
+                vim.cmd(string.format("edit %s", vim.fn.fnameescape(item.file_path)))
+            end
+            
+            -- 设置光标位置
+            api.nvim_win_set_cursor(0, {item.line, item.col})
+            vim.cmd("norm! zz")
+            
+            notify.Info(string.format("Jumped to history: %s:%d", item.file_name, item.line))
+        end
+    end
+    
+    local function delete_history_item()
+        local cursor = api.nvim_win_get_cursor(win)
+        local line_num = cursor[1]
+        
+        local item_index = jump_history.get_item_index_from_display_line(line_num, #state.items)
+        
+        if item_index and jump_history.remove_item(state, item_index) then
+            -- 刷新显示
+            local new_lines = jump_history.get_display_lines(state)
+            api.nvim_buf_set_option(buf, "modifiable", true)
+            api.nvim_buf_set_lines(buf, 0, -1, false, new_lines)
+            api.nvim_buf_set_option(buf, "modifiable", false)
+            
+            -- 调整光标位置
+            local new_line = math.min(line_num, #new_lines - 2)
+            if new_line < 3 then new_line = 3 end
+            api.nvim_win_set_cursor(win, {new_line, 0})
+            
+            notify.Info("History item deleted")
+        end
+    end
+    
+    local function clear_all_history()
+        -- 确认对话框
+        local confirm = vim.fn.confirm("Clear all jump history?", "&Yes\n&No", 2)
+        if confirm == 1 then
+            jump_history.clear_history(state)
+            
+            -- 刷新显示
+            local new_lines = jump_history.get_display_lines(state)
+            api.nvim_buf_set_option(buf, "modifiable", true)
+            api.nvim_buf_set_lines(buf, 0, -1, false, new_lines)
+            api.nvim_buf_set_option(buf, "modifiable", false)
+            
+            notify.Info("Jump history cleared")
+        end
+    end
+    
+    -- 键盘映射
+    local opts = { noremap = true, silent = true, buffer = buf }
+    
+    vim.keymap.set("n", "<CR>", jump_to_history, opts)
+    vim.keymap.set("n", "o", jump_to_history, opts)
+    vim.keymap.set("n", "q", close_window, opts)
+    vim.keymap.set("n", "<ESC>", close_window, opts)
+    vim.keymap.set("n", "d", delete_history_item, opts)
+    vim.keymap.set("n", "c", clear_all_history, opts)
+    vim.keymap.set("n", "j", "j", opts)
+    vim.keymap.set("n", "k", "k", opts)
+    vim.keymap.set("n", "gg", "gg", opts)
+    vim.keymap.set("n", "G", "G", opts)
+end
+
 --- 重新应用搜索高亮（在重新生成内容后调用）
 ---@private
 function ClassController:_reapplySearchHighlight()
@@ -1845,7 +2070,7 @@ function ClassController:_generateSubViewContentSearchFiltered(data, bufId)
         api.nvim_set_option_value("modifiable", true, { buf = bufId })
         api.nvim_buf_set_lines(bufId, -1, -1, false, {
             "",
-            string.format("... (还有 %d 个匹配的文件未显示，向下滚动加载)", 
+            string.format("... (%d more matched files, scroll down to load)", 
                          #matched_uris - end_idx)
         })
         api.nvim_set_option_value("modifiable", false, { buf = bufId })
