@@ -22,12 +22,19 @@ function M.run()
     -- 获取全局控制器实例
     local controller = require("LspUI.layer.controller"):GetInstance()
     
-    if controller and controller.ActionShowHistory then
-        controller:ActionShowHistory()
-    else
+    if not controller then
         local notify = require("LspUI.layer.notify")
-        notify.Warn("Jump history is not initialized yet")
+        notify.Warn("LspUI controller is not initialized")
+        return
     end
+    
+    if not controller.ActionShowHistory then
+        local notify = require("LspUI.layer.notify")
+        notify.Warn("Jump history feature is not available")
+        return
+    end
+    
+    controller:ActionShowHistory()
 end
 
 return M
