@@ -107,7 +107,7 @@ end
 
 -- whether buffer is valid
 --- @return boolean
-function ClassView:BufVaild()
+function ClassView:BufValid()
     if not self._attachBuffer then
         return false
     end
@@ -437,7 +437,7 @@ end
 --- @return ClassView
 function ClassView:ShowView()
     if not self._windowId or not api.nvim_win_is_valid(self._windowId) then
-        if self:BufVaild() then
+        if self:BufValid() then
             -- 使用保存的配置重新创建窗口
             self._windowId =
                 api.nvim_open_win(self._attachBuffer, self._enter, self._config)

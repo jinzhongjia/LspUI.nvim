@@ -211,7 +211,7 @@ function M.get_status_line(state, virtual_scroll_info)
     -- 虚拟滚动搜索过滤模式
     if virtual_scroll_info and virtual_scroll_info.total > 0 then
         return string.format(
-            " [Search: '%s' - %d/%d matches] (显示 %d/%d 文件) ",
+            " [Search: '%s' - %d/%d matches] (%d/%d files loaded) ",
             state.pattern,
             state.match_count,
             state.total_count,

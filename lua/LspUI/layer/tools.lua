@@ -9,7 +9,16 @@ local version = "v3"
 --- @return string[]
 function M.GetUriLines(buffer_id, uri, rows)
     local lines = {}
-    if api.nvim_buf_is_loaded(buffer_id) then
+    
+    -- 检查 buffer 是否已加载，或者是否为非文件 URI
+    local should_load_from_buffer = api.nvim_buf_is_loaded(buffer_id) or string.sub(uri, 1, 4) ~= "file"
+    
+    if should_load_from_buffer then
+        -- 如果未加载且不是文件 URI，先加载 buffer
+        if not api.nvim_buf_is_loaded(buffer_id) then
+            fn.bufload(buffer_id)
+        end
+        
         for _, row in ipairs(rows) do
             if not lines[row] then
                 lines[row] = (api.nvim_buf_get_lines(
@@ -23,22 +32,7 @@ function M.GetUriLines(buffer_id, uri, rows)
         return lines
     end
 
-    if string.sub(uri, 1, 4) ~= "file" then
-        fn.bufload(buffer_id)
-        for _, row in ipairs(rows) do
-            if not lines[row] then
-                lines[row] = (api.nvim_buf_get_lines(
-                    buffer_id,
-                    row,
-                    row + 1,
-                    false
-                ) or { "" })[1]
-            end
-        end
-        return lines
-    end
-
-    -- get file name through buffer
+    -- 对于文件 URI，直接从文件读取
     local file_full_name = api.nvim_buf_get_name(buffer_id)
 
     -- open file handle
