@@ -63,7 +63,7 @@ end
 --- @param nameSpace integer
 --- @return ClassSubView
 function ClassSubView:ClearHl(nameSpace)
-    if not self:BufVaild() then
+    if not self:BufValid() then
         return self
     end
     api.nvim_buf_clear_namespace(self._attachBuffer, nameSpace, 0, -1)
@@ -76,7 +76,7 @@ end
 --- @param col integer
 --- @param endCol integer
 function ClassSubView:AddHl(nameSpace, hlGroup, lnum, col, endCol)
-    if not self:BufVaild() then
+    if not self:BufValid() then
         return self
     end
     vim.hl.range(
@@ -93,7 +93,7 @@ end
 --- @param code_regions table<string, {line:integer, col_start:integer, col_end:integer}[]>
 --- @return ClassSubView
 function ClassSubView:ApplySyntaxHighlight(code_regions)
-    if not self:BufVaild() then
+    if not self:BufValid() then
         return self
     end
 
@@ -139,7 +139,7 @@ end
 --- 清除子视图的语法高亮
 --- @return ClassSubView
 function ClassSubView:ClearSyntaxHighlight()
-    if not self:BufVaild() then
+    if not self:BufValid() then
         return self
     end
 

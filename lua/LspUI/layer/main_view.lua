@@ -230,7 +230,7 @@ end
 --- 清除主视图中的所有高亮
 --- @return ClassMainView
 function ClassMainView:ClearHighlight()
-    if not self:BufVaild() then
+    if not self:BufValid() then
         return self
     end
 
@@ -243,7 +243,7 @@ end
 --- @param hlGroup string? 高亮组名称，默认为 "Search"
 --- @return ClassMainView
 function ClassMainView:SetHighlight(ranges, hlGroup)
-    if not self:BufVaild() then
+    if not self:BufValid() then
         return self
     end
 

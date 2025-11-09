@@ -65,29 +65,6 @@ local function count_items(data)
     return file_count, total_lines
 end
 
---- 将数据按 URI 排序并切片
----@param data table LSP 数据
----@param start_file integer 开始文件索引 (0-based)
----@param end_file integer 结束文件索引 (不包含)
----@return table 切片后的数据 {uri -> item}
-local function slice_data_by_files(data, start_file, end_file)
-    -- 先获取并排序所有 URI（确保顺序稳定）
-    local uri_list = {}
-    for uri in pairs(data) do
-        table.insert(uri_list, uri)
-    end
-    table.sort(uri_list)
-    
-    -- 切片
-    local sliced = {}
-    for i = start_file + 1, math.min(end_file, #uri_list) do
-        local uri = uri_list[i]
-        sliced[uri] = data[uri]
-    end
-    
-    return sliced, uri_list
-end
-
 ---@return ClassController
 function ClassController:New()
     -- 如果存在全局实例，直接返回
