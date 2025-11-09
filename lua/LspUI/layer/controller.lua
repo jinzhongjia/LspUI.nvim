@@ -1122,7 +1122,7 @@ function ClassController:Go(method_name, buffer_id, params, origin_win)
             })
 
             -- 2️⃣ 记录到增强历史（如果启用）
-            if self._jump_history_state.enabled then
+            if self._jump_history_state and self._jump_history_state.enabled then
                 local history_item = jump_history.create_item({
                     uri = single_uri,
                     line = target_line,
@@ -1351,7 +1351,7 @@ function ClassController:ActionJump(cmd)
     end
 
     -- 2️⃣ 记录到增强历史（如果启用）
-    if self._jump_history_state.enabled then
+    if self._jump_history_state and self._jump_history_state.enabled then
         local history_item = jump_history.create_item({
             uri = item.uri,
             line = target_line,
@@ -1834,10 +1834,11 @@ function ClassController:ActionShowHistory()
     
     -- 创建浮动窗口
     local buf = api.nvim_create_buf(false, true)
-    api.nvim_buf_set_option(buf, "bufhidden", "wipe")
-    api.nvim_buf_set_option(buf, "buftype", "nofile")
+    vim.bo[buf].bufhidden = "wipe"
+    vim.bo[buf].buftype = "nofile"
+    vim.bo[buf].modifiable = true
     api.nvim_buf_set_lines(buf, 0, -1, false, lines)
-    api.nvim_buf_set_option(buf, "modifiable", false)
+    vim.bo[buf].modifiable = false
     
     -- 计算窗口大小
     local width = 100
@@ -1858,7 +1859,7 @@ function ClassController:ActionShowHistory()
     }
     
     local win = api.nvim_open_win(buf, true, win_opts)
-    api.nvim_win_set_option(win, "winhl", "Normal:Normal,FloatBorder:FloatBorder")
+    vim.wo[win].winhl = "Normal:Normal,FloatBorder:FloatBorder"
     
     -- 设置光标到最新记录（第3行，跳过标题）
     if #state.items > 0 then
@@ -1868,8 +1869,8 @@ function ClassController:ActionShowHistory()
     -- 设置语法高亮
     vim.cmd([[
         syntax match HistoryTime /\[\d\d:\d\d:\d\d\]/
-        syntax match HistoryType /│\s*\zs\w\+\ze\s*│/
-        syntax match HistoryFile /│\s*\zs[^│]\+\.lua:\d\+\ze\s*│/
+        syntax match HistoryType /│\s*\zs[a-zA-Z_]\+\ze\s*│/
+        syntax match HistoryFile /│\s*\zs[^│]\+\.\w\+:\d\+\ze\s*│/
         syntax match HistorySeparator /[─│]/
         
         highlight default link HistoryTime Comment
@@ -1928,9 +1929,9 @@ function ClassController:ActionShowHistory()
         if item_index and jump_history.remove_item(state, item_index) then
             -- 刷新显示
             local new_lines = jump_history.get_display_lines(state)
-            api.nvim_buf_set_option(buf, "modifiable", true)
+            vim.bo[buf].modifiable = true
             api.nvim_buf_set_lines(buf, 0, -1, false, new_lines)
-            api.nvim_buf_set_option(buf, "modifiable", false)
+            vim.bo[buf].modifiable = false
             
             -- 调整光标位置
             local new_line = math.min(line_num, #new_lines - 2)
@@ -1949,9 +1950,9 @@ function ClassController:ActionShowHistory()
             
             -- 刷新显示
             local new_lines = jump_history.get_display_lines(state)
-            api.nvim_buf_set_option(buf, "modifiable", true)
+            vim.bo[buf].modifiable = true
             api.nvim_buf_set_lines(buf, 0, -1, false, new_lines)
-            api.nvim_buf_set_option(buf, "modifiable", false)
+            vim.bo[buf].modifiable = false
             
             notify.Info("Jump history cleared")
         end

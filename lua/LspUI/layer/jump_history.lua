@@ -82,8 +82,9 @@ function M.get_line_context(uri, line)
     -- 如果 buffer 未加载，尝试读取文件
     local file_path = vim.uri_to_fname(uri)
     local ok, lines = pcall(vim.fn.readfile, file_path, '', line)
-    if ok and lines and lines[line] then
-        return vim.fn.trim(lines[line])
+    if ok and lines and #lines > 0 then
+        -- readfile 返回前 n 行，我们需要的是最后一行（即第 line 行）
+        return vim.fn.trim(lines[#lines])
     end
     
     return ""
@@ -143,8 +144,11 @@ function M.format_item(item, index)
     end
     pos_str = string.format("%-25s", pos_str)
     
-    -- 代码上下文
+    -- 代码上下文（确保不超过限制）
     local context = item.context or ""
+    if #context > 60 then
+        context = context:sub(1, 57) .. "..."
+    end
     
     return string.format("[%s] %s │ %s │ %s", time_str, type_str, pos_str, context)
 end
