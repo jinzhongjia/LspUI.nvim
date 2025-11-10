@@ -88,6 +88,7 @@ function ClassController:New()
         total_file_count = 0,
         load_more_threshold = vs_config.load_more_threshold or 50,
         uri_list = {},
+        uri_to_index = {}, -- URI 到索引的反向映射（性能优化）
         is_loading = false,
         -- 搜索过滤模式
         search_mode = false, -- 是否在搜索过滤模式
@@ -163,6 +164,13 @@ function ClassController:_generateSubViewContentVirtual(
     end
     table.sort(uri_list)
     self._virtual_scroll.uri_list = uri_list
+
+    -- 创建 URI 到 index 的反向映射（性能优化：O(1) 查找）
+    local uri_to_index = {}
+    for i, uri in ipairs(uri_list) do
+        uri_to_index[uri] = i
+    end
+    self._virtual_scroll.uri_to_index = uri_to_index
 
     -- 初始只加载前 chunk_size 个文件
     local chunk_size = self._virtual_scroll.chunk_size
@@ -1441,13 +1449,8 @@ function ClassController:ActionToggleFold()
 
     -- 如果启用了虚拟滚动，需要确保该文件已加载
     if self._virtual_scroll.enabled then
-        local uri_index = nil
-        for i, u in ipairs(self._virtual_scroll.uri_list) do
-            if u == uri then
-                uri_index = i
-                break
-            end
-        end
+        -- 使用反向映射进行 O(1) 查找（性能优化）
+        local uri_index = self._virtual_scroll.uri_to_index[uri]
 
         -- 如果该文件未加载，一次性加载到该位置（优化：避免循环调用和 UI 闪烁）
         if uri_index and uri_index > self._virtual_scroll.loaded_file_count then
