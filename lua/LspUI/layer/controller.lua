@@ -1876,9 +1876,10 @@ function ClassController:ActionShowHistory()
     -- 设置 filetype 以触发语法高亮（通过 ftplugin）
     vim.bo[buf].filetype = "LspUIJumpHistory"
 
-    -- 计算窗口大小（宽度基于编辑器列数的 80%，更适应不同屏幕尺寸）
+    -- 计算窗口大小
     local ui = api.nvim_list_uis()[1]
-    local width = math.floor(ui.width * 0.8)
+    -- 宽度：在小屏幕上使用 80%，但最大不超过 120 列（适合跳转历史的内容宽度）
+    local width = math.min(math.floor(ui.width * 0.8), 120)
     local max_height = config.options.jump_history.win_max_height or 20
     local height = math.min(#lines, max_height)
 
@@ -1897,6 +1898,116 @@ function ClassController:ActionShowHistory()
 
     local win = api.nvim_open_win(buf, true, win_opts)
     vim.wo[win].winhl = "Normal:Normal,FloatBorder:FloatBorder"
+
+    -- 添加高亮
+    local ns = api.nvim_create_namespace("LspUIJumpHistory")
+    
+    -- 高亮标题行（第1行）
+    vim.highlight.range(
+        buf,
+        ns,
+        "Title",
+        { 0, 0 },
+        { 0, -1 },
+        { priority = vim.highlight.priorities.user }
+    )
+    
+    -- 高亮分隔线（第2行和倒数第2行）
+    vim.highlight.range(
+        buf,
+        ns,
+        "Comment",
+        { 1, 0 },
+        { 1, -1 },
+        { priority = vim.highlight.priorities.user }
+    )
+    
+    if #lines > 2 then
+        vim.highlight.range(
+            buf,
+            ns,
+            "Comment",
+            { #lines - 2, 0 },
+            { #lines - 2, -1 },
+            { priority = vim.highlight.priorities.user }
+        )
+    end
+    
+    -- 高亮历史项
+    for i = 3, #lines - 2 do
+        local line = lines[i]
+        if line and line ~= "" then
+            -- 时间戳高亮 [HH:MM:SS]
+            local time_start, time_end = line:find("%[%d%d:%d%d:%d%d%]")
+            if time_start then
+                vim.highlight.range(
+                    buf,
+                    ns,
+                    "Number",
+                    { i - 1, time_start - 1 },
+                    { i - 1, time_end },
+                    { priority = vim.highlight.priorities.user }
+                )
+            end
+            
+            -- LSP 类型高亮（在第一个 │ 之前）
+            local first_sep = line:find("│")
+            if first_sep and time_end then
+                vim.highlight.range(
+                    buf,
+                    ns,
+                    "Function",
+                    { i - 1, time_end + 1 },
+                    { i - 1, first_sep - 1 },
+                    { priority = vim.highlight.priorities.user }
+                )
+            end
+            
+            -- 文件路径高亮（两个 │ 之间）
+            local second_sep = line:find("│", first_sep + 1)
+            if first_sep and second_sep then
+                vim.highlight.range(
+                    buf,
+                    ns,
+                    "Directory",
+                    { i - 1, first_sep + 1 },
+                    { i - 1, second_sep - 1 },
+                    { priority = vim.highlight.priorities.user }
+                )
+            end
+            
+            -- 代码上下文保持默认颜色（可以考虑添加语法高亮，但需要知道文件类型）
+        end
+    end
+    
+    -- 高亮底部快捷键提示（最后一行）
+    if #lines > 0 then
+        local help_line = lines[#lines]
+        local highlight_keys = {
+            { pattern = "<CR>", hl = "Special" },
+            { pattern = "d", hl = "WarningMsg" },
+            { pattern = "c", hl = "ErrorMsg" },
+            { pattern = "q", hl = "Special" },
+        }
+        
+        for _, key_info in ipairs(highlight_keys) do
+            local start_pos = 1
+            while true do
+                local key_start, key_end = help_line:find(key_info.pattern, start_pos, true)
+                if not key_start then break end
+                
+                vim.highlight.range(
+                    buf,
+                    ns,
+                    key_info.hl,
+                    { #lines - 1, key_start - 1 },
+                    { #lines - 1, key_end },
+                    { priority = vim.highlight.priorities.user + 1 }
+                )
+                start_pos = key_end + 1
+            end
+        end
+    end
 
     -- 设置光标到最新记录（第3行，跳过标题）
     if #state.items > 0 then
