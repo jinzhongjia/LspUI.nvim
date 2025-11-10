@@ -649,15 +649,18 @@ function ClassController:_loadMoreItems()
     -- 添加新的提示（如果还有更多）
     if end_idx < total_count then
         local remaining = total_count - end_idx
-        local tip_text = vs.search_mode
-                and string.format(
-                    "... (%d more matched files, scroll down to load)",
-                    remaining
-                )
-            or string.format(
+        local tip_text
+        if vs.search_mode then
+            tip_text = string.format(
+                "... (%d more matched files, scroll down to load)",
+                remaining
+            )
+        else
+            tip_text = string.format(
                 "... (%d more files, scroll down to load)",
                 remaining
             )
+        end
 
         api.nvim_buf_set_lines(bufnr, -1, -1, false, {
             "",
@@ -752,15 +755,18 @@ function ClassController:_loadItemsUpTo(target_index)
     -- 添加新的提示（如果还有更多）
     if end_idx < total_count then
         local remaining = total_count - end_idx
-        local tip_text = vs.search_mode
-                and string.format(
-                    "... (%d more matched files, scroll down to load)",
-                    remaining
-                )
-            or string.format(
+        local tip_text
+        if vs.search_mode then
+            tip_text = string.format(
+                "... (%d more matched files, scroll down to load)",
+                remaining
+            )
+        else
+            tip_text = string.format(
                 "... (%d more files, scroll down to load)",
                 remaining
             )
+        end
 
         api.nvim_buf_set_lines(bufnr, -1, -1, false, {
             "",
