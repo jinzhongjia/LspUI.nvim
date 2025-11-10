@@ -176,15 +176,17 @@ function ClassController:_generateSubViewContentVirtual(
     local chunk_size = self._virtual_scroll.chunk_size
     local end_idx = math.min(chunk_size, total_file_count)
 
-    -- 切片数据
+    -- 切片数据（保持顺序）
     local sliced_data = {}
+    local ordered_uris = {}
     for i = 1, end_idx do
         local uri = uri_list[i]
         sliced_data[uri] = data[uri]
+        table.insert(ordered_uris, uri)
     end
 
-    -- 调用完整渲染函数渲染切片数据
-    local width, height = self:_renderSubViewData(sliced_data, bufId)
+    -- 调用完整渲染函数渲染切片数据（传递有序 URI 列表）
+    local width, height = self:_renderSubViewData(sliced_data, bufId, ordered_uris)
 
     -- 添加"加载更多"提示
     if end_idx < total_file_count then
@@ -210,8 +212,9 @@ end
 ---@private
 ---@param data table LSP 数据
 ---@param start_line_offset integer 起始行偏移（用于计算行号）
+---@param ordered_uris table|nil 可选的有序 URI 列表，如果提供则使用，否则自动排序
 ---@return string[], integer[], table[], table, integer 内容行、高亮行、extmarks、语法区域、最大宽度
-function ClassController:_generateContentForData(data, start_line_offset)
+function ClassController:_generateContentForData(data, start_line_offset, ordered_uris)
     local content = {}
     local hl_lines = {}
     local extmarks = {}
@@ -236,12 +239,17 @@ function ClassController:_generateContentForData(data, start_line_offset)
 
     local cwd = normalize_path(vim.fn.getcwd())
 
-    -- 对 URI 进行排序以确保一致的顺序（修复 pairs 的不确定性问题）
-    local sorted_uris = {}
-    for uri in pairs(data) do
-        table.insert(sorted_uris, uri)
+    -- 如果没有提供有序列表，则对 URI 进行排序以确保一致的顺序
+    local sorted_uris
+    if ordered_uris then
+        sorted_uris = ordered_uris
+    else
+        sorted_uris = {}
+        for uri in pairs(data) do
+            table.insert(sorted_uris, uri)
+        end
+        table.sort(sorted_uris)
     end
-    table.sort(sorted_uris)
 
     -- 生成内容（按排序后的顺序遍历）
     for _, uri in ipairs(sorted_uris) do
@@ -327,7 +335,10 @@ end
 
 --- 渲染数据到 SubView（核心渲染逻辑，被完整渲染和虚拟渲染共用）
 ---@private
-function ClassController:_renderSubViewData(data, bufId)
+---@param data table LSP 数据
+---@param bufId integer Buffer ID
+---@param ordered_uris table|nil 可选的有序 URI 列表
+function ClassController:_renderSubViewData(data, bufId, ordered_uris)
     -- 允许修改缓冲区
     api.nvim_set_option_value("modifiable", true, { buf = bufId })
 
@@ -346,9 +357,9 @@ function ClassController:_renderSubViewData(data, bufId)
     local extmark_ns = api.nvim_create_namespace("LspUIPathExtmarks")
     api.nvim_buf_clear_namespace(bufId, extmark_ns, 0, -1)
 
-    -- 生成内容（使用提取的共用函数）
+    -- 生成内容（使用提取的共用函数，传递有序 URI 列表）
     local content, hl_lines, extmarks, syntax_regions, max_width =
-        self:_generateContentForData(data, 0)
+        self:_generateContentForData(data, 0, ordered_uris)
 
     -- 设置内容
     api.nvim_buf_set_lines(bufId, 0, -1, true, content)
@@ -641,12 +652,14 @@ function ClassController:_loadMoreItems()
         end_idx = math.min(start_idx + vs.chunk_size - 1, total_count)
     end
 
-    -- 获取要加载的 URI
+    -- 获取要加载的 URI（保持顺序）
     local new_data = {}
+    local ordered_uris = {}
     for i = start_idx, end_idx do
         local uri = uri_list[i]
         if data[uri] then
             new_data[uri] = data[uri]
+            table.insert(ordered_uris, uri)
         end
     end
 
@@ -657,10 +670,10 @@ function ClassController:_loadMoreItems()
         api.nvim_buf_set_lines(bufnr, line_count - 2, line_count, false, {})
     end
 
-    -- 生成新内容并追加（复用渲染逻辑）
+    -- 生成新内容并追加（复用渲染逻辑，传递有序 URI 列表）
     local append_start_line = api.nvim_buf_line_count(bufnr)
     local width, height =
-        self:_appendSubViewData(new_data, bufnr, append_start_line)
+        self:_appendSubViewData(new_data, bufnr, append_start_line, ordered_uris)
 
     -- 添加新的提示（如果还有更多）
     if end_idx < total_count then
@@ -747,12 +760,14 @@ function ClassController:_loadItemsUpTo(target_index)
         return
     end
 
-    -- 一次性获取所有要加载的 URI
+    -- 一次性获取所有要加载的 URI（保持顺序）
     local new_data = {}
+    local ordered_uris = {}
     for i = start_idx, end_idx do
         local uri = uri_list[i]
         if data[uri] then
             new_data[uri] = data[uri]
+            table.insert(ordered_uris, uri)
         end
     end
 
@@ -763,10 +778,10 @@ function ClassController:_loadItemsUpTo(target_index)
         api.nvim_buf_set_lines(bufnr, line_count - 2, line_count, false, {})
     end
 
-    -- 生成新内容并追加（一次性追加所有内容）
+    -- 生成新内容并追加（一次性追加所有内容，传递有序 URI 列表）
     local append_start_line = api.nvim_buf_line_count(bufnr)
     local width, height =
-        self:_appendSubViewData(new_data, bufnr, append_start_line)
+        self:_appendSubViewData(new_data, bufnr, append_start_line, ordered_uris)
 
     -- 添加新的提示（如果还有更多）
     if end_idx < total_count then
@@ -815,12 +830,16 @@ end
 
 --- 追加数据到 SubView（用于虚拟滚动动态加载）
 ---@private
-function ClassController:_appendSubViewData(data, bufId, start_line)
+---@param data table LSP 数据
+---@param bufId integer Buffer ID
+---@param start_line integer 起始行号
+---@param ordered_uris table|nil 可选的有序 URI 列表
+function ClassController:_appendSubViewData(data, bufId, start_line, ordered_uris)
     local extmark_ns = api.nvim_create_namespace("LspUIPathExtmarks")
 
-    -- 生成内容（使用提取的共用函数）
+    -- 生成内容（使用提取的共用函数，传递有序 URI 列表）
     local content, hl_lines, extmarks, syntax_regions, max_width =
-        self:_generateContentForData(data, start_line)
+        self:_generateContentForData(data, start_line, ordered_uris)
 
     -- 追加内容
     api.nvim_buf_set_lines(bufId, start_line, start_line, false, content)
@@ -2266,17 +2285,19 @@ function ClassController:_generateSubViewContentSearchFiltered(data, bufId)
         end_idx = math.min(chunk_size, #matched_uris)
     end
 
-    -- 只渲染匹配的文件
+    -- 只渲染匹配的文件（保持顺序）
     local filtered_data = {}
+    local ordered_uris = {}
     for i = 1, end_idx do
         local uri = matched_uris[i]
         if data[uri] then
             filtered_data[uri] = data[uri]
+            table.insert(ordered_uris, uri)
         end
     end
 
-    -- 渲染
-    local width, height = self:_renderSubViewData(filtered_data, bufId)
+    -- 渲染（传递有序 URI 列表）
+    local width, height = self:_renderSubViewData(filtered_data, bufId, ordered_uris)
 
     -- 添加提示
     if end_idx < #matched_uris then

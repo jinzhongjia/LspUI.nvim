@@ -56,7 +56,7 @@ function M.GetUriLines(buffer_id, uri, rows)
     end
 
     local need = 0 -- keep track of how many unique rows we need
-    for _, row in pairs(rows) do
+    for _, row in ipairs(rows) do
         if not lines[row] then
             need = need + 1
         end
