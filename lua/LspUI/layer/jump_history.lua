@@ -207,7 +207,7 @@ function M.get_display_lines(state)
     table.insert(lines, string.rep("─", 100))
     table.insert(
         lines,
-        " <CR>:Jump  d:Delete  c:Clear  <C-o>/<C-i>:Back/Forward  q:Close"
+        " <CR>:Jump  d:Delete  c:Clear  q:Close"
     )
 
     return lines
