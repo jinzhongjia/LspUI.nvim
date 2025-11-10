@@ -124,6 +124,15 @@ end
 --- @param buffer_id integer
 --- @param callback fun(hover_tuples: hover_tuple[])
 function M.get_hovers(clients, buffer_id, callback)
+    -- 检查客户端是否就绪
+    local ClassLsp = require("LspUI.layer.lsp")
+    local lsp_instance = ClassLsp:New()
+    local ready, reason = lsp_instance:CheckClientsReady(clients)
+    if not ready then
+        require("LspUI.layer.notify").Warn(reason)
+        return
+    end
+
     -- remove past hover
     hover_tuples = {}
     -- make hover params

@@ -68,6 +68,43 @@ function ClassLsp:New()
     return obj
 end
 
+--- 检查客户端列表是否已就绪
+--- @param clients vim.lsp.Client[]|vim.lsp.Client 客户端列表或单个客户端
+--- @return boolean, string? 是否就绪，未就绪的原因
+function ClassLsp:CheckClientsReady(clients)
+    if not clients then
+        return false, "No LSP client available"
+    end
+
+    -- 处理单个客户端的情况
+    local client_list = type(clients) == "table" and clients or { clients }
+    
+    -- 检查是否有任何客户端
+    if #client_list == 0 then
+        return false, "No LSP client available"
+    end
+
+    -- 检查所有客户端的初始化状态
+    local unready_clients = {}
+    for _, client in ipairs(client_list) do
+        -- 检查客户端是否已完成初始化
+        -- server_capabilities 只有在 LSP 初始化完成后才会被设置
+        if not client.server_capabilities or vim.tbl_isempty(client.server_capabilities) then
+            table.insert(unready_clients, client.name or "unknown")
+        end
+    end
+
+    if #unready_clients > 0 then
+        local client_names = table.concat(unready_clients, ", ")
+        return false, string.format(
+            "LSP server(s) not ready yet: %s. Please wait a moment and try again.",
+            client_names
+        )
+    end
+
+    return true
+end
+
 ---@param method_name string "definition"|"type_definition"|"declaration"|"reference"|"implementation"
 ---@return boolean 设置是否成功
 function ClassLsp:SetMethod(method_name)
@@ -96,6 +133,19 @@ end
 function ClassLsp:Request(buffer_id, params, callback)
     if not self._method then
         lib_notify.Error("Please set LSP method first")
+        return
+    end
+
+    -- 获取支持该方法的客户端
+    local clients = lsp.get_clients({
+        bufnr = buffer_id,
+        method = self._method.method,
+    })
+
+    -- 检查客户端是否就绪
+    local ready, reason = self:CheckClientsReady(clients)
+    if not ready then
+        lib_notify.Warn(reason)
         return
     end
 
@@ -661,6 +711,13 @@ function ClassLsp:RequestCodeActions(buffer_id, params, callback, options)
         return false, "no client supports code_action"
     end
 
+    -- 检查客户端是否就绪
+    local ready, reason = self:CheckClientsReady(clients)
+    if not ready then
+        lib_notify.Warn(reason)
+        return false, reason
+    end
+
     local action_tuples = {}
     local pending_requests = #clients
     local is_visual = options.is_visual or false
@@ -813,6 +870,13 @@ function ClassLsp:CheckRenamePosition(buffer_id, params, callback)
     local clients = self:GetRenameClients(buffer_id)
     if not clients then
         callback(false, nil, "No available renaming client")
+        return
+    end
+
+    -- 检查客户端是否就绪
+    local ready, reason = self:CheckClientsReady(clients)
+    if not ready then
+        callback(false, nil, reason)
         return
     end
 

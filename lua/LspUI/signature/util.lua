@@ -119,6 +119,15 @@ local function request(buffer_id, callback)
         return
     end
 
+    -- 检查客户端是否就绪
+    local ClassLsp = require("LspUI.layer.lsp")
+    local lsp_instance = ClassLsp:New()
+    local ready, reason = lsp_instance:CheckClientsReady(clients)
+    if not ready then
+        notify.Warn(reason or "LSP client not ready")
+        return
+    end
+
     local client = clients[1] -- 只使用第一个支持签名功能的客户端
     local params = lsp.util.make_position_params(0, client.offset_encoding)
 
