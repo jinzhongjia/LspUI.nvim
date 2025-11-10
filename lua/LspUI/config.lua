@@ -107,6 +107,7 @@ local default_jump_history_config = {
     enable = true, -- 是否启用跳转历史功能
     max_size = 50, -- 最大历史记录数量
     command_enable = true, -- 是否启用 :LspUI history 命令
+    win_max_height = 20, -- 跳转历史窗口的最大高度（行数）
     smart_jumplist = {
         min_distance = 5, -- 同文件跳转的最小行距（小于此距离不记录）
         cross_file_only = false, -- 是否只记录跨文件跳转
