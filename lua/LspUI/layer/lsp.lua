@@ -78,7 +78,7 @@ function ClassLsp:CheckClientsReady(clients)
 
     -- 处理单个客户端的情况
     local client_list = type(clients) == "table" and clients or { clients }
-    
+
     -- 检查是否有任何客户端
     if #client_list == 0 then
         return false, "No LSP client available"
@@ -89,17 +89,21 @@ function ClassLsp:CheckClientsReady(clients)
     for _, client in ipairs(client_list) do
         -- 检查客户端是否已完成初始化
         -- server_capabilities 只有在 LSP 初始化完成后才会被设置
-        if not client.server_capabilities or vim.tbl_isempty(client.server_capabilities) then
+        if
+            not client.server_capabilities
+            or vim.tbl_isempty(client.server_capabilities)
+        then
             table.insert(unready_clients, client.name or "unknown")
         end
     end
 
     if #unready_clients > 0 then
         local client_names = table.concat(unready_clients, ", ")
-        return false, string.format(
-            "LSP server(s) not ready yet: %s. Please wait a moment and try again.",
-            client_names
-        )
+        return false,
+            string.format(
+                "LSP server(s) not ready yet: %s. Please wait a moment and try again.",
+                client_names
+            )
     end
 
     return true
