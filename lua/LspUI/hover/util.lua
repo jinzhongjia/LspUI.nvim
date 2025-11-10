@@ -1,6 +1,7 @@
 local lsp, api, fn = vim.lsp, vim.api, vim.fn
 local hover_feature = lsp.protocol.Methods.textDocument_hover
 local ClassView = require("LspUI.layer.view")
+local ClassLsp = require("LspUI.layer.lsp")
 local config = require("LspUI.config")
 local notify = require("LspUI.layer.notify")
 local tools = require("LspUI.layer.tools")
@@ -125,11 +126,10 @@ end
 --- @param callback fun(hover_tuples: hover_tuple[])
 function M.get_hovers(clients, buffer_id, callback)
     -- 检查客户端是否就绪
-    local ClassLsp = require("LspUI.layer.lsp")
     local lsp_instance = ClassLsp:New()
     local ready, reason = lsp_instance:CheckClientsReady(clients)
     if not ready then
-        require("LspUI.layer.notify").Warn(reason)
+        notify.Warn(reason)
         return
     end
 
