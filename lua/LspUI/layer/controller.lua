@@ -302,7 +302,7 @@ function ClassController:_generateContentForData(data, start_line_offset)
             syntax_regions[filetype] = {}
         end
 
-        for _, row in pairs(uri_rows) do
+        for _, row in ipairs(uri_rows) do
             local line_code = vim.fn.trim(lines[row] or "")
             local code_fmt = string.format("   %s", line_code)
 
@@ -360,7 +360,7 @@ function ClassController:_renderSubViewData(data, bufId)
     local subViewNamespace = api.nvim_create_namespace("LspUISubView")
     api.nvim_buf_clear_namespace(bufId, subViewNamespace, 0, -1)
 
-    for _, lnum in pairs(hl_lines) do
+    for _, lnum in ipairs(hl_lines) do
         vim.highlight.range(
             bufId,
             subViewNamespace,
@@ -830,7 +830,7 @@ function ClassController:_appendSubViewData(data, bufId, start_line)
 
     -- 设置高亮
     local subViewNamespace = api.nvim_create_namespace("LspUISubView")
-    for _, lnum in pairs(hl_lines) do
+    for _, lnum in ipairs(hl_lines) do
         vim.highlight.range(
             bufId,
             subViewNamespace,
@@ -997,7 +997,7 @@ function ClassController:_findPositionFromParams(params)
         local data = lsp_data[uri]
         lnum = lnum + 1
         if not data.fold then
-            for _, val in pairs(data.range) do
+            for _, val in ipairs(data.range) do
                 lnum = lnum + 1
                 if tools.compare_uri(uri, param_uri) then
                     if not file_lnum then
@@ -2230,7 +2230,7 @@ function ClassController:_searchInAllData(pattern)
 
             local lines = tools.GetUriLines(item.buffer_id, uri, uri_rows)
 
-            for _, row in pairs(uri_rows) do
+            for _, row in ipairs(uri_rows) do
                 local line_code = lines[row] or ""
                 if line_code:lower():find(pattern_lower, 1, true) then
                     has_match = true
