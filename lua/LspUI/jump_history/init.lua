@@ -2,6 +2,7 @@
 local command = require("LspUI.command")
 local config = require("LspUI.config")
 local notify = require("LspUI.layer.notify")
+local controller_module = require("LspUI.layer.controller")
 
 local M = {}
 
@@ -24,7 +25,7 @@ end
 -- 运行函数 - 显示跳转历史
 function M.run()
     -- 获取全局控制器实例
-    local controller = require("LspUI.layer.controller"):GetInstance()
+    local controller = controller_module:GetInstance()
 
     if not controller then
         notify.Warn("LspUI controller is not initialized")
