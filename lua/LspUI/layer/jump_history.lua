@@ -221,21 +221,4 @@ function M.get_item_index_from_display_line(display_line, total_items)
     return total_items - offset + 1
 end
 
---- 获取历史统计信息
---- @param state JumpHistoryState
---- @return table 统计信息 {total: integer, by_type: table<string, integer>}
-function M.get_statistics(state)
-    local stats = {
-        total = #state.items,
-        by_type = {},
-    }
-    
-    for _, item in ipairs(state.items) do
-        local type_name = item.lsp_type
-        stats.by_type[type_name] = (stats.by_type[type_name] or 0) + 1
-    end
-    
-    return stats
-end
-
 return M
