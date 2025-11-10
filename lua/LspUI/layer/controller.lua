@@ -1879,7 +1879,8 @@ function ClassController:ActionShowHistory()
     -- 计算窗口大小（宽度基于编辑器列数的 80%，更适应不同屏幕尺寸）
     local ui = api.nvim_list_uis()[1]
     local width = math.floor(ui.width * 0.8)
-    local height = math.min(#lines, 20)
+    local max_height = config.options.jump_history.win_max_height or 20
+    local height = math.min(#lines, max_height)
 
     -- 居中位置
     local win_opts = {
