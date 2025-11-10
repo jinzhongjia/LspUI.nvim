@@ -104,20 +104,20 @@ local default_reference_config = {
 
 --- @type LspUI_jump_history_config
 local default_jump_history_config = {
-    enable = true,              -- 是否启用跳转历史功能
-    max_size = 50,              -- 最大历史记录数量
-    command_enable = true,      -- 是否启用 :LspUI history 命令
+    enable = true, -- 是否启用跳转历史功能
+    max_size = 50, -- 最大历史记录数量
+    command_enable = true, -- 是否启用 :LspUI history 命令
     smart_jumplist = {
-        min_distance = 5,       -- 同文件跳转的最小行距（小于此距离不记录）
+        min_distance = 5, -- 同文件跳转的最小行距（小于此距离不记录）
         cross_file_only = false, -- 是否只记录跨文件跳转
     },
 }
 
 --- @type LspUI_virtual_scroll_config
 local default_virtual_scroll_config = {
-    threshold = 500,            -- 超过此数量的项目启用虚拟滚动
-    chunk_size = 200,           -- 每次渲染的文件数
-    load_more_threshold = 50,   -- 距离底部多少行时触发加载
+    threshold = 500, -- 超过此数量的项目启用虚拟滚动
+    chunk_size = 200, -- 每次渲染的文件数
+    load_more_threshold = 50, -- 距离底部多少行时触发加载
 }
 
 --- @type LspUI_pos_keybind_config

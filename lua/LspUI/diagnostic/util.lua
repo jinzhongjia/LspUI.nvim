@@ -84,7 +84,7 @@ function M.render(action)
         --- @type string
         local msg = message
         local msg_display_width = fn.strdisplaywidth(msg)
-        local msg_byte_len = #msg  -- 字节长度用于高亮
+        local msg_byte_len = #msg -- 字节长度用于高亮
         if msg_display_width > max_width then
             max_width = msg_display_width
         end

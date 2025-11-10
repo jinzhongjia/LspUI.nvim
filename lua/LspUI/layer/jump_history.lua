@@ -39,25 +39,27 @@ function M.add_item(state, item)
     if not state.enabled then
         return
     end
-    
+
     -- 添加时间戳
     item.timestamp = os.time()
-    
+
     -- 去重：如果最后一条记录与当前完全相同，则不添加
     if #state.items > 0 then
         local last = state.items[#state.items]
-        if last.uri == item.uri 
-           and last.line == item.line 
-           and last.col == item.col then
+        if
+            last.uri == item.uri
+            and last.line == item.line
+            and last.col == item.col
+        then
             -- 更新时间戳即可
             last.timestamp = item.timestamp
             return
         end
     end
-    
+
     -- 添加到历史
     table.insert(state.items, item)
-    
+
     -- 如果超过最大容量，移除最老的
     if #state.items > state.max_size then
         table.remove(state.items, 1)
@@ -70,23 +72,24 @@ end
 --- @return string
 function M.get_line_context(uri, line)
     local bufnr = vim.uri_to_bufnr(uri)
-    
+
     -- 如果 buffer 已加载
     if api.nvim_buf_is_loaded(bufnr) then
-        local ok, lines = pcall(api.nvim_buf_get_lines, bufnr, line - 1, line, false)
+        local ok, lines =
+            pcall(api.nvim_buf_get_lines, bufnr, line - 1, line, false)
         if ok and lines and lines[1] then
             return vim.fn.trim(lines[1])
         end
     end
-    
+
     -- 如果 buffer 未加载，尝试读取文件
     local file_path = vim.uri_to_fname(uri)
-    local ok, lines = pcall(vim.fn.readfile, file_path, '', line)
+    local ok, lines = pcall(vim.fn.readfile, file_path, "", line)
     if ok and lines and #lines > 0 then
         -- readfile 返回前 n 行，我们需要的是最后一行（即第 line 行）
         return vim.fn.trim(lines[#lines])
     end
-    
+
     return ""
 end
 
@@ -97,18 +100,18 @@ function M.create_item(opts)
     local uri = opts.uri
     local file_path = vim.uri_to_fname(uri)
     local file_name = vim.fn.fnamemodify(file_path, ":t")
-    
+
     -- 获取代码上下文（如果没有提供）
     local context = opts.context
     if not context or context == "" then
         context = M.get_line_context(uri, opts.line)
     end
-    
+
     -- 截断过长的上下文
     if #context > 60 then
         context = context:sub(1, 57) .. "..."
     end
-    
+
     return {
         uri = uri,
         line = opts.line,
@@ -129,28 +132,34 @@ end
 function M.format_item(item, index)
     -- 格式化时间
     local time_str = os.date("%H:%M:%S", item.timestamp)
-    
+
     -- 格式化 LSP 类型（固定宽度）
     local type_str = item.lsp_type
     if #type_str > 10 then
         type_str = type_str:sub(1, 7) .. "..."
     end
     type_str = string.format("%-10s", type_str)
-    
+
     -- 格式化文件位置
     local pos_str = string.format("%s:%d", item.file_name, item.line)
     if #pos_str > 25 then
         pos_str = "..." .. pos_str:sub(-22)
     end
     pos_str = string.format("%-25s", pos_str)
-    
+
     -- 代码上下文（确保不超过限制）
     local context = item.context or ""
     if #context > 60 then
         context = context:sub(1, 57) .. "..."
     end
-    
-    return string.format("[%s] %s │ %s │ %s", time_str, type_str, pos_str, context)
+
+    return string.format(
+        "[%s] %s │ %s │ %s",
+        time_str,
+        type_str,
+        pos_str,
+        context
+    )
 end
 
 --- 获取历史列表的显示内容
@@ -166,24 +175,30 @@ function M.get_display_lines(state)
             "",
         }
     end
-    
+
     local lines = {}
-    
+
     -- 标题
-    table.insert(lines, string.format(" LspUI Jump History (%d items)", #state.items))
+    table.insert(
+        lines,
+        string.format(" LspUI Jump History (%d items)", #state.items)
+    )
     table.insert(lines, string.rep("─", 100))
-    
+
     -- 历史项（倒序显示，最新的在上面）
     for i = #state.items, 1, -1 do
         local item = state.items[i]
         local formatted = M.format_item(item, i)
         table.insert(lines, " " .. formatted)
     end
-    
+
     -- 底部提示
     table.insert(lines, string.rep("─", 100))
-    table.insert(lines, " <CR>:Jump  d:Delete  c:Clear  <C-o>/<C-i>:Back/Forward  q:Close")
-    
+    table.insert(
+        lines,
+        " <CR>:Jump  d:Delete  c:Clear  <C-o>/<C-i>:Back/Forward  q:Close"
+    )
+
     return lines
 end
 
@@ -201,7 +216,7 @@ function M.remove_item(state, index)
     if index < 1 or index > #state.items then
         return false
     end
-    
+
     table.remove(state.items, index)
     return true
 end
@@ -215,9 +230,9 @@ function M.get_item_index_from_display_line(display_line, total_items)
     if display_line <= 2 or display_line > (2 + total_items) then
         return nil
     end
-    
+
     -- 因为是倒序显示，需要反向计算
-    local offset = display_line - 2  -- 减去标题行
+    local offset = display_line - 2 -- 减去标题行
     return total_items - offset + 1
 end
 

@@ -98,7 +98,7 @@ function ClassSubView:ApplySyntaxHighlight(code_regions)
     end
 
     local bufid = self:GetBufID()
-    
+
     -- 先清理旧的语法高亮，避免残留数据导致高亮错误
     syntax_highlight.detach(bufid)
 

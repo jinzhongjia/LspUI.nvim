@@ -8,7 +8,10 @@ local M = {}
 -- 添加标准的init函数
 function M.init()
     -- 检查模块是否启用
-    if not config.options.jump_history or not config.options.jump_history.enable then
+    if
+        not config.options.jump_history
+        or not config.options.jump_history.enable
+    then
         return
     end
 
@@ -22,17 +25,17 @@ end
 function M.run()
     -- 获取全局控制器实例
     local controller = require("LspUI.layer.controller"):GetInstance()
-    
+
     if not controller then
         notify.Warn("LspUI controller is not initialized")
         return
     end
-    
+
     if not controller.ActionShowHistory then
         notify.Warn("Jump history feature is not available")
         return
     end
-    
+
     controller:ActionShowHistory()
 end
 

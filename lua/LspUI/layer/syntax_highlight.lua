@@ -111,7 +111,7 @@ function M._attach_lang(buf, lang, regions)
 
     -- 应用语言名称映射
     local mapped_lang = language_map[lang] or lang
-    
+
     -- 特殊处理 markdown：使用 markdown_inline
     if mapped_lang == "markdown" then
         mapped_lang = "markdown_inline"
