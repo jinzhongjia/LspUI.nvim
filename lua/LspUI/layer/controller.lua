@@ -198,6 +198,115 @@ function ClassController:_generateSubViewContentVirtual(data, bufId, total_file_
     return width, height
 end
 
+--- 生成内容数据（共用逻辑，被渲染和追加函数调用）
+---@private
+---@param data table LSP 数据
+---@param start_line_offset integer 起始行偏移（用于计算行号）
+---@return string[], integer[], table[], table, integer 内容行、高亮行、extmarks、语法区域、最大宽度
+function ClassController:_generateContentForData(data, start_line_offset)
+    local content = {}
+    local hl_lines = {}
+    local extmarks = {}
+    local syntax_regions = {}
+    local max_width = 0
+    
+    -- 统一路径格式的辅助函数
+    local function normalize_path(path)
+        local result = path:gsub("\\", "/")
+        if vim.fn.has("win32") == 1 then
+            result = result:lower()
+        end
+        if result:sub(-1) ~= "/" then
+            result = result .. "/"
+        end
+        return result
+    end
+    
+    local function normalize_display_path(path)
+        return path:gsub("\\", "/")
+    end
+    
+    local cwd = normalize_path(vim.fn.getcwd())
+    
+    -- 生成内容
+    for uri, item in pairs(data) do
+        local file_full_name = vim.uri_to_fname(uri)
+        local file_name = vim.fn.fnamemodify(file_full_name, ":t")
+        local filetype = tools.detect_filetype(file_full_name)
+        
+        local rel_path = ""
+        local norm_file_path = normalize_path(vim.fn.fnamemodify(file_full_name, ":p"))
+        
+        if norm_file_path:sub(1, #cwd) == cwd then
+            local rel_to_cwd = file_full_name:sub(#vim.fn.getcwd() + 1)
+            if rel_to_cwd:sub(1, 1) == "/" or rel_to_cwd:sub(1, 1) == "\\" then
+                rel_to_cwd = rel_to_cwd:sub(2)
+            end
+            rel_to_cwd = normalize_display_path(rel_to_cwd)
+            local rel_dir = vim.fn.fnamemodify(rel_to_cwd, ":h")
+            rel_dir = normalize_display_path(rel_dir)
+            if rel_dir == "." then
+                rel_path = " (./)"
+            else
+                rel_path = " (./" .. rel_dir .. ")"
+            end
+        else
+            local dir = vim.fn.fnamemodify(file_full_name, ":h")
+            dir = normalize_display_path(dir)
+            rel_path = " (" .. dir .. ")"
+        end
+        
+        local file_fmt = string.format(" %s %s", item.fold and "▶" or "▼", file_name)
+        table.insert(content, file_fmt)
+        table.insert(hl_lines, start_line_offset + #content)
+        
+        if rel_path ~= "" then
+            table.insert(extmarks, {
+                line = start_line_offset + #content - 1,
+                text = rel_path,
+                hl_group = "Comment",
+            })
+        end
+        
+        local file_fmt_len = vim.fn.strdisplaywidth(file_fmt)
+        if file_fmt_len > max_width then
+            max_width = file_fmt_len
+        end
+        
+        local uri_rows = {}
+        for _, range in ipairs(item.range) do
+            table.insert(uri_rows, range.start.line)
+        end
+        
+        local lines = tools.GetUriLines(item.buffer_id, uri, uri_rows)
+        
+        if not syntax_regions[filetype] and filetype ~= "" then
+            syntax_regions[filetype] = {}
+        end
+        
+        for _, row in pairs(uri_rows) do
+            local line_code = vim.fn.trim(lines[row] or "")
+            local code_fmt = string.format("   %s", line_code)
+            
+            if not item.fold then
+                table.insert(content, code_fmt)
+                
+                if filetype and filetype ~= "" then
+                    local line_content = content[#content]
+                    local region_data = {
+                        line = start_line_offset + #content - 1,
+                        col_start = 3,
+                        col_end = #line_content,
+                    }
+                    table.insert(syntax_regions[filetype], region_data)
+                end
+            end
+        end
+    end
+    
+    return content, hl_lines, extmarks, syntax_regions, max_width
+end
+
 --- 渲染数据到 SubView（核心渲染逻辑，被完整渲染和虚拟渲染共用）
 ---@private
 function ClassController:_renderSubViewData(data, bufId)
@@ -219,108 +328,9 @@ function ClassController:_renderSubViewData(data, bufId)
     local extmark_ns = api.nvim_create_namespace("LspUIPathExtmarks")
     api.nvim_buf_clear_namespace(bufId, extmark_ns, 0, -1)
 
-    -- 初始化变量
-    local hl_lines = {} -- 需要高亮的行
-    local content = {} -- 要添加的内容
-    local extmarks = {} -- 存储要添加的extmark信息 {line, text, hl_group}
-    local max_width = 0
-
-    -- 添加新变量用于收集语法高亮信息
-    local syntax_regions = {}
-
-    -- 统一路径格式的辅助函数
-    local function normalize_path(path)
-        local result = path:gsub("\\", "/")
-        if vim.fn.has("win32") == 1 then
-            result = result:lower()
-        end
-        if result:sub(-1) ~= "/" then
-            result = result .. "/"
-        end
-        return result
-    end
-
-    local function normalize_display_path(path)
-        return path:gsub("\\", "/")
-    end
-
-    local cwd = normalize_path(vim.fn.getcwd())
-
-    -- 生成内容（与原逻辑相同）
-    for uri, item in pairs(data) do
-        local file_full_name = vim.uri_to_fname(uri)
-        local file_name = vim.fn.fnamemodify(file_full_name, ":t")
-        local filetype = tools.detect_filetype(file_full_name)
-
-        local rel_path = ""
-        local norm_file_path = normalize_path(vim.fn.fnamemodify(file_full_name, ":p"))
-
-        if norm_file_path:sub(1, #cwd) == cwd then
-            local rel_to_cwd = file_full_name:sub(#vim.fn.getcwd() + 1)
-            if rel_to_cwd:sub(1, 1) == "/" or rel_to_cwd:sub(1, 1) == "\\" then
-                rel_to_cwd = rel_to_cwd:sub(2)
-            end
-            rel_to_cwd = normalize_display_path(rel_to_cwd)
-            local rel_dir = vim.fn.fnamemodify(rel_to_cwd, ":h")
-            rel_dir = normalize_display_path(rel_dir)
-            if rel_dir == "." then
-                rel_path = " (./)"
-            else
-                rel_path = " (./" .. rel_dir .. ")"
-            end
-        else
-            local dir = vim.fn.fnamemodify(file_full_name, ":h")
-            dir = normalize_display_path(dir)
-            rel_path = " (" .. dir .. ")"
-        end
-
-        local file_fmt = string.format(" %s %s", item.fold and "▶" or "▼", file_name)
-        table.insert(content, file_fmt)
-        table.insert(hl_lines, #content)
-
-        if rel_path ~= "" then
-            table.insert(extmarks, {
-                line = #content - 1,
-                text = rel_path,
-                hl_group = "Comment",
-            })
-        end
-
-        local file_fmt_len = vim.fn.strdisplaywidth(file_fmt)
-        if file_fmt_len > max_width then
-            max_width = file_fmt_len
-        end
-
-        local uri_rows = {}
-        for _, range in ipairs(item.range) do
-            table.insert(uri_rows, range.start.line)
-        end
-
-        local lines = tools.GetUriLines(item.buffer_id, uri, uri_rows)
-
-        if not syntax_regions[filetype] and filetype ~= "" then
-            syntax_regions[filetype] = {}
-        end
-
-        for _, row in pairs(uri_rows) do
-            local line_code = vim.fn.trim(lines[row] or "")
-            local code_fmt = string.format("   %s", line_code)
-
-            if not item.fold then
-                table.insert(content, code_fmt)
-
-                if filetype and filetype ~= "" then
-                    local line_content = content[#content]
-                    local region_data = {
-                        line = #content - 1,
-                        col_start = 3,
-                        col_end = #line_content,
-                    }
-                    table.insert(syntax_regions[filetype], region_data)
-                end
-            end
-        end
-    end
+    -- 生成内容（使用提取的共用函数）
+    local content, hl_lines, extmarks, syntax_regions, max_width = 
+        self:_generateContentForData(data, 0)
 
     -- 设置内容
     api.nvim_buf_set_lines(bufId, 0, -1, true, content)
@@ -668,107 +678,11 @@ end
 --- 追加数据到 SubView（用于虚拟滚动动态加载）
 ---@private
 function ClassController:_appendSubViewData(data, bufId, start_line)
-    -- 这个函数类似 _renderSubViewData，但是追加内容而不是替换
     local extmark_ns = api.nvim_create_namespace("LspUIPathExtmarks")
-    local hl_lines = {}
-    local content = {}
-    local extmarks = {}
-    local max_width = 30  -- 默认最小宽度
-    local syntax_regions = {}
     
-    -- 复用路径处理函数
-    local function normalize_path(path)
-        local result = path:gsub("\\", "/")
-        if vim.fn.has("win32") == 1 then
-            result = result:lower()
-        end
-        if result:sub(-1) ~= "/" then
-            result = result .. "/"
-        end
-        return result
-    end
-    
-    local function normalize_display_path(path)
-        return path:gsub("\\", "/")
-    end
-    
-    local cwd = normalize_path(vim.fn.getcwd())
-    
-    -- 生成内容
-    for uri, item in pairs(data) do
-        local file_full_name = vim.uri_to_fname(uri)
-        local file_name = vim.fn.fnamemodify(file_full_name, ":t")
-        local filetype = tools.detect_filetype(file_full_name)
-        
-        local rel_path = ""
-        local norm_file_path = normalize_path(vim.fn.fnamemodify(file_full_name, ":p"))
-        
-        if norm_file_path:sub(1, #cwd) == cwd then
-            local rel_to_cwd = file_full_name:sub(#vim.fn.getcwd() + 1)
-            if rel_to_cwd:sub(1, 1) == "/" or rel_to_cwd:sub(1, 1) == "\\" then
-                rel_to_cwd = rel_to_cwd:sub(2)
-            end
-            rel_to_cwd = normalize_display_path(rel_to_cwd)
-            local rel_dir = vim.fn.fnamemodify(rel_to_cwd, ":h")
-            rel_dir = normalize_display_path(rel_dir)
-            if rel_dir == "." then
-                rel_path = " (./)"
-            else
-                rel_path = " (./" .. rel_dir .. ")"
-            end
-        else
-            local dir = vim.fn.fnamemodify(file_full_name, ":h")
-            dir = normalize_display_path(dir)
-            rel_path = " (" .. dir .. ")"
-        end
-        
-        local file_fmt = string.format(" %s %s", item.fold and "▶" or "▼", file_name)
-        table.insert(content, file_fmt)
-        table.insert(hl_lines, start_line + #content)
-        
-        if rel_path ~= "" then
-            table.insert(extmarks, {
-                line = start_line + #content - 1,
-                text = rel_path,
-                hl_group = "Comment",
-            })
-        end
-        
-        local file_fmt_len = vim.fn.strdisplaywidth(file_fmt)
-        if file_fmt_len > max_width then
-            max_width = file_fmt_len
-        end
-        
-        local uri_rows = {}
-        for _, range in ipairs(item.range) do
-            table.insert(uri_rows, range.start.line)
-        end
-        
-        local lines = tools.GetUriLines(item.buffer_id, uri, uri_rows)
-        
-        if not syntax_regions[filetype] and filetype ~= "" then
-            syntax_regions[filetype] = {}
-        end
-        
-        for _, row in pairs(uri_rows) do
-            local line_code = vim.fn.trim(lines[row] or "")
-            local code_fmt = string.format("   %s", line_code)
-            
-            if not item.fold then
-                table.insert(content, code_fmt)
-                
-                if filetype and filetype ~= "" then
-                    local line_content = content[#content]
-                    local region_data = {
-                        line = start_line + #content - 1,
-                        col_start = 3,
-                        col_end = #line_content,
-                    }
-                    table.insert(syntax_regions[filetype], region_data)
-                end
-            end
-        end
-    end
+    -- 生成内容（使用提取的共用函数）
+    local content, hl_lines, extmarks, syntax_regions, max_width = 
+        self:_generateContentForData(data, start_line)
     
     -- 追加内容
     api.nvim_buf_set_lines(bufId, start_line, start_line, false, content)
