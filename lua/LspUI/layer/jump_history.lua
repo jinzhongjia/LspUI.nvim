@@ -5,6 +5,9 @@ local api = vim.api
 
 local M = {}
 
+-- 常量定义
+local DEFAULT_CONTEXT_MAX_LEN = 60  -- 上下文字符串的最大长度
+
 --- @class JumpHistoryItem
 --- @field uri string 文件 URI
 --- @field line integer 行号（1-based）
@@ -106,8 +109,8 @@ function M.create_item(opts)
     local context = opts.context
     if context and context ~= "" then
         -- 截断过长的上下文
-        if #context > 60 then
-            context = context:sub(1, 57) .. "..."
+        if #context > DEFAULT_CONTEXT_MAX_LEN then
+            context = context:sub(1, DEFAULT_CONTEXT_MAX_LEN - 3) .. "..."
         end
     else
         context = nil
@@ -157,8 +160,8 @@ function M.format_item(item, index)
     end
     
     -- 确保上下文不超过限制
-    if #context > 60 then
-        context = context:sub(1, 57) .. "..."
+    if #context > DEFAULT_CONTEXT_MAX_LEN then
+        context = context:sub(1, DEFAULT_CONTEXT_MAX_LEN - 3) .. "..."
     end
 
     return string.format(
