@@ -4,7 +4,7 @@
 vim.cmd([[
     syntax match HistoryTime /\[\d\d:\d\d:\d\d\]/
     syntax match HistoryType /│\s*\zs[a-zA-Z_]\+\ze\s*│/
-    syntax match HistoryFile /│\s*\zs[^│]\+\.\w\+:\d\+\ze\s*│/
+    syntax match HistoryFile /│\s*\zs[^:]\+:\d\+\ze\s*│/
     syntax match HistorySeparator /[─│]/
     
     highlight default link HistoryTime Comment
