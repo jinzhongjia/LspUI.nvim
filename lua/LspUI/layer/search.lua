@@ -36,6 +36,7 @@ function M.clear_highlights(bufnr, state)
 end
 
 --- 检查一行是否匹配搜索模式
+--- 支持 Lua 模式匹配（类似正则表达式）
 ---@param line string
 ---@param pattern string
 ---@param ignore_case boolean
@@ -48,9 +49,12 @@ local function line_matches(line, pattern, ignore_case)
     local search_line = ignore_case and line:lower() or line
     local search_pattern = ignore_case and pattern:lower() or pattern
 
-    -- 尝试普通匹配
-    local start_pos, end_pos = search_line:find(search_pattern, 1, true)
-    if start_pos then
+    -- 使用 Lua 模式匹配（正则表达式），使用 pcall 捕获无效模式
+    local ok, start_pos, end_pos = pcall(function()
+        return search_line:find(search_pattern, 1, false)  -- false = 使用模式匹配
+    end)
+    
+    if ok and start_pos then
         return true, start_pos - 1, end_pos  -- 转换为0-based索引
     end
 
@@ -201,7 +205,9 @@ function M.get_status_line(state, virtual_scroll_info)
     )
 end
 
---- 进入搜索模式
+--- 进入搜索模式（使用 Lua 模式匹配，类似正则表达式）
+--- Lua 模式语法：https://www.lua.org/manual/5.1/manual.html#5.4.1
+--- 常用模式：. (任意字符) * (0或多个) + (1或多个) ? (可选) [] (字符类) 等
 ---@param bufnr integer
 ---@param state SearchState
 ---@param on_change function? 搜索模式变化时的回调
@@ -214,9 +220,9 @@ function M.enter_search_mode(bufnr, state, on_change, on_exit)
     state.enabled = true
     state.pattern = ""
 
-    -- 创建输入提示
+    -- 创建输入提示（支持 Lua 模式匹配）
     vim.ui.input({
-        prompt = "Search: ",
+        prompt = "Search (pattern): ",
         default = state.pattern,
     }, function(input)
         if input then
