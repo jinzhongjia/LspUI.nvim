@@ -3,10 +3,10 @@ local ClassLsp = require("LspUI.layer.lsp")
 local ClassMainView = require("LspUI.layer.main_view")
 local ClassSubView = require("LspUI.layer.sub_view")
 local config = require("LspUI.config")
-local notify = require("LspUI.layer.notify")
-local tools = require("LspUI.layer.tools")
-local search = require("LspUI.layer.search")
 local jump_history = require("LspUI.layer.jump_history")
+local notify = require("LspUI.layer.notify")
+local search = require("LspUI.layer.search")
+local tools = require("LspUI.layer.tools")
 
 -- 添加全局单例实例
 local _controller_instance = nil
@@ -44,16 +44,16 @@ ClassController.__index = ClassController
 local function count_items(data)
     local file_count = 0
     local total_lines = 0
-    
+
     for _, item in pairs(data) do
         file_count = file_count + 1
-        total_lines = total_lines + 1  -- 文件标题行
-        
+        total_lines = total_lines + 1 -- 文件标题行
+
         if not item.fold then
-            total_lines = total_lines + #item.range  -- 代码行
+            total_lines = total_lines + #item.range -- 代码行
         end
     end
-    
+
     return file_count, total_lines
 end
 
@@ -71,13 +71,13 @@ function ClassController:New()
     obj._mainView = ClassMainView:New(false)
     obj._subView = ClassSubView:New(true)
     obj._search_state = search.new_state() -- 初始化搜索状态
-    
+
     -- 初始化跳转历史（使用配置）
     local history_config = config.options.jump_history or {}
     local max_size = history_config.max_size or 50
     obj._jump_history_state = jump_history.new_state(max_size)
     obj._jump_history_state.enabled = history_config.enable ~= false
-    
+
     -- 初始化虚拟滚动状态（使用配置）
     local vs_config = config.options.virtual_scroll or {}
     obj._virtual_scroll = {
@@ -90,10 +90,10 @@ function ClassController:New()
         uri_list = {},
         is_loading = false,
         -- 搜索过滤模式
-        search_mode = false,           -- 是否在搜索过滤模式
-        matched_uri_list = {},         -- 匹配的 URI 列表（有序）
-        loaded_match_count = 0,        -- 已加载的匹配数
-        total_match_count = 0,         -- 总匹配数
+        search_mode = false, -- 是否在搜索过滤模式
+        matched_uri_list = {}, -- 匹配的 URI 列表（有序）
+        loaded_match_count = 0, -- 已加载的匹配数
+        total_match_count = 0, -- 总匹配数
     }
 
     api.nvim_create_augroup("LspUI_SubView", { clear = true })
@@ -124,10 +124,10 @@ function ClassController:_generateSubViewContent()
 
     -- 统计文件数量
     local file_count, _ = count_items(data)
-    
+
     -- 判断是否需要启用虚拟滚动
     local use_virtual_scroll = file_count > self._virtual_scroll.threshold
-    
+
     if use_virtual_scroll then
         return self:_generateSubViewContentVirtual(data, bufId, file_count)
     else
@@ -140,18 +140,22 @@ end
 function ClassController:_generateSubViewContentFull(data, bufId)
     -- 禁用虚拟滚动
     self._virtual_scroll.enabled = false
-    
+
     -- 直接调用渲染函数
     return self:_renderSubViewData(data, bufId)
 end
 
 --- 虚拟渲染（大列表，分批加载）
 ---@private
-function ClassController:_generateSubViewContentVirtual(data, bufId, total_file_count)
+function ClassController:_generateSubViewContentVirtual(
+    data,
+    bufId,
+    total_file_count
+)
     -- 启用虚拟滚动
     self._virtual_scroll.enabled = true
     self._virtual_scroll.total_file_count = total_file_count
-    
+
     -- 获取有序的 URI 列表
     local uri_list = {}
     for uri in pairs(data) do
@@ -159,35 +163,38 @@ function ClassController:_generateSubViewContentVirtual(data, bufId, total_file_
     end
     table.sort(uri_list)
     self._virtual_scroll.uri_list = uri_list
-    
+
     -- 初始只加载前 chunk_size 个文件
     local chunk_size = self._virtual_scroll.chunk_size
     local end_idx = math.min(chunk_size, total_file_count)
-    
+
     -- 切片数据
     local sliced_data = {}
     for i = 1, end_idx do
         local uri = uri_list[i]
         sliced_data[uri] = data[uri]
     end
-    
+
     -- 调用完整渲染函数渲染切片数据
     local width, height = self:_renderSubViewData(sliced_data, bufId)
-    
+
     -- 添加"加载更多"提示
     if end_idx < total_file_count then
         local remaining = total_file_count - end_idx
         api.nvim_set_option_value("modifiable", true, { buf = bufId })
         api.nvim_buf_set_lines(bufId, -1, -1, false, {
             "",
-            string.format("... (%d more files, scroll down to load)", remaining)
+            string.format(
+                "... (%d more files, scroll down to load)",
+                remaining
+            ),
         })
         api.nvim_set_option_value("modifiable", false, { buf = bufId })
         height = height + 2
     end
-    
+
     self._virtual_scroll.loaded_file_count = end_idx
-    
+
     return width, height
 end
 
@@ -202,7 +209,7 @@ function ClassController:_generateContentForData(data, start_line_offset)
     local extmarks = {}
     local syntax_regions = {}
     local max_width = 0
-    
+
     -- 统一路径格式的辅助函数
     local function normalize_path(path)
         local result = path:gsub("\\", "/")
@@ -214,22 +221,23 @@ function ClassController:_generateContentForData(data, start_line_offset)
         end
         return result
     end
-    
+
     local function normalize_display_path(path)
         return path:gsub("\\", "/")
     end
-    
+
     local cwd = normalize_path(vim.fn.getcwd())
-    
+
     -- 生成内容
     for uri, item in pairs(data) do
         local file_full_name = vim.uri_to_fname(uri)
         local file_name = vim.fn.fnamemodify(file_full_name, ":t")
         local filetype = tools.detect_filetype(file_full_name)
-        
+
         local rel_path = ""
-        local norm_file_path = normalize_path(vim.fn.fnamemodify(file_full_name, ":p"))
-        
+        local norm_file_path =
+            normalize_path(vim.fn.fnamemodify(file_full_name, ":p"))
+
         if norm_file_path:sub(1, #cwd) == cwd then
             local rel_to_cwd = file_full_name:sub(#vim.fn.getcwd() + 1)
             if rel_to_cwd:sub(1, 1) == "/" or rel_to_cwd:sub(1, 1) == "\\" then
@@ -248,11 +256,12 @@ function ClassController:_generateContentForData(data, start_line_offset)
             dir = normalize_display_path(dir)
             rel_path = " (" .. dir .. ")"
         end
-        
-        local file_fmt = string.format(" %s %s", item.fold and "▶" or "▼", file_name)
+
+        local file_fmt =
+            string.format(" %s %s", item.fold and "▶" or "▼", file_name)
         table.insert(content, file_fmt)
         table.insert(hl_lines, start_line_offset + #content)
-        
+
         if rel_path ~= "" then
             table.insert(extmarks, {
                 line = start_line_offset + #content - 1,
@@ -260,30 +269,30 @@ function ClassController:_generateContentForData(data, start_line_offset)
                 hl_group = "Comment",
             })
         end
-        
+
         local file_fmt_len = vim.fn.strdisplaywidth(file_fmt)
         if file_fmt_len > max_width then
             max_width = file_fmt_len
         end
-        
+
         local uri_rows = {}
         for _, range in ipairs(item.range) do
             table.insert(uri_rows, range.start.line)
         end
-        
+
         local lines = tools.GetUriLines(item.buffer_id, uri, uri_rows)
-        
+
         if not syntax_regions[filetype] and filetype ~= "" then
             syntax_regions[filetype] = {}
         end
-        
+
         for _, row in pairs(uri_rows) do
             local line_code = vim.fn.trim(lines[row] or "")
             local code_fmt = string.format("   %s", line_code)
-            
+
             if not item.fold then
                 table.insert(content, code_fmt)
-                
+
                 if filetype and filetype ~= "" then
                     local line_content = content[#content]
                     local region_data = {
@@ -296,7 +305,7 @@ function ClassController:_generateContentForData(data, start_line_offset)
             end
         end
     end
-    
+
     return content, hl_lines, extmarks, syntax_regions, max_width
 end
 
@@ -322,7 +331,7 @@ function ClassController:_renderSubViewData(data, bufId)
     api.nvim_buf_clear_namespace(bufId, extmark_ns, 0, -1)
 
     -- 生成内容（使用提取的共用函数）
-    local content, hl_lines, extmarks, syntax_regions, max_width = 
+    local content, hl_lines, extmarks, syntax_regions, max_width =
         self:_generateContentForData(data, 0)
 
     -- 设置内容
@@ -368,7 +377,8 @@ function ClassController:_renderSubViewData(data, bufId)
 
     -- 计算适当的宽度
     local res_width = max_width + 2 > 30 and 30 or max_width + 2
-    local max_columns = math.floor(api.nvim_get_option_value("columns", {}) * 0.3)
+    local max_columns =
+        math.floor(api.nvim_get_option_value("columns", {}) * 0.3)
 
     if max_columns > res_width then
         res_width = max_columns
@@ -541,7 +551,7 @@ function ClassController:_onCursorMoved()
         -- 设置高亮
         self._mainView:SetHighlight({ range })
     end
-    
+
     -- 检查是否需要加载更多（虚拟滚动）
     if self._virtual_scroll.enabled then
         self:_checkAndLoadMore()
@@ -555,22 +565,25 @@ function ClassController:_checkAndLoadMore()
     if self._virtual_scroll.is_loading then
         return
     end
-    
-    if self._virtual_scroll.loaded_file_count >= self._virtual_scroll.total_file_count then
+
+    if
+        self._virtual_scroll.loaded_file_count
+        >= self._virtual_scroll.total_file_count
+    then
         return
     end
-    
+
     local winid = self._subView:GetWinID()
     local bufnr = self._subView:GetBufID()
-    
+
     if not winid or not bufnr then
         return
     end
-    
+
     -- 获取当前光标位置和总行数
     local cursor_line = api.nvim_win_get_cursor(winid)[1]
     local total_lines = api.nvim_buf_line_count(bufnr)
-    
+
     -- 如果距离底部小于阈值，触发加载
     if total_lines - cursor_line < self._virtual_scroll.load_more_threshold then
         self:_loadMoreItems()
@@ -583,21 +596,21 @@ function ClassController:_loadMoreItems()
     if self._virtual_scroll.is_loading then
         return
     end
-    
+
     self._virtual_scroll.is_loading = true
-    
+
     local vs = self._virtual_scroll
     local data = self._lsp:GetData()
     local bufnr = self._subView:GetBufID()
-    
+
     if not bufnr then
         self._virtual_scroll.is_loading = false
         return
     end
-    
+
     -- 根据是否在搜索模式选择不同的加载策略
     local start_idx, end_idx, uri_list, total_count
-    
+
     if vs.search_mode then
         -- 搜索过滤模式:从匹配列表加载
         uri_list = vs.matched_uri_list
@@ -611,7 +624,7 @@ function ClassController:_loadMoreItems()
         total_count = vs.total_file_count
         end_idx = math.min(start_idx + vs.chunk_size - 1, total_count)
     end
-    
+
     -- 获取要加载的 URI
     local new_data = {}
     for i = start_idx, end_idx do
@@ -620,33 +633,40 @@ function ClassController:_loadMoreItems()
             new_data[uri] = data[uri]
         end
     end
-    
+
     -- 移除旧的提示行
     api.nvim_set_option_value("modifiable", true, { buf = bufnr })
     local line_count = api.nvim_buf_line_count(bufnr)
     if line_count >= 2 then
         api.nvim_buf_set_lines(bufnr, line_count - 2, line_count, false, {})
     end
-    
+
     -- 生成新内容并追加（复用渲染逻辑）
     local append_start_line = api.nvim_buf_line_count(bufnr)
-    local width, height = self:_appendSubViewData(new_data, bufnr, append_start_line)
-    
+    local width, height =
+        self:_appendSubViewData(new_data, bufnr, append_start_line)
+
     -- 添加新的提示（如果还有更多）
     if end_idx < total_count then
         local remaining = total_count - end_idx
         local tip_text = vs.search_mode
-            and string.format("... (%d more matched files, scroll down to load)", remaining)
-            or string.format("... (%d more files, scroll down to load)", remaining)
-            
+                and string.format(
+                    "... (%d more matched files, scroll down to load)",
+                    remaining
+                )
+            or string.format(
+                "... (%d more files, scroll down to load)",
+                remaining
+            )
+
         api.nvim_buf_set_lines(bufnr, -1, -1, false, {
             "",
-            tip_text
+            tip_text,
         })
     end
-    
+
     api.nvim_set_option_value("modifiable", false, { buf = bufnr })
-    
+
     -- 更新状态
     if vs.search_mode then
         vs.loaded_match_count = end_idx
@@ -654,15 +674,15 @@ function ClassController:_loadMoreItems()
         vs.loaded_file_count = end_idx
     end
     vs.is_loading = false
-    
+
     -- 重新应用搜索高亮(如果在搜索模式)
     if self._search_state.enabled then
         self:_reapplySearchHighlight()
     end
-    
+
     -- 更新状态显示
     self:_updateSearchStatus()
-    
+
     -- 更新窗口大小
     local total_height = api.nvim_buf_line_count(bufnr)
     self._subView:Size(width, total_height)
@@ -675,21 +695,21 @@ function ClassController:_loadItemsUpTo(target_index)
     if self._virtual_scroll.is_loading then
         return
     end
-    
+
     self._virtual_scroll.is_loading = true
-    
+
     local vs = self._virtual_scroll
     local data = self._lsp:GetData()
     local bufnr = self._subView:GetBufID()
-    
+
     if not bufnr then
         self._virtual_scroll.is_loading = false
         return
     end
-    
+
     -- 根据是否在搜索模式选择不同的加载策略
     local start_idx, end_idx, uri_list, total_count
-    
+
     if vs.search_mode then
         uri_list = vs.matched_uri_list
         start_idx = vs.loaded_match_count + 1
@@ -701,13 +721,13 @@ function ClassController:_loadItemsUpTo(target_index)
         total_count = vs.total_file_count
         end_idx = math.min(target_index, total_count)
     end
-    
+
     -- 如果已经加载了目标索引，直接返回
     if start_idx > end_idx then
         self._virtual_scroll.is_loading = false
         return
     end
-    
+
     -- 一次性获取所有要加载的 URI
     local new_data = {}
     for i = start_idx, end_idx do
@@ -716,33 +736,40 @@ function ClassController:_loadItemsUpTo(target_index)
             new_data[uri] = data[uri]
         end
     end
-    
+
     -- 移除旧的提示行
     api.nvim_set_option_value("modifiable", true, { buf = bufnr })
     local line_count = api.nvim_buf_line_count(bufnr)
     if line_count >= 2 then
         api.nvim_buf_set_lines(bufnr, line_count - 2, line_count, false, {})
     end
-    
+
     -- 生成新内容并追加（一次性追加所有内容）
     local append_start_line = api.nvim_buf_line_count(bufnr)
-    local width, height = self:_appendSubViewData(new_data, bufnr, append_start_line)
-    
+    local width, height =
+        self:_appendSubViewData(new_data, bufnr, append_start_line)
+
     -- 添加新的提示（如果还有更多）
     if end_idx < total_count then
         local remaining = total_count - end_idx
         local tip_text = vs.search_mode
-            and string.format("... (%d more matched files, scroll down to load)", remaining)
-            or string.format("... (%d more files, scroll down to load)", remaining)
-            
+                and string.format(
+                    "... (%d more matched files, scroll down to load)",
+                    remaining
+                )
+            or string.format(
+                "... (%d more files, scroll down to load)",
+                remaining
+            )
+
         api.nvim_buf_set_lines(bufnr, -1, -1, false, {
             "",
-            tip_text
+            tip_text,
         })
     end
-    
+
     api.nvim_set_option_value("modifiable", false, { buf = bufnr })
-    
+
     -- 更新状态
     if vs.search_mode then
         vs.loaded_match_count = end_idx
@@ -750,15 +777,15 @@ function ClassController:_loadItemsUpTo(target_index)
         vs.loaded_file_count = end_idx
     end
     vs.is_loading = false
-    
+
     -- 重新应用搜索高亮(如果在搜索模式)
     if self._search_state.enabled then
         self:_reapplySearchHighlight()
     end
-    
+
     -- 更新状态显示
     self:_updateSearchStatus()
-    
+
     -- 更新窗口大小
     local total_height = api.nvim_buf_line_count(bufnr)
     self._subView:Size(width, total_height)
@@ -768,17 +795,17 @@ end
 ---@private
 function ClassController:_appendSubViewData(data, bufId, start_line)
     local extmark_ns = api.nvim_create_namespace("LspUIPathExtmarks")
-    
+
     -- 生成内容（使用提取的共用函数）
-    local content, hl_lines, extmarks, syntax_regions, max_width = 
+    local content, hl_lines, extmarks, syntax_regions, max_width =
         self:_generateContentForData(data, start_line)
-    
+
     -- 追加内容
     api.nvim_buf_set_lines(bufId, start_line, start_line, false, content)
-    
+
     -- 应用语法高亮
     self._subView:ApplySyntaxHighlight(syntax_regions)
-    
+
     -- 设置高亮
     local subViewNamespace = api.nvim_create_namespace("LspUISubView")
     for _, lnum in pairs(hl_lines) do
@@ -791,22 +818,21 @@ function ClassController:_appendSubViewData(data, bufId, start_line)
             { priority = vim.highlight.priorities.user }
         )
     end
-    
+
     -- 添加 extmark
     for _, mark in ipairs(extmarks) do
-        local line_content = api.nvim_buf_get_lines(bufId, mark.line, mark.line + 1, false)[1] or ""
-        api.nvim_buf_set_extmark(
+        local line_content = api.nvim_buf_get_lines(
             bufId,
-            extmark_ns,
             mark.line,
-            #line_content,
-            {
-                virt_text = { { mark.text, mark.hl_group } },
-                virt_text_pos = "eol",
-            }
-        )
+            mark.line + 1,
+            false
+        )[1] or ""
+        api.nvim_buf_set_extmark(bufId, extmark_ns, mark.line, #line_content, {
+            virt_text = { { mark.text, mark.hl_group } },
+            virt_text_pos = "eol",
+        })
     end
-    
+
     local res_width = max_width + 2 > 30 and 30 or max_width + 2
     return res_width, #content
 end
@@ -1102,7 +1128,9 @@ function ClassController:Go(method_name, buffer_id, params, origin_win)
             })
 
             -- 2️⃣ 记录到增强历史（如果启用）
-            if self._jump_history_state and self._jump_history_state.enabled then
+            if
+                self._jump_history_state and self._jump_history_state.enabled
+            then
                 local history_item = jump_history.create_item({
                     uri = single_uri,
                     line = target_line,
@@ -1127,10 +1155,10 @@ function ClassController:Go(method_name, buffer_id, params, origin_win)
 
             -- 设置光标位置 - 使用选择范围而不是整个范围
             api.nvim_win_set_cursor(0, { target_line, target_col })
-            
+
             -- 3️⃣ 确保目标位置也被记录
             tools.save_target_to_jumplist()
-            
+
             vim.cmd("norm! zz")
 
             notify.Info(
@@ -1210,7 +1238,7 @@ function ClassController:RenderViews()
         self._subView:PinBuffer()
         -- Set nowrap option to prevent text wrapping
         self._subView:Option("wrap", false)
-        
+
         -- 保存原始 winbar（用于后续搜索状态更新）
         local winid = self._subView:GetWinID()
         if winid then
@@ -1384,10 +1412,10 @@ function ClassController:ActionJump(cmd)
 
     -- 设置光标位置 - 使用选择范围
     api.nvim_win_set_cursor(0, { target_line, target_col })
-    
+
     -- 3️⃣ 确保目标位置也被记录到 jumplist
     tools.save_target_to_jumplist()
-    
+
     vim.cmd("norm! zz")
 end
 
@@ -1404,7 +1432,7 @@ function ClassController:ActionToggleFold()
     if not data[uri] then
         return
     end
-    
+
     -- 如果启用了虚拟滚动，需要确保该文件已加载
     if self._virtual_scroll.enabled then
         local uri_index = nil
@@ -1414,7 +1442,7 @@ function ClassController:ActionToggleFold()
                 break
             end
         end
-        
+
         -- 如果该文件未加载，一次性加载到该位置（优化：避免循环调用和 UI 闪烁）
         if uri_index and uri_index > self._virtual_scroll.loaded_file_count then
             self:_loadItemsUpTo(uri_index)
@@ -1427,7 +1455,7 @@ function ClassController:ActionToggleFold()
     -- 重新生成SubView内容
     local width, height = self:_generateSubViewContent()
     self._subView:Size(width, height)
-    
+
     -- 重新应用搜索高亮（如果搜索已启用）
     self:_reapplySearchHighlight()
 
@@ -1594,7 +1622,7 @@ function ClassController:ActionToggleSubView()
 
         -- 恢复键映射
         self:_setupSubViewKeyBindings()
-        
+
         -- 重新应用搜索高亮
         self:_reapplySearchHighlight()
 
@@ -1632,7 +1660,7 @@ function ClassController:ActionFoldAll(fold)
         -- 重新渲染
         local width, height = self:_generateSubViewContent()
         self._subView:Size(width, height)
-        
+
         -- 重新应用搜索高亮
         self:_reapplySearchHighlight()
 
@@ -1667,16 +1695,16 @@ function ClassController:ActionSearch()
     end
 
     local vs = self._virtual_scroll
-    
+
     -- 虚拟滚动模式下搜索全部数据
     if vs.enabled then
         -- 获取当前数据
         local data = self._lsp:GetData()
-        
+
         if not data then
             return
         end
-        
+
         -- 进入搜索输入
         search.enter_search_mode(
             bufnr,
@@ -1686,21 +1714,21 @@ function ClassController:ActionSearch()
                 if state.pattern and state.pattern ~= "" then
                     -- 搜索全部数据并切换到过滤模式
                     local matched_uris = self:_searchInAllData(state.pattern)
-                    
+
                     vs.search_mode = true
                     vs.matched_uri_list = matched_uris
                     vs.loaded_match_count = 0
                     vs.total_match_count = #matched_uris
-                    
+
                     -- 重新渲染 (只显示匹配的文件)
                     self:_generateSubViewContentSearchFiltered(data, bufnr)
-                    
+
                     -- 重新应用搜索高亮
                     self:_reapplySearchHighlight()
                 end
-                
+
                 self:_updateSearchStatus()
-                
+
                 -- 跳转到第一个匹配
                 if state.match_count > 0 then
                     self:ActionSearchNext()
@@ -1714,17 +1742,17 @@ function ClassController:ActionSearch()
                     vs.matched_uri_list = {}
                     vs.loaded_match_count = 0
                     vs.total_match_count = 0
-                    
+
                     -- 重新生成完整内容
                     local data_full = self._lsp:GetData()
-                    
+
                     if data_full then
                         -- 重新计算并渲染
                         vs.loaded_file_count = 0
                         self:_generateSubViewContent(data_full)
                     end
                 end
-                
+
                 self:_updateSearchStatus()
             end
         )
@@ -1751,7 +1779,10 @@ end
 
 --- 跳转到下一个匹配
 function ClassController:ActionSearchNext()
-    if not self._search_state.enabled or self._search_state.match_count == 0 then
+    if
+        not self._search_state.enabled
+        or self._search_state.match_count == 0
+    then
         return
     end
 
@@ -1771,7 +1802,10 @@ end
 
 --- 跳转到上一个匹配
 function ClassController:ActionSearchPrev()
-    if not self._search_state.enabled or self._search_state.match_count == 0 then
+    if
+        not self._search_state.enabled
+        or self._search_state.match_count == 0
+    then
         return
     end
 
@@ -1805,15 +1839,15 @@ end
 --- 显示跳转历史列表
 function ClassController:ActionShowHistory()
     local state = self._jump_history_state
-    
+
     if not state or not state.enabled then
         notify.Info("Jump history is not enabled")
         return
     end
-    
+
     -- 获取显示内容
     local lines = jump_history.get_display_lines(state)
-    
+
     -- 创建浮动窗口
     local buf = api.nvim_create_buf(false, true)
     vim.bo[buf].bufhidden = "wipe"
@@ -1821,14 +1855,14 @@ function ClassController:ActionShowHistory()
     vim.bo[buf].modifiable = true
     api.nvim_buf_set_lines(buf, 0, -1, false, lines)
     vim.bo[buf].modifiable = false
-    
+
     -- 设置 filetype 以触发语法高亮（通过 ftplugin）
     vim.bo[buf].filetype = "LspUIJumpHistory"
-    
+
     -- 计算窗口大小
     local width = 100
     local height = math.min(#lines, 20)
-    
+
     -- 居中位置
     local ui = api.nvim_list_uis()[1]
     local win_opts = {
@@ -1842,97 +1876,114 @@ function ClassController:ActionShowHistory()
         title = " Jump History ",
         title_pos = "center",
     }
-    
+
     local win = api.nvim_open_win(buf, true, win_opts)
     vim.wo[win].winhl = "Normal:Normal,FloatBorder:FloatBorder"
-    
+
     -- 设置光标到最新记录（第3行，跳过标题）
     if #state.items > 0 then
-        api.nvim_win_set_cursor(win, {3, 0})
+        api.nvim_win_set_cursor(win, { 3, 0 })
     end
-    
+
     -- 绑定快捷键
     local function close_window()
         if api.nvim_win_is_valid(win) then
             api.nvim_win_close(win, true)
         end
     end
-    
+
     local function jump_to_history()
         local cursor = api.nvim_win_get_cursor(win)
         local line_num = cursor[1]
-        
+
         -- 获取对应的历史项索引
-        local item_index = jump_history.get_item_index_from_display_line(line_num, #state.items)
-        
+        local item_index = jump_history.get_item_index_from_display_line(
+            line_num,
+            #state.items
+        )
+
         if item_index and state.items[item_index] then
             local item = state.items[item_index]
-            
+
             -- 关闭历史窗口
             close_window()
-            
+
             -- 跳转到历史位置
             local target_buf = item.buffer_id
             if not api.nvim_buf_is_valid(target_buf) then
                 target_buf = vim.uri_to_bufnr(item.uri)
             end
-            
+
             -- 打开文件
             if tools.buffer_is_listed(target_buf) then
                 vim.cmd(string.format("buffer %s", target_buf))
             else
-                vim.cmd(string.format("edit %s", vim.fn.fnameescape(item.file_path)))
+                vim.cmd(
+                    string.format("edit %s", vim.fn.fnameescape(item.file_path))
+                )
             end
-            
+
             -- 设置光标位置
-            api.nvim_win_set_cursor(0, {item.line, item.col})
+            api.nvim_win_set_cursor(0, { item.line, item.col })
             vim.cmd("norm! zz")
-            
-            notify.Info(string.format("Jumped to history: %s:%d", item.file_name, item.line))
+
+            notify.Info(
+                string.format(
+                    "Jumped to history: %s:%d",
+                    item.file_name,
+                    item.line
+                )
+            )
         end
     end
-    
+
     local function delete_history_item()
         local cursor = api.nvim_win_get_cursor(win)
         local line_num = cursor[1]
-        
-        local item_index = jump_history.get_item_index_from_display_line(line_num, #state.items)
-        
+
+        local item_index = jump_history.get_item_index_from_display_line(
+            line_num,
+            #state.items
+        )
+
         if item_index and jump_history.remove_item(state, item_index) then
             -- 刷新显示
             local new_lines = jump_history.get_display_lines(state)
             vim.bo[buf].modifiable = true
             api.nvim_buf_set_lines(buf, 0, -1, false, new_lines)
             vim.bo[buf].modifiable = false
-            
+
             -- 调整光标位置
             local new_line = math.min(line_num, #new_lines - 2)
-            if new_line < 3 then new_line = 3 end
-            api.nvim_win_set_cursor(win, {new_line, 0})
-            
+            if new_line < 3 then
+                new_line = 3
+            end
+            api.nvim_win_set_cursor(win, { new_line, 0 })
+
             notify.Info("History item deleted")
         end
     end
-    
+
     local function clear_all_history()
         -- 确认对话框
-        local confirm = vim.fn.confirm("Clear all jump history?", "&Yes\n&No", 2)
+        local confirm =
+            vim.fn.confirm("Clear all jump history?", "&Yes\n&No", 2)
         if confirm == 1 then
             jump_history.clear_history(state)
-            
+
             -- 刷新显示
             local new_lines = jump_history.get_display_lines(state)
             vim.bo[buf].modifiable = true
             api.nvim_buf_set_lines(buf, 0, -1, false, new_lines)
             vim.bo[buf].modifiable = false
-            
+
             notify.Info("Jump history cleared")
         end
     end
-    
+
     -- 键盘映射
     local opts = { noremap = true, silent = true, buffer = buf }
-    
+
     vim.keymap.set("n", "<CR>", jump_to_history, opts)
     vim.keymap.set("n", "o", jump_to_history, opts)
     vim.keymap.set("n", "q", close_window, opts)
@@ -1951,12 +2002,12 @@ function ClassController:_reapplySearchHighlight()
     if not self._search_state.enabled or self._search_state.pattern == "" then
         return
     end
-    
+
     local bufnr = self._subView:GetBufID()
     if not bufnr then
         return
     end
-    
+
     -- 重新应用搜索匹配和高亮
     search.update_matches(bufnr, self._search_state, true)
     self:_updateSearchStatus()
@@ -1970,15 +2021,15 @@ function ClassController:_searchInAllData(pattern)
     local data = self._lsp:GetData()
     local matched_uris = {}
     local pattern_lower = pattern:lower()
-    
+
     -- 遍历所有文件
     for uri, item in pairs(data) do
         local has_match = false
-        
+
         -- 检查文件名是否匹配
         local file_full_name = vim.uri_to_fname(uri)
         local file_name = vim.fn.fnamemodify(file_full_name, ":t")
-        
+
         if file_name:lower():find(pattern_lower, 1, true) then
             has_match = true
         else
@@ -1987,9 +2038,9 @@ function ClassController:_searchInAllData(pattern)
             for _, range in ipairs(item.range) do
                 table.insert(uri_rows, range.start.line)
             end
-            
+
             local lines = tools.GetUriLines(item.buffer_id, uri, uri_rows)
-            
+
             for _, row in pairs(uri_rows) do
                 local line_code = lines[row] or ""
                 if line_code:lower():find(pattern_lower, 1, true) then
@@ -1998,15 +2049,15 @@ function ClassController:_searchInAllData(pattern)
                 end
             end
         end
-        
+
         if has_match then
             table.insert(matched_uris, uri)
         end
     end
-    
+
     -- 排序保持顺序稳定
     table.sort(matched_uris)
-    
+
     return matched_uris
 end
 
@@ -2020,12 +2071,12 @@ function ClassController:_generateSubViewContentSearchFiltered(data, bufId)
     local matched_uris = vs.matched_uri_list
     local chunk_size = vs.chunk_size
     local end_idx = math.min(vs.loaded_match_count + chunk_size, #matched_uris)
-    
+
     -- 如果是第一次加载，从头开始
     if vs.loaded_match_count == 0 then
         end_idx = math.min(chunk_size, #matched_uris)
     end
-    
+
     -- 只渲染匹配的文件
     local filtered_data = {}
     for i = 1, end_idx do
@@ -2034,25 +2085,27 @@ function ClassController:_generateSubViewContentSearchFiltered(data, bufId)
             filtered_data[uri] = data[uri]
         end
     end
-    
+
     -- 渲染
     local width, height = self:_renderSubViewData(filtered_data, bufId)
-    
+
     -- 添加提示
     if end_idx < #matched_uris then
         api.nvim_set_option_value("modifiable", true, { buf = bufId })
         api.nvim_buf_set_lines(bufId, -1, -1, false, {
             "",
-            string.format("... (%d more matched files, scroll down to load)", 
-                         #matched_uris - end_idx)
+            string.format(
+                "... (%d more matched files, scroll down to load)",
+                #matched_uris - end_idx
+            ),
         })
         api.nvim_set_option_value("modifiable", false, { buf = bufId })
         height = height + 2
     end
-    
+
     vs.loaded_match_count = end_idx
     vs.total_match_count = #matched_uris
-    
+
     return width, height
 end
 
@@ -2060,27 +2113,28 @@ end
 function ClassController:_updateSearchStatus()
     local vs = self._virtual_scroll
     local virtual_scroll_info = nil
-    
+
     -- 如果是虚拟滚动搜索过滤模式,传递信息
     if vs.enabled and vs.search_mode and vs.total_match_count > 0 then
         virtual_scroll_info = {
             loaded = vs.loaded_match_count,
-            total = vs.total_match_count
+            total = vs.total_match_count,
         }
     end
-    
-    local status = search.get_status_line(self._search_state, virtual_scroll_info)
-    
+
+    local status =
+        search.get_status_line(self._search_state, virtual_scroll_info)
+
     if not self._subView:Valid() then
         return
     end
 
     local winid = self._subView:GetWinID()
-    
+
     -- 使用保存的原始 winbar 构建新的 winbar，而不是使用 gsub 移除
     local base_winbar = self._original_winbar or ""
     local current_winbar = base_winbar
-    
+
     -- 添加新的搜索状态
     if status ~= "" then
         if current_winbar ~= "" then
@@ -2089,7 +2143,7 @@ function ClassController:_updateSearchStatus()
             current_winbar = status
         end
     end
-    
+
     vim.wo[winid].winbar = current_winbar
 end
 

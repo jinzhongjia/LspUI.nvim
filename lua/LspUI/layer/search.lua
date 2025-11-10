@@ -51,11 +51,11 @@ local function line_matches(line, pattern, ignore_case)
 
     -- 使用 Lua 模式匹配（正则表达式），使用 pcall 捕获无效模式
     local ok, start_pos, end_pos = pcall(function()
-        return search_line:find(search_pattern, 1, false)  -- false = 使用模式匹配
+        return search_line:find(search_pattern, 1, false) -- false = 使用模式匹配
     end)
-    
+
     if ok and start_pos then
-        return true, start_pos - 1, end_pos  -- 转换为0-based索引
+        return true, start_pos - 1, end_pos -- 转换为0-based索引
     end
 
     return false, nil, nil
@@ -94,8 +94,9 @@ function M.update_matches(bufnr, state, ignore_case)
 
     -- 检查每一行
     for line_idx, line in ipairs(lines) do
-        local lnum = line_idx - 1  -- 转换为0-based索引
-        local matches, start_col, end_col = line_matches(line, state.pattern, ignore_case)
+        local lnum = line_idx - 1 -- 转换为0-based索引
+        local matches, start_col, end_col =
+            line_matches(line, state.pattern, ignore_case)
 
         if matches then
             state.matches[lnum] = true

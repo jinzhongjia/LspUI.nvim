@@ -9,16 +9,17 @@ local version = "v3"
 --- @return string[]
 function M.GetUriLines(buffer_id, uri, rows)
     local lines = {}
-    
+
     -- 检查 buffer 是否已加载，或者是否为非文件 URI
-    local should_load_from_buffer = api.nvim_buf_is_loaded(buffer_id) or string.sub(uri, 1, 4) ~= "file"
-    
+    local should_load_from_buffer = api.nvim_buf_is_loaded(buffer_id)
+        or string.sub(uri, 1, 4) ~= "file"
+
     if should_load_from_buffer then
         -- 如果未加载且不是文件 URI，先加载 buffer
         if not api.nvim_buf_is_loaded(buffer_id) then
             fn.bufload(buffer_id)
         end
-        
+
         for _, row in ipairs(rows) do
             if not lines[row] then
                 lines[row] = (api.nvim_buf_get_lines(
@@ -196,28 +197,28 @@ function M.smart_save_to_jumplist(target_buf, target_line, config)
     config = config or {}
     local min_distance = config.min_distance or 5
     local cross_file_only = config.cross_file_only or false
-    
+
     local current_buf = api.nvim_get_current_buf()
     local current_pos = api.nvim_win_get_cursor(0)
     local current_line = current_pos[1]
-    
+
     -- 1. 跨文件跳转：必须记录
     if current_buf ~= target_buf then
         pcall(api.nvim_command, "normal! m'")
         return true
     end
-    
+
     -- 2. 如果配置为只记录跨文件跳转，则跳过同文件
     if cross_file_only then
         return false
     end
-    
+
     -- 3. 同文件但距离较远（> min_distance 行）：记录
     if math.abs(current_line - target_line) > min_distance then
         pcall(api.nvim_command, "normal! m'")
         return true
     end
-    
+
     -- 4. 同文件且距离很近：不记录（避免污染 jumplist）
     return false
 end

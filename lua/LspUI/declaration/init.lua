@@ -1,7 +1,7 @@
 -- lua/LspUI/declaration/init.lua
+local ClassLspFeature = require("LspUI.layer.lsp_feature")
 local command = require("LspUI.command")
 local config = require("LspUI.config")
-local ClassLspFeature = require("LspUI.layer.lsp_feature")
 
 -- 创建功能实例
 local feature = ClassLspFeature:New("declaration", "declaration")
