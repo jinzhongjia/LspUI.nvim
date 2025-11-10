@@ -886,7 +886,15 @@ function ClassController:_getLspPositionByLnum(lnum)
     local data = self._lsp:GetData()
     local currentLine = 1
 
-    for uri, item in pairs(data) do
+    -- 对 URI 进行排序以确保顺序一致（与渲染时相同）
+    local sorted_uris = {}
+    for uri in pairs(data) do
+        table.insert(sorted_uris, uri)
+    end
+    table.sort(sorted_uris)
+
+    for _, uri in ipairs(sorted_uris) do
+        local item = data[uri]
         -- 文件标题行
         if currentLine == lnum then
             return uri, nil
@@ -916,7 +924,15 @@ function ClassController:_getCursorPosForUri(uri, range)
     local data = self._lsp:GetData()
     local fileHeaderLine = nil
 
-    for currentUri, item in pairs(data) do
+    -- 对 URI 进行排序以确保顺序一致（与渲染时相同）
+    local sorted_uris = {}
+    for uri_key in pairs(data) do
+        table.insert(sorted_uris, uri_key)
+    end
+    table.sort(sorted_uris)
+
+    for _, currentUri in ipairs(sorted_uris) do
+        local item = data[currentUri]
         -- 记录文件标题行
         fileHeaderLine = currentLine
         currentLine = currentLine + 1
@@ -1501,8 +1517,16 @@ function ClassController:ActionNextEntry()
     local found = false
     local line = 1
 
+    -- 对 URI 进行排序以确保顺序一致（与渲染时相同）
+    local sorted_uris = {}
+    for uri in pairs(data) do
+        table.insert(sorted_uris, uri)
+    end
+    table.sort(sorted_uris)
+
     -- 查找下一个项目
-    for uri, item in pairs(data) do
+    for _, uri in ipairs(sorted_uris) do
+        local item = data[uri]
         if found then
             ---@diagnostic disable-next-line: param-type-mismatch
             api.nvim_win_set_cursor(self._subView:GetWinID(), { line, 0 })
@@ -1530,8 +1554,16 @@ function ClassController:ActionPrevEntry()
     local line = 1
     local prev_line = 1
 
+    -- 对 URI 进行排序以确保顺序一致（与渲染时相同）
+    local sorted_uris = {}
+    for uri in pairs(data) do
+        table.insert(sorted_uris, uri)
+    end
+    table.sort(sorted_uris)
+
     -- 查找上一个项目
-    for uri, item in pairs(data) do
+    for _, uri in ipairs(sorted_uris) do
+        local item = data[uri]
         if uri == current_uri then
             if prev_line < line then
                 api.nvim_win_set_cursor(
