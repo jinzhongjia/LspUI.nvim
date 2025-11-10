@@ -236,8 +236,16 @@ function ClassController:_generateContentForData(data, start_line_offset)
 
     local cwd = normalize_path(vim.fn.getcwd())
 
-    -- 生成内容
-    for uri, item in pairs(data) do
+    -- 对 URI 进行排序以确保一致的顺序（修复 pairs 的不确定性问题）
+    local sorted_uris = {}
+    for uri in pairs(data) do
+        table.insert(sorted_uris, uri)
+    end
+    table.sort(sorted_uris)
+
+    -- 生成内容（按排序后的顺序遍历）
+    for _, uri in ipairs(sorted_uris) do
+        local item = data[uri]
         local file_full_name = vim.uri_to_fname(uri)
         local file_name = vim.fn.fnamemodify(file_full_name, ":t")
         local filetype = tools.detect_filetype(file_full_name)
