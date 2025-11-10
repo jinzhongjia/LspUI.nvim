@@ -984,7 +984,17 @@ function ClassController:_findPositionFromParams(params)
     local code_lnum = nil
     local tmp = nil
 
-    for uri, data in pairs(self._lsp:GetData()) do
+    local lsp_data = self._lsp:GetData()
+    
+    -- 对 URI 进行排序以确保顺序一致（与渲染时相同）
+    local sorted_uris = {}
+    for uri in pairs(lsp_data) do
+        table.insert(sorted_uris, uri)
+    end
+    table.sort(sorted_uris)
+
+    for _, uri in ipairs(sorted_uris) do
+        local data = lsp_data[uri]
         lnum = lnum + 1
         if not data.fold then
             for _, val in pairs(data.range) do
@@ -1285,10 +1295,19 @@ function ClassController:RenderViews()
     end
 
     -- 获取第一个URI对应的缓冲区作为MainView的初始缓冲区
+    -- 使用排序后的第一个 URI 以确保一致性
     local firstBuffer = nil
-    for _, item in pairs(self._lsp:GetData()) do
-        firstBuffer = item.buffer_id
-        break
+    local lsp_data = self._lsp:GetData()
+    if lsp_data and not vim.tbl_isempty(lsp_data) then
+        local sorted_uris = {}
+        for uri in pairs(lsp_data) do
+            table.insert(sorted_uris, uri)
+        end
+        table.sort(sorted_uris)
+        
+        if #sorted_uris > 0 then
+            firstBuffer = lsp_data[sorted_uris[1]].buffer_id
+        end
     end
 
     -- 创建或更新主视图
@@ -1602,10 +1621,19 @@ end
 function ClassController:ActionToggleMainView()
     if not self._mainView:Valid() then
         -- 如果数据存在则重新渲染
+        -- 使用排序后的第一个 URI 以确保一致性
         local firstBuffer = nil
-        for _, item in pairs(self._lsp:GetData()) do
-            firstBuffer = item.buffer_id
-            break
+        local lsp_data = self._lsp:GetData()
+        if lsp_data and not vim.tbl_isempty(lsp_data) then
+            local sorted_uris = {}
+            for uri in pairs(lsp_data) do
+                table.insert(sorted_uris, uri)
+            end
+            table.sort(sorted_uris)
+            
+            if #sorted_uris > 0 then
+                firstBuffer = lsp_data[sorted_uris[1]].buffer_id
+            end
         end
 
         if firstBuffer then
