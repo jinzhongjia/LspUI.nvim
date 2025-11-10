@@ -164,33 +164,6 @@ function M.prev_match(state, current_line)
     return nil
 end
 
---- 过滤行，只保留匹配的行
----@param lines string[] 所有行
----@param state SearchState
----@return string[], table<integer, integer> 过滤后的行和原始行号映射
-function M.filter_lines(lines, state)
-    if state.pattern == "" then
-        local line_map = {}
-        for i = 1, #lines do
-            line_map[i] = i - 1  -- 映射到0-based原始行号
-        end
-        return lines, line_map
-    end
-
-    local filtered = {}
-    local line_map = {}  -- 新行号 -> 原始行号的映射
-
-    for idx, line in ipairs(lines) do
-        local lnum = idx - 1  -- 0-based
-        if state.matches[lnum] then
-            table.insert(filtered, line)
-            line_map[#filtered] = lnum
-        end
-    end
-
-    return filtered, line_map
-end
-
 --- 获取搜索状态字符串
 ---@param state SearchState
 ---@param virtual_scroll_info table? 虚拟滚动信息 {loaded: number, total: number}
