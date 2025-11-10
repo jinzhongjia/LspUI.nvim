@@ -1876,12 +1876,12 @@ function ClassController:ActionShowHistory()
     -- 设置 filetype 以触发语法高亮（通过 ftplugin）
     vim.bo[buf].filetype = "LspUIJumpHistory"
 
-    -- 计算窗口大小
-    local width = 100
+    -- 计算窗口大小（宽度基于编辑器列数的 80%，更适应不同屏幕尺寸）
+    local ui = api.nvim_list_uis()[1]
+    local width = math.floor(ui.width * 0.8)
     local height = math.min(#lines, 20)
 
     -- 居中位置
-    local ui = api.nvim_list_uis()[1]
     local win_opts = {
         relative = "editor",
         width = width,
