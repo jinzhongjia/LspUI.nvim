@@ -113,6 +113,13 @@ local default_jump_history_config = {
     },
 }
 
+--- @type LspUI_virtual_scroll_config
+local default_virtual_scroll_config = {
+    threshold = 500,            -- 超过此数量的项目启用虚拟滚动
+    chunk_size = 200,           -- 每次渲染的文件数
+    load_more_threshold = 50,   -- 距离底部多少行时触发加载
+}
+
 --- @type LspUI_pos_keybind_config
 local default_pos_keybind_config = {
     main = {
@@ -197,6 +204,7 @@ local default_config = {
     implementation = default_implementation_config,
     reference = default_reference_config,
     jump_history = default_jump_history_config,
+    virtual_scroll = default_virtual_scroll_config,
     pos_keybind = default_pos_keybind_config,
     call_hierarchy = default_call_hierarchy_config,
     signature = default_signature_config,

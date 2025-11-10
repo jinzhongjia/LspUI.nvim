@@ -77,14 +77,15 @@ function ClassController:New()
     obj._jump_history_state = jump_history.new_state(max_size)
     obj._jump_history_state.enabled = history_config.enable ~= false
     
-    -- 初始化虚拟滚动状态
+    -- 初始化虚拟滚动状态（使用配置）
+    local vs_config = config.options.virtual_scroll or {}
     obj._virtual_scroll = {
         enabled = false,
-        threshold = 500,
-        chunk_size = 200,
+        threshold = vs_config.threshold or 500,
+        chunk_size = vs_config.chunk_size or 200,
         loaded_file_count = 0,
         total_file_count = 0,
-        load_more_threshold = 50,
+        load_more_threshold = vs_config.load_more_threshold or 50,
         uri_list = {},
         is_loading = false,
         -- 搜索过滤模式
