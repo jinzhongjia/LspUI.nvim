@@ -85,6 +85,17 @@
 --- @field color {fg: string?, bg: string?}? the color for signature
 --- @field debounce (integer|boolean)?  whether enable debounce for signature ? defalt is 250 milliseconds, this will reduce calculations when you move the cursor frequently, but it will cause the delay of signature, false will diable it
 
+--- @class LspUI_jump_history_config
+--- @field enable boolean? whether enable `jump_history` module
+--- @field max_size integer? maximum number of history items
+--- @field command_enable boolean? whether enable command for `jump_history`
+--- @field smart_jumplist { min_distance: integer?, cross_file_only: boolean? }? smart jumplist configuration
+
+--- @class LspUI_virtual_scroll_config
+--- @field threshold integer? enable virtual scrolling when items exceed this number (default: 500)
+--- @field chunk_size integer? number of files to render per chunk (default: 200)
+--- @field load_more_threshold integer? trigger loading when this many lines from bottom (default: 50)
+
 --- @class LspUI_config config for LspUI
 --- @field rename LspUI_rename_config? `rename` module
 --- @field lightbulb LspUI_lightbulb_config? `lightbulb` module
@@ -101,3 +112,5 @@
 --- @field pos_config LspUI_pos_config? keybind for `definition`, `type definition`, `declaration`, `reference`, implementation
 --- @field call_hierarchy LspUI_call_hierarchy_config? `call_hierarchy` module
 --- @field signature LspUI_signature? `signature` module
+--- @field jump_history LspUI_jump_history_config? `jump_history` module
+--- @field virtual_scroll LspUI_virtual_scroll_config? `virtual_scroll` configuration
