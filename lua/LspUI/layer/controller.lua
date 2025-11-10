@@ -20,6 +20,7 @@ local _controller_instance = nil
 ---@field _search_state table
 ---@field _virtual_scroll table
 ---@field _jump_history_state table
+---@field _original_winbar string?
 local ClassController = {
     ---@diagnostic disable-next-line: assign-type-mismatch
     _lsp = nil,
@@ -1209,6 +1210,12 @@ function ClassController:RenderViews()
         self._subView:PinBuffer()
         -- Set nowrap option to prevent text wrapping
         self._subView:Option("wrap", false)
+        
+        -- 保存原始 winbar（用于后续搜索状态更新）
+        local winid = self._subView:GetWinID()
+        if winid then
+            self._original_winbar = vim.wo[winid].winbar or ""
+        end
     end
 
     -- 获取第一个URI对应的缓冲区作为MainView的初始缓冲区
@@ -2079,10 +2086,10 @@ function ClassController:_updateSearchStatus()
     end
 
     local winid = self._subView:GetWinID()
-    local current_winbar = vim.wo[winid].winbar or ""
     
-    -- 移除旧的搜索状态
-    current_winbar = current_winbar:gsub("%s*%[Search:.-]%s*", "")
+    -- 使用保存的原始 winbar 构建新的 winbar，而不是使用 gsub 移除
+    local base_winbar = self._original_winbar or ""
+    local current_winbar = base_winbar
     
     -- 添加新的搜索状态
     if status ~= "" then
