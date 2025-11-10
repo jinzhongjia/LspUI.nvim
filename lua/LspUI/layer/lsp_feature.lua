@@ -116,6 +116,15 @@ function ClassLspFeature:Run(callback)
         return
     end
 
+    -- 检查客户端是否就绪
+    local ClassLsp = require("LspUI.layer.lsp")
+    local lsp_instance = ClassLsp:New()
+    local ready, reason = lsp_instance:CheckClientsReady(clients)
+    if not ready then
+        notify.Warn(reason)
+        return
+    end
+
     -- 创建请求参数
     local params =
         self:MakeParams(api.nvim_get_current_win(), clients[1].offset_encoding)
@@ -125,7 +134,6 @@ function ClassLspFeature:Run(callback)
         -- 延迟加载 interface 模块
         local interface = require("LspUI.interface")
         -- 使用安全的方式获取方法名
-        local ClassLsp = require("LspUI.layer.lsp")
         if ClassLsp and ClassLsp.methods and ClassLsp.methods[self.name] then
             local method_name = ClassLsp.methods[self.name].name
             -- 调用接口
