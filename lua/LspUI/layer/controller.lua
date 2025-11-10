@@ -32,16 +32,7 @@ local ClassController = {
     _search_state = nil, -- 搜索状态
     _jump_history_state = nil, -- 跳转历史状态
     _current_method_name = nil, -- 当前 LSP 方法名
-    _virtual_scroll = {
-        enabled = false,            -- 是否启用虚拟滚动
-        threshold = 500,            -- 超过此数量的项目启用虚拟滚动
-        chunk_size = 200,           -- 每次渲染的文件数
-        loaded_file_count = 0,      -- 已加载的文件数
-        total_file_count = 0,       -- 总文件数
-        load_more_threshold = 50,   -- 距离底部多少行时触发加载
-        uri_list = {},              -- 有序的 URI 列表
-        is_loading = false,         -- 是否正在加载
-    },
+    _virtual_scroll = nil, -- 虚拟滚动状态（在构造函数中初始化）
 }
 
 ClassController.__index = ClassController
@@ -636,6 +627,102 @@ function ClassController:_loadMoreItems()
     end
     
     -- 生成新内容并追加（复用渲染逻辑）
+    local append_start_line = api.nvim_buf_line_count(bufnr)
+    local width, height = self:_appendSubViewData(new_data, bufnr, append_start_line)
+    
+    -- 添加新的提示（如果还有更多）
+    if end_idx < total_count then
+        local remaining = total_count - end_idx
+        local tip_text = vs.search_mode
+            and string.format("... (%d more matched files, scroll down to load)", remaining)
+            or string.format("... (%d more files, scroll down to load)", remaining)
+            
+        api.nvim_buf_set_lines(bufnr, -1, -1, false, {
+            "",
+            tip_text
+        })
+    end
+    
+    api.nvim_set_option_value("modifiable", false, { buf = bufnr })
+    
+    -- 更新状态
+    if vs.search_mode then
+        vs.loaded_match_count = end_idx
+    else
+        vs.loaded_file_count = end_idx
+    end
+    vs.is_loading = false
+    
+    -- 重新应用搜索高亮(如果在搜索模式)
+    if self._search_state.enabled then
+        self:_reapplySearchHighlight()
+    end
+    
+    -- 更新状态显示
+    self:_updateSearchStatus()
+    
+    -- 更新窗口大小
+    local total_height = api.nvim_buf_line_count(bufnr)
+    self._subView:Size(width, total_height)
+end
+
+--- 一次性加载到指定索引（优化的批量加载，避免 UI 闪烁）
+---@private
+---@param target_index integer 目标索引
+function ClassController:_loadItemsUpTo(target_index)
+    if self._virtual_scroll.is_loading then
+        return
+    end
+    
+    self._virtual_scroll.is_loading = true
+    
+    local vs = self._virtual_scroll
+    local data = self._lsp:GetData()
+    local bufnr = self._subView:GetBufID()
+    
+    if not bufnr then
+        self._virtual_scroll.is_loading = false
+        return
+    end
+    
+    -- 根据是否在搜索模式选择不同的加载策略
+    local start_idx, end_idx, uri_list, total_count
+    
+    if vs.search_mode then
+        uri_list = vs.matched_uri_list
+        start_idx = vs.loaded_match_count + 1
+        total_count = vs.total_match_count
+        end_idx = math.min(target_index, total_count)
+    else
+        uri_list = vs.uri_list
+        start_idx = vs.loaded_file_count + 1
+        total_count = vs.total_file_count
+        end_idx = math.min(target_index, total_count)
+    end
+    
+    -- 如果已经加载了目标索引，直接返回
+    if start_idx > end_idx then
+        self._virtual_scroll.is_loading = false
+        return
+    end
+    
+    -- 一次性获取所有要加载的 URI
+    local new_data = {}
+    for i = start_idx, end_idx do
+        local uri = uri_list[i]
+        if data[uri] then
+            new_data[uri] = data[uri]
+        end
+    end
+    
+    -- 移除旧的提示行
+    api.nvim_set_option_value("modifiable", true, { buf = bufnr })
+    local line_count = api.nvim_buf_line_count(bufnr)
+    if line_count >= 2 then
+        api.nvim_buf_set_lines(bufnr, line_count - 2, line_count, false, {})
+    end
+    
+    -- 生成新内容并追加（一次性追加所有内容）
     local append_start_line = api.nvim_buf_line_count(bufnr)
     local width, height = self:_appendSubViewData(new_data, bufnr, append_start_line)
     
@@ -1320,13 +1407,9 @@ function ClassController:ActionToggleFold()
             end
         end
         
-        -- 如果该文件未加载，需要先加载到该位置
+        -- 如果该文件未加载，一次性加载到该位置（优化：避免循环调用和 UI 闪烁）
         if uri_index and uri_index > self._virtual_scroll.loaded_file_count then
-            -- 加载到该文件为止
-            while self._virtual_scroll.loaded_file_count < uri_index and 
-                  self._virtual_scroll.loaded_file_count < self._virtual_scroll.total_file_count do
-                self:_loadMoreItems()
-            end
+            self:_loadItemsUpTo(uri_index)
         end
     end
 
