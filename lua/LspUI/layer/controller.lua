@@ -1822,6 +1822,9 @@ function ClassController:ActionShowHistory()
     api.nvim_buf_set_lines(buf, 0, -1, false, lines)
     vim.bo[buf].modifiable = false
     
+    -- 设置 filetype 以触发语法高亮（通过 ftplugin）
+    vim.bo[buf].filetype = "LspUIJumpHistory"
+    
     -- 计算窗口大小
     local width = 100
     local height = math.min(#lines, 20)
@@ -1847,19 +1850,6 @@ function ClassController:ActionShowHistory()
     if #state.items > 0 then
         api.nvim_win_set_cursor(win, {3, 0})
     end
-    
-    -- 设置语法高亮
-    vim.cmd([[
-        syntax match HistoryTime /\[\d\d:\d\d:\d\d\]/
-        syntax match HistoryType /│\s*\zs[a-zA-Z_]\+\ze\s*│/
-        syntax match HistoryFile /│\s*\zs[^│]\+\.\w\+:\d\+\ze\s*│/
-        syntax match HistorySeparator /[─│]/
-        
-        highlight default link HistoryTime Comment
-        highlight default link HistoryType Keyword
-        highlight default link HistoryFile Directory
-        highlight default link HistorySeparator Comment
-    ]])
     
     -- 绑定快捷键
     local function close_window()
