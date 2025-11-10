@@ -101,15 +101,16 @@ function M.create_item(opts)
     local file_path = vim.uri_to_fname(uri)
     local file_name = vim.fn.fnamemodify(file_path, ":t")
 
-    -- 获取代码上下文（如果没有提供）
+    -- 延迟加载 context：只在显示历史窗口时才获取，避免跳转时的文件读取延迟
+    -- 如果调用者显式提供了 context，则使用它；否则保持为 nil
     local context = opts.context
-    if not context or context == "" then
-        context = M.get_line_context(uri, opts.line)
-    end
-
-    -- 截断过长的上下文
-    if #context > 60 then
-        context = context:sub(1, 57) .. "..."
+    if context and context ~= "" then
+        -- 截断过长的上下文
+        if #context > 60 then
+            context = context:sub(1, 57) .. "..."
+        end
+    else
+        context = nil
     end
 
     return {
@@ -147,8 +148,15 @@ function M.format_item(item, index)
     end
     pos_str = string.format("%-25s", pos_str)
 
-    -- 代码上下文（确保不超过限制）
-    local context = item.context or ""
+    -- 懒加载代码上下文：只在显示时才获取（如果还未获取）
+    local context = item.context
+    if not context or context == "" then
+        context = M.get_line_context(item.uri, item.line)
+        -- 缓存到 item 中，避免重复读取
+        item.context = context
+    end
+    
+    -- 确保上下文不超过限制
     if #context > 60 then
         context = context:sub(1, 57) .. "..."
     end
