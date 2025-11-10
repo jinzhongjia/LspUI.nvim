@@ -1,6 +1,7 @@
 -- lua/LspUI/jump_history/init.lua
 local command = require("LspUI.command")
 local config = require("LspUI.config")
+local notify = require("LspUI.layer.notify")
 
 local M = {}
 
@@ -23,13 +24,11 @@ function M.run()
     local controller = require("LspUI.layer.controller"):GetInstance()
     
     if not controller then
-        local notify = require("LspUI.layer.notify")
         notify.Warn("LspUI controller is not initialized")
         return
     end
     
     if not controller.ActionShowHistory then
-        local notify = require("LspUI.layer.notify")
         notify.Warn("Jump history feature is not available")
         return
     end
