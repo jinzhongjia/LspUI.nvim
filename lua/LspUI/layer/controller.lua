@@ -8,9 +8,6 @@ local notify = require("LspUI.layer.notify")
 local search = require("LspUI.layer.search")
 local tools = require("LspUI.layer.tools")
 
--- 添加全局单例实例
-local _controller_instance = nil
-
 ---@class ClassController
 ---@field _lsp ClassLsp
 ---@field _mainView ClassMainView
@@ -21,6 +18,7 @@ local _controller_instance = nil
 ---@field _virtual_scroll table
 ---@field _jump_history_state table
 ---@field _original_winbar string?
+---@field _line_map table 行号到 URI 和 range 的映射表（性能优化：O(1) 查找）
 local ClassController = {
     ---@diagnostic disable-next-line: assign-type-mismatch
     _lsp = nil,
@@ -34,6 +32,7 @@ local ClassController = {
     _jump_history_state = nil, -- 跳转历史状态
     _current_method_name = nil, -- 当前 LSP 方法名
     _virtual_scroll = nil, -- 虚拟滚动状态（在构造函数中初始化）
+    _line_map = {}, -- 行号映射表（在构造函数中初始化）
 }
 
 ClassController.__index = ClassController
@@ -59,11 +58,7 @@ end
 
 ---@return ClassController
 function ClassController:New()
-    -- 如果存在全局实例，直接返回
-    if _controller_instance then
-        return _controller_instance
-    end
-
+    -- 每次调用都创建新实例（修复单例状态污染问题）
     local obj = {}
     setmetatable(obj, self)
 
@@ -71,6 +66,7 @@ function ClassController:New()
     obj._mainView = ClassMainView:New(false)
     obj._subView = ClassSubView:New(true)
     obj._search_state = search.new_state() -- 初始化搜索状态
+    obj._line_map = {} -- 初始化行号映射表
 
     -- 初始化跳转历史（使用配置）
     local history_config = config.options.jump_history or {}
@@ -101,15 +97,7 @@ function ClassController:New()
 
     api.nvim_create_augroup("LspUI_AutoClose", { clear = true })
 
-    -- 保存为全局单例
-    _controller_instance = obj
     return obj
-end
-
---- 获取全局控制器实例
----@return ClassController?
-function ClassController:GetInstance()
-    return _controller_instance
 end
 
 ---@private
@@ -221,6 +209,12 @@ function ClassController:_generateContentForData(data, start_line_offset, ordere
     local syntax_regions = {}
     local max_width = 0
 
+    -- 只在初始渲染时清空映射表（start_line_offset == 0）
+    -- 虚拟滚动追加时保留已有映射，累加新映射
+    if start_line_offset == 0 then
+        self._line_map = {}
+    end
+
     -- 统一路径格式的辅助函数
     local function normalize_path(path)
         local result = path:gsub("\\", "/")
@@ -310,12 +304,31 @@ function ClassController:_generateContentForData(data, start_line_offset, ordere
             syntax_regions[filetype] = {}
         end
 
+        -- 为文件标题行建立映射（range 为 nil 表示这是文件标题行）
+        local title_line_num = start_line_offset + #content
+        self._line_map[title_line_num] = {
+            uri = uri,
+            range = nil,  -- 文件标题行没有具体的 range
+        }
+
+        -- 为每个代码行建立映射
+        local range_index = 1
         for _, row in ipairs(uri_rows) do
             local line_code = vim.fn.trim(lines[row] or "")
             local code_fmt = string.format("   %s", line_code)
 
             if not item.fold then
                 table.insert(content, code_fmt)
+
+                -- 为当前行建立映射（性能优化：O(1) 查找）
+                local code_line_num = start_line_offset + #content
+                if item.range[range_index] then
+                    self._line_map[code_line_num] = {
+                        uri = uri,
+                        range = item.range[range_index],
+                    }
+                end
+                range_index = range_index + 1
 
                 if filetype and filetype ~= "" then
                     local line_content = content[#content]
@@ -902,35 +915,13 @@ end
 ---@param lnum integer
 ---@return string? uri, LspUIRange? range
 function ClassController:_getLspPositionByLnum(lnum)
-    local data = self._lsp:GetData()
-    local currentLine = 1
-
-    -- 对 URI 进行排序以确保顺序一致（与渲染时相同）
-    local sorted_uris = {}
-    for uri in pairs(data) do
-        table.insert(sorted_uris, uri)
-    end
-    table.sort(sorted_uris)
-
-    for _, uri in ipairs(sorted_uris) do
-        local item = data[uri]
-        -- 文件标题行
-        if currentLine == lnum then
-            return uri, nil
-        end
-        currentLine = currentLine + 1
-
-        -- 文件内容行
-        if not item.fold then
-            for _, range in ipairs(item.range) do
-                if currentLine == lnum then
-                    return uri, range
-                end
-                currentLine = currentLine + 1
-            end
-        end
+    -- 使用行号映射表进行 O(1) 查找（性能优化）
+    local mapping = self._line_map[lnum]
+    if mapping then
+        return mapping.uri, mapping.range
     end
 
+    -- 如果映射表中没有找到，返回 nil（不应该发生，除非映射表未正确构建）
     return nil, nil
 end
 
@@ -939,53 +930,32 @@ end
 ---@param range LspUIRange? 当前选中的范围，用于定位折叠后光标位置
 ---@return integer lnum 光标应放置的行号
 function ClassController:_getCursorPosForUri(uri, range)
-    local currentLine = 1
-    local data = self._lsp:GetData()
+    -- 使用行号映射表进行反向查找（性能优化：O(N) -> O(M)，M 是显示的行数）
     local fileHeaderLine = nil
 
-    -- 对 URI 进行排序以确保顺序一致（与渲染时相同）
-    local sorted_uris = {}
-    for uri_key in pairs(data) do
-        table.insert(sorted_uris, uri_key)
-    end
-    table.sort(sorted_uris)
-
-    for _, currentUri in ipairs(sorted_uris) do
-        local item = data[currentUri]
-        -- 记录文件标题行
-        fileHeaderLine = currentLine
-        currentLine = currentLine + 1
-
-        if currentUri == uri then
-            if not range then
-                -- 没有指定范围，返回文件标题行
-                return fileHeaderLine
+    -- 遍历映射表查找匹配项
+    for lnum, mapping in pairs(self._line_map) do
+        if mapping.uri == uri then
+            -- 如果是文件标题行（range 为 nil）
+            if mapping.range == nil then
+                fileHeaderLine = lnum
             end
 
-            -- 如果文件被折叠了，直接返回文件标题行
-            if item.fold then
-                return fileHeaderLine
-            end
-
-            -- 文件未折叠，继续查找匹配的范围行
-            for _, itemRange in ipairs(item.range) do
+            -- 如果指定了范围，查找匹配的范围行
+            if range and mapping.range then
                 if
-                    itemRange.start.line == range.start.line
-                    and itemRange.start.character == range.start.character
+                    mapping.range.start.line == range.start.line
+                    and mapping.range.start.character == range.start.character
                 then
-                    return currentLine
+                    return lnum
                 end
-                currentLine = currentLine + 1
             end
-
-            -- 如果没找到匹配的范围，返回文件标题行
-            return fileHeaderLine
         end
+    end
 
-        -- 如果不是目标URI，跳过其范围行
-        if not item.fold then
-            currentLine = currentLine + #item.range
-        end
+    -- 如果没有指定范围或找不到匹配的范围，返回文件标题行
+    if fileHeaderLine then
+        return fileHeaderLine
     end
 
     -- 默认返回第一行
