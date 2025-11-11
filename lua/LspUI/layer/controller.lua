@@ -19,6 +19,8 @@ local tools = require("LspUI.layer.tools")
 ---@field _jump_history_state table
 ---@field _original_winbar string?
 ---@field _line_map table 行号到 URI 和 range 的映射表（性能优化：O(1) 查找）
+local controller_singleton = nil
+
 local ClassController = {
     ---@diagnostic disable-next-line: assign-type-mismatch
     _lsp = nil,
@@ -36,6 +38,36 @@ local ClassController = {
 }
 
 ClassController.__index = ClassController
+
+--- 获取全局控制器实例
+--- @param create_if_missing boolean? 是否在不存在时创建实例，默认为 true
+--- @return ClassController?
+function ClassController.GetInstance(create_if_missing)
+    if controller_singleton == nil and create_if_missing ~= false then
+        controller_singleton = ClassController:New()
+    end
+    return controller_singleton
+end
+
+--- 重置全局控制器实例
+function ClassController.ResetInstance()
+    controller_singleton = nil
+end
+
+--- 判断控制器是否仍然活跃（任一视图存在即可）
+--- @return boolean
+function ClassController:IsActive()
+    if not self then
+        return false
+    end
+    if self._mainView and self._mainView:Valid() then
+        return true
+    end
+    if self._subView and self._subView:Valid() then
+        return true
+    end
+    return false
+end
 
 --- 统计总文件数和总行数
 ---@param data table LSP 数据

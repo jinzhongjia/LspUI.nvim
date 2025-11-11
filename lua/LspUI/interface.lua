@@ -3,16 +3,22 @@ local ClassController = require("LspUI.layer.controller")
 
 local M = {}
 
--- 存储不同方法的控制器实例
-local controllers = {}
+-- 当前全局控制器实例引用（便于在本模块内缓存）
+local active_controller
+
+local function ensure_controller()
+    if not active_controller then
+        active_controller = ClassController.GetInstance()
+    end
+    return active_controller
+end
 
 ---@param method_name string 方法名称
 ---@param bufnr integer 缓冲区号
 ---@param params table LSP请求参数
 function M.go(method_name, bufnr, params)
-    -- 创建新的控制器实例
-    controllers[method_name] = ClassController:New()
-    controllers[method_name]:Go(method_name, bufnr, params)
+    local controller = ensure_controller()
+    controller:Go(method_name, bufnr, params)
 end
 
 -- 定义、声明、引用等方法的快捷接口
@@ -38,10 +44,11 @@ end
 
 -- 关闭所有控制器
 function M.close_all()
-    for _, controller in pairs(controllers) do
+    local controller = ClassController.GetInstance(false)
+    if controller and controller:IsActive() then
         controller:ActionQuit()
     end
-    controllers = {}
+    active_controller = nil
 end
 
 return M
