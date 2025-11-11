@@ -19,7 +19,16 @@ M.init = function()
 
         if command_store[key] then
             -- 修改：传递所有参数
-            pcall(command_store[key].run, unpack(cmd_args))
+            local ok, err = pcall(command_store[key].run, unpack(cmd_args))
+            if not ok then
+                notify.Error(
+                    string.format(
+                        "Command %s failed: %s",
+                        key,
+                        err or "unknown error"
+                    )
+                )
+            end
         else
             notify.Warn(string.format("command %s not exist!", key))
         end
