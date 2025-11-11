@@ -387,11 +387,15 @@ function ClassView:BindView(view)
     self._bindedView = view
     view._bindedView = self
 
-    -- 为两个视图设置关闭事件
-    local originalCloseEvent = self._closeEvent
+    -- 保存双方原有的关闭事件（对称处理）
+    local originalCloseEvent_self = self._closeEvent
+    local originalCloseEvent_view = view._closeEvent
+
+    -- 为 self 设置关闭事件
     self._closeEvent = function()
-        if originalCloseEvent then
-            originalCloseEvent()
+        -- 先执行原有的关闭事件
+        if originalCloseEvent_self then
+            originalCloseEvent_self()
         end
 
         -- 如果绑定的视图存在且有效，则销毁它
@@ -399,25 +403,23 @@ function ClassView:BindView(view)
             local bindedView = self._bindedView
             self._bindedView = nil -- 清除绑定关系，防止循环调用
             bindedView._bindedView = nil -- 清除对方的绑定关系
-            if bindedView then
-                bindedView:Destroy()
-            end
+            bindedView:Destroy()
         end
     end
 
-    -- 只有当对方没有设置关闭事件时，我们才为其设置
-    -- 这避免了在两个视图都调用BindView时重复设置事件处理器
-    if not view._closeEvent then
-        view._closeEvent = function()
-            -- 如果绑定的视图存在且有效，则销毁它
-            if view._bindedView and view._bindedView:Valid() then
-                local bindedView = view._bindedView
-                view._bindedView = nil -- 清除绑定关系，防止循环调用
-                bindedView._bindedView = nil -- 清除对方的绑定关系
-                if bindedView then
-                    bindedView:Destroy()
-                end
-            end
+    -- 为 view 设置关闭事件（对称处理，保留原有事件）
+    view._closeEvent = function()
+        -- 先执行原有的关闭事件
+        if originalCloseEvent_view then
+            originalCloseEvent_view()
+        end
+
+        -- 如果绑定的视图存在且有效，则销毁它
+        if view._bindedView and view._bindedView:Valid() then
+            local bindedView = view._bindedView
+            view._bindedView = nil -- 清除绑定关系，防止循环调用
+            bindedView._bindedView = nil -- 清除对方的绑定关系
+            bindedView:Destroy()
         end
     end
 
@@ -436,14 +438,23 @@ end
 --- 显示视图（如果已经隐藏）
 --- @return ClassView
 function ClassView:ShowView()
-    if not self._windowId or not api.nvim_win_is_valid(self._windowId) then
-        if self:BufValid() then
-            -- 使用保存的配置重新创建窗口
-            self._windowId =
-                api.nvim_open_win(self._attachBuffer, self._enter, self._config)
-            return self
+    -- 如果窗口有效，检查是否被隐藏
+    if self:Valid() then
+        local win_config = api.nvim_win_get_config(self._windowId)
+        if win_config.hide then
+            -- 取消隐藏
+            api.nvim_win_set_config(self._windowId, { hide = false })
         end
+        return self
     end
+    
+    -- 窗口无效，尝试重新创建
+    if self:BufValid() then
+        -- 使用保存的配置重新创建窗口
+        self._windowId =
+            api.nvim_open_win(self._attachBuffer, self._enter, self._config)
+    end
+    
     return self
 end
 
