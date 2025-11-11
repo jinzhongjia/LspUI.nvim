@@ -1,4 +1,5 @@
 local api = vim.api
+local fn = vim.fn
 local ClassLsp = require("LspUI.layer.lsp")
 local ClassMainView = require("LspUI.layer.main_view")
 local ClassSubView = require("LspUI.layer.sub_view")
@@ -86,6 +87,26 @@ local function count_items(data)
     end
 
     return file_count, total_lines
+end
+
+local function capture_history_context(buffer_id, line)
+    if not buffer_id or not api.nvim_buf_is_valid(buffer_id) then
+        return nil
+    end
+
+    if not api.nvim_buf_is_loaded(buffer_id) then
+        local ok = pcall(fn.bufload, buffer_id)
+        if not ok or not api.nvim_buf_is_loaded(buffer_id) then
+            return nil
+        end
+    end
+
+    local ok, lines = pcall(api.nvim_buf_get_lines, buffer_id, line - 1, line, false)
+    if not ok or not lines or not lines[1] then
+        return nil
+    end
+
+    return vim.trim(lines[1])
 end
 
 ---@return ClassController
@@ -1206,6 +1227,7 @@ function ClassController:Go(method_name, buffer_id, params, origin_win)
                     col = target_col,
                     buffer_id = target_buf,
                     lsp_type = method_name,
+                    context = capture_history_context(target_buf, target_line),
                 })
                 jump_history.add_item(self._jump_history_state, history_item)
             end
@@ -1450,6 +1472,7 @@ function ClassController:ActionJump(cmd)
             col = target_col,
             buffer_id = target_buf,
             lsp_type = self._current_method_name or "unknown",
+            context = capture_history_context(target_buf, target_line),
         })
         jump_history.add_item(self._jump_history_state, history_item)
     end
