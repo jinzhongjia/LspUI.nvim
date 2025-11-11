@@ -30,6 +30,15 @@ end
 --- @type ClassView
 local diagnostic_view
 
+local function ensure_diagnostic_view()
+    if diagnostic_view and diagnostic_view:Valid() then
+        return diagnostic_view, false
+    end
+
+    diagnostic_view = ClassView:New(true)
+    return diagnostic_view, true
+end
+
 local function cleanStringConcise(str)
     return str:match("^%s*(.-)%s*$"):gsub("%.+$", "")
 end
@@ -112,17 +121,22 @@ function M.render(action)
         end
     end
 
-    local view = ClassView:New(true)
-        :BufContent(0, -1, content)
-        :BufOption("filetype", "LspUI-diagnostic")
-        :BufOption("modifiable", false)
+    local view, is_new = ensure_diagnostic_view()
+    local buf_id = view:GetBufID()
+
+    api.nvim_buf_clear_namespace(buf_id, ns_id, 0, -1)
+
+    view:BufOption("modifiable", true)
         :BufOption("bufhidden", "wipe")
+        :BufOption("filetype", "LspUI-diagnostic")
+
+    api.nvim_buf_set_lines(buf_id, 0, -1, false, content)
+    view:BufOption("modifiable", false)
 
     -- highlight buffer
     for _, highlight_group in pairs(highlight_groups) do
         vim.hl.range(
-            ---@diagnostic disable-next-line: param-type-mismatch
-            view:GetBufID(),
+            buf_id,
             ns_id,
             diagnostic_severity_to_highlight(highlight_group.severity),
             { highlight_group.lnum, highlight_group.col },
@@ -132,31 +146,35 @@ function M.render(action)
 
     local height = tools.compute_height_for_windows(content, width)
 
-    view:Size(width, height)
-        :Enter(false)
-        :Anchor("NW")
-        :Border(config.options.diagnostic.border)
-        :Focusable(true)
-        :Relative("cursor")
-        :Pos(1, 1)
-        :Style("minimal")
-        :Title("diagnostic", "right")
+    view:Updates(function()
+        view:Size(width, height)
+            :Enter(false)
+            :Anchor("NW")
+            :Border(config.options.diagnostic.border)
+            :Focusable(true)
+            :Relative("cursor")
+            :Pos(1, 1)
+            :Style("minimal")
+            :Title("diagnostic", "right")
+    end)
 
     if diagnostic.source then
         view:Footer(cleanStringConcise(diagnostic.source), "right")
+    else
+        view:Footer("", "right")
     end
 
-    -- 销毁旧视图和清理旧的自动命令
-    if diagnostic_view then
-        diagnostic_view:Destroy()
-    end
     clean_autocmds()
 
     vim.cmd("normal! m'")
     api.nvim_win_set_cursor(current_window, { next_row + 1, next_col })
     vim.cmd("normal! m'")
 
-    view:Render()
+    if is_new then
+        view:Render()
+    else
+        view:ShowView()
+    end
 
     vim.cmd.redraw()
     diagnostic_view = view
@@ -178,6 +196,10 @@ end
 function M.autocmd(buffer_id)
     -- 确保清理旧的自动命令
     clean_autocmds()
+
+    if not (diagnostic_view and diagnostic_view:Valid()) then
+        return
+    end
 
     local group = api.nvim_create_augroup(autocmd_group, { clear = true })
     local new_buffer = diagnostic_view:GetBufID()
