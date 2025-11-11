@@ -233,6 +233,9 @@ local function create_autocmd(events, callback, desc)
     })
 end
 
+-- 清理函数（用于模块卸载时释放资源）
+local signature_handler_cleanup = nil
+
 -- 设置自动命令
 function M.autocmd()
     signature_group =
@@ -248,7 +251,7 @@ function M.autocmd()
             time = math.floor(config.options.signature.debounce)
         end
         -- 如果是 true，使用默认值
-        signature_handler = tools.debounce(signature_handle, time)
+        signature_handler, signature_handler_cleanup = tools.debounce(signature_handle, time)
     end
 
     -- LSP 附加事件 - 添加缓冲区到支持集合
@@ -292,6 +295,12 @@ end
 function M.deautocmd()
     if signature_group then
         api.nvim_del_augroup_by_id(signature_group)
+    end
+    
+    -- 清理防抖计时器资源
+    if signature_handler_cleanup then
+        signature_handler_cleanup()
+        signature_handler_cleanup = nil
     end
 end
 

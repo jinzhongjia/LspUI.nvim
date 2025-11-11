@@ -94,7 +94,7 @@ local function setup_view_bindings(
     end, "Cancel Rename")
 
     -- 文本变化时自动调整窗口大小（使用防抖处理）
-    local resize_debounce = tools.debounce(function()
+    local resize_debounce, resize_cleanup = tools.debounce(function()
         if not view:Valid() then
             return
         end
@@ -126,11 +126,16 @@ local function setup_view_bindings(
         view:Destroy()
     end, "Close rename window when losing focus")
 
-    -- 确保窗口关闭时清理自动命令组
+    -- 确保窗口关闭时清理自动命令组和计时器
     local original_close_event = view._closeEvent
     view:CloseEvent(function()
         if original_close_event then
             original_close_event()
+        end
+
+        -- 清理防抖计时器
+        if resize_cleanup then
+            resize_cleanup()
         end
 
         -- 清理自动命令组
