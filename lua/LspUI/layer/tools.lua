@@ -10,77 +10,28 @@ local version = "v3"
 function M.GetUriLines(buffer_id, uri, rows)
     local lines = {}
 
-    -- 检查 buffer 是否已加载，或者是否为非文件 URI
-    local should_load_from_buffer = api.nvim_buf_is_loaded(buffer_id)
-        or string.sub(uri, 1, 4) ~= "file"
+    -- 统一使用 bufload + nvim_buf_get_lines，避免手动文件 IO
+    if not api.nvim_buf_is_valid(buffer_id) then
+        return lines
+    end
 
-    if should_load_from_buffer then
-        -- 如果未加载且不是文件 URI，先加载 buffer
-        if not api.nvim_buf_is_loaded(buffer_id) then
-            fn.bufload(buffer_id)
+    -- 确保 buffer 已加载
+    if not api.nvim_buf_is_loaded(buffer_id) then
+        local ok = pcall(fn.bufload, buffer_id)
+        if not ok then
+            return lines
         end
-
-        for _, row in ipairs(rows) do
-            if not lines[row] then
-                lines[row] = (api.nvim_buf_get_lines(
-                    buffer_id,
-                    row,
-                    row + 1,
-                    false
-                ) or { "" })[1]
-            end
-        end
-        return lines
     end
 
-    -- 对于文件 URI，直接从文件读取
-    local file_full_name = api.nvim_buf_get_name(buffer_id)
-
-    -- open file handle
-    local fd = uv.fs_open(file_full_name, "r", 438)
-    if not fd then
-        return lines
-    end
-
-    -- get file status
-    local stat = uv.fs_fstat(fd)
-    if not stat then
-        return lines
-    end
-
-    -- read all file content
-    local data = uv.fs_read(fd, stat.size, 0)
-    uv.fs_close(fd)
-    if not data then
-        return lines
-    end
-
-    local need = 0 -- keep track of how many unique rows we need
+    -- 从 buffer 读取指定行
     for _, row in ipairs(rows) do
         if not lines[row] then
-            need = need + 1
-        end
-        lines[row] = true
-    end
-
-    local found = 0
-    local lnum = 0
-
-    ---@diagnostic disable-next-line: param-type-mismatch
-    for line in string.gmatch(data, "([^\n]*)\n?") do
-        if lines[lnum] == true then
-            lines[lnum] = line
-            found = found + 1
-            if found == need then
-                break
+            local ok, result = pcall(api.nvim_buf_get_lines, buffer_id, row, row + 1, false)
+            if ok and result and result[1] then
+                lines[row] = result[1]
+            else
+                lines[row] = ""
             end
-        end
-        lnum = lnum + 1
-    end
-
-    for i, line in pairs(lines) do
-        if line == true then
-            lines[i] = ""
         end
     end
 
@@ -230,13 +181,19 @@ M.command_desc = function(desc)
     return "[LspUI]: " .. desc
 end
 
+--- 创建防抖函数，支持显式清理
+--- @param func function 要防抖的函数
+--- @param delay integer 延迟毫秒数
+--- @return function, function 返回防抖函数和清理函数
 function M.debounce(func, delay)
     local timer = nil
-    return function(...)
+    
+    local debounced = function(...)
         local args = { ... }
         if timer then
             timer:stop()
-            timer:close() -- 确保计时器资源被释放
+            timer:close()
+            timer = nil
         end
 
         timer = vim.loop.new_timer()
@@ -255,6 +212,17 @@ function M.debounce(func, delay)
             end)
         )
     end
+    
+    -- 提供清理函数，确保资源释放
+    local cleanup = function()
+        if timer then
+            timer:stop()
+            timer:close()
+            timer = nil
+        end
+    end
+    
+    return debounced, cleanup
 end
 
 -- lib function: get version of LspUI

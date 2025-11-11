@@ -103,7 +103,7 @@ local function debounce_func(buffer_id)
     end
 
     if not config.options.lightbulb.debounce then
-        return func
+        return func, nil
     elseif config.options.lightbulb.debounce == true then
         return tools.debounce(func, 250)
     end
@@ -114,6 +114,9 @@ local function debounce_func(buffer_id)
         math.floor(config.options.lightbulb.debounce)
     )
 end
+
+-- 存储每个 buffer 的清理函数
+local buffer_cleanups = {}
 
 -- auto command for lightbulb
 function M.autocmd()
@@ -128,7 +131,12 @@ function M.autocmd()
             { clear = true }
         )
 
-        local new_func = debounce_func(current_buffer)
+        local new_func, cleanup = debounce_func(current_buffer)
+        
+        -- 保存清理函数
+        if cleanup then
+            buffer_cleanups[current_buffer] = cleanup
+        end
 
         api.nvim_create_autocmd({ "CursorHold" }, {
             group = group_id,
@@ -148,6 +156,11 @@ function M.autocmd()
             group = group_id,
             buffer = current_buffer,
             callback = function()
+                -- 清理防抖计时器
+                if buffer_cleanups[current_buffer] then
+                    buffer_cleanups[current_buffer]()
+                    buffer_cleanups[current_buffer] = nil
+                end
                 api.nvim_del_augroup_by_id(group_id)
             end,
             desc = tools.command_desc(
@@ -165,6 +178,14 @@ function M.autocmd()
 end
 
 function M.un_autocmd()
+    -- 清理所有 buffer 的防抖计时器
+    for _, cleanup in pairs(buffer_cleanups) do
+        if cleanup then
+            cleanup()
+        end
+    end
+    buffer_cleanups = {}
+    
     api.nvim_del_augroup_by_name(autogroup_name)
 end
 
