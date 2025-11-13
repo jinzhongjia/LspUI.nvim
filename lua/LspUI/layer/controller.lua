@@ -153,6 +153,18 @@ function ClassController:New()
     return obj
 end
 
+--- 限制 SubView 高度不超过屏幕高度
+---@private
+---@param height integer 原始高度
+---@return integer 限制后的高度
+function ClassController:_limitSubViewHeight(height)
+    local max_height = api.nvim_get_option_value("lines", {}) - 3
+    if height > max_height then
+        return max_height
+    end
+    return height
+end
+
 ---@private
 ---@return integer width, integer height
 function ClassController:_generateSubViewContent()
@@ -796,8 +808,9 @@ function ClassController:_loadMoreItems()
     -- 更新状态显示
     self:_updateSearchStatus()
 
-    -- 更新窗口大小
+    -- 更新窗口大小，限制高度不超过屏幕高度
     local total_height = api.nvim_buf_line_count(bufnr)
+    total_height = self:_limitSubViewHeight(total_height)
     self._subView:Size(width, total_height)
 end
 
@@ -904,8 +917,9 @@ function ClassController:_loadItemsUpTo(target_index)
     -- 更新状态显示
     self:_updateSearchStatus()
 
-    -- 更新窗口大小
+    -- 更新窗口大小，限制高度不超过屏幕高度
     local total_height = api.nvim_buf_line_count(bufnr)
+    total_height = self:_limitSubViewHeight(total_height)
     self._subView:Size(width, total_height)
 end
 
@@ -1326,6 +1340,7 @@ function ClassController:RenderViews()
 
     -- 创建副视图或更新现有副视图
     local width, height = self:_generateSubViewContent()
+    height = self:_limitSubViewHeight(height)
 
     self._subView:Updates(function()
         self._subView
@@ -1565,6 +1580,7 @@ function ClassController:ActionToggleFold()
 
     -- 重新生成SubView内容
     local width, height = self:_generateSubViewContent()
+    height = self:_limitSubViewHeight(height)
     self._subView:Size(width, height)
 
     -- 重新应用搜索高亮（如果搜索已启用）
@@ -1735,6 +1751,7 @@ function ClassController:ActionToggleSubView()
     if not self._subView:Valid() then
         -- 先完全重新生成内容
         local width, height = self:_generateSubViewContent()
+        height = self:_limitSubViewHeight(height)
 
         -- 更新配置
         self._subView:Updates(function()
@@ -1795,6 +1812,7 @@ function ClassController:ActionFoldAll(fold)
     if changed then
         -- 重新渲染
         local width, height = self:_generateSubViewContent()
+        height = self:_limitSubViewHeight(height)
         self._subView:Size(width, height)
 
         -- 重新应用搜索高亮
