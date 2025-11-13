@@ -22,6 +22,40 @@ local LANGUAGE_KEYWORDS = {
             "len", "make", "new", "panic", "print", "println", "real", "recover",
         },
     },
+    lua = {
+        keywords = {
+            "and", "break", "do", "else", "elseif", "end", "false", "for",
+            "function", "goto", "if", "in", "local", "nil", "not", "or",
+            "repeat", "return", "then", "true", "until", "while",
+        },
+        types = {},  -- Lua 没有显式类型关键字
+        builtins = {
+            "assert", "collectgarbage", "dofile", "error", "getmetatable",
+            "ipairs", "load", "loadfile", "next", "pairs", "pcall", "print",
+            "rawequal", "rawget", "rawlen", "rawset", "require", "select",
+            "setmetatable", "tonumber", "tostring", "type", "xpcall",
+            -- 常用全局表
+            "coroutine", "debug", "io", "math", "os", "package", "string", "table", "utf8",
+        },
+    },
+    rust = {
+        keywords = {
+            "as", "async", "await", "break", "const", "continue", "crate",
+            "dyn", "else", "enum", "extern", "false", "fn", "for", "if",
+            "impl", "in", "let", "loop", "match", "mod", "move", "mut",
+            "pub", "ref", "return", "self", "Self", "static", "struct",
+            "super", "trait", "true", "type", "unsafe", "use", "where", "while",
+        },
+        types = {
+            "bool", "char", "f32", "f64", "i8", "i16", "i32", "i64", "i128",
+            "isize", "str", "u8", "u16", "u32", "u64", "u128", "usize",
+            "Box", "String", "Vec", "Option", "Result",
+        },
+        builtins = {
+            "Some", "None", "Ok", "Err", "println", "print", "panic", "assert",
+            "assert_eq", "assert_ne", "debug_assert", "vec", "format",
+        },
+    },
     typescript = {
         keywords = {
             "abstract", "as", "async", "await", "break", "case", "catch",
@@ -58,6 +92,46 @@ local LANGUAGE_KEYWORDS = {
             "Number", "Object", "Promise", "RegExp", "String",
         },
     },
+    vue = {
+        -- Vue 单文件组件的 script 部分使用 JavaScript/TypeScript
+        keywords = {
+            "async", "await", "break", "case", "catch", "class", "const",
+            "continue", "debugger", "default", "delete", "do", "else", "export",
+            "extends", "false", "finally", "for", "function", "if", "import",
+            "in", "instanceof", "let", "new", "null", "of", "return", "static",
+            "super", "switch", "this", "throw", "true", "try", "typeof", "var",
+            "void", "while", "with", "yield",
+        },
+        types = {"null", "undefined"},
+        builtins = {
+            -- 标准 JS
+            "Array", "Boolean", "Date", "Error", "Function", "JSON", "Math",
+            "Number", "Object", "Promise", "RegExp", "String",
+            -- Vue 特定
+            "ref", "reactive", "computed", "watch", "watchEffect", "onMounted",
+            "onUnmounted", "defineProps", "defineEmits", "defineExpose",
+        },
+    },
+    zig = {
+        keywords = {
+            "align", "allowzero", "and", "anyframe", "anytype", "asm", "async",
+            "await", "break", "callconv", "catch", "comptime", "const", "continue",
+            "defer", "else", "enum", "errdefer", "error", "export", "extern",
+            "fn", "for", "if", "inline", "noalias", "noinline", "nosuspend",
+            "opaque", "or", "orelse", "packed", "pub", "resume", "return",
+            "linksection", "struct", "suspend", "switch", "test", "threadlocal",
+            "try", "union", "unreachable", "usingnamespace", "var", "volatile", "while",
+        },
+        types = {
+            "bool", "f16", "f32", "f64", "f80", "f128", "void", "noreturn", "type",
+            "anyerror", "comptime_int", "comptime_float",
+            "i8", "u8", "i16", "u16", "i32", "u32", "i64", "u64", "i128", "u128",
+            "isize", "usize", "c_char", "c_short", "c_int", "c_long", "c_longlong",
+        },
+        builtins = {
+            "true", "false", "null", "undefined",
+        },
+    },
     python = {
         keywords = {
             "False", "None", "True", "and", "as", "assert", "async", "await",
@@ -68,9 +142,102 @@ local LANGUAGE_KEYWORDS = {
         },
         types = {"int", "float", "str", "bool", "list", "dict", "tuple", "set"},
         builtins = {
+            -- 注意：'type' 被移除，因为它既是关键字又是内置函数，作为内置函数时通常作为调用使用
+            -- 而我们的关键字匹配无法区分上下文，所以优先作为类型名处理
             "abs", "all", "any", "bin", "chr", "dir", "enumerate", "filter",
             "help", "len", "map", "max", "min", "open", "ord", "print", "range",
-            "round", "sorted", "sum", "type", "zip",
+            "round", "sorted", "sum", "zip",
+        },
+    },
+    c = {
+        keywords = {
+            "auto", "break", "case", "char", "const", "continue", "default",
+            "do", "double", "else", "enum", "extern", "float", "for", "goto",
+            "if", "inline", "int", "long", "register", "restrict", "return",
+            "short", "signed", "sizeof", "static", "struct", "switch", "typedef",
+            "union", "unsigned", "void", "volatile", "while",
+            "_Alignas", "_Alignof", "_Atomic", "_Bool", "_Complex", "_Generic",
+            "_Imaginary", "_Noreturn", "_Static_assert", "_Thread_local",
+        },
+        types = {
+            "bool", "char", "double", "float", "int", "long", "short", "signed",
+            "unsigned", "void", "size_t", "ptrdiff_t", "intptr_t", "uintptr_t",
+        },
+        builtins = {
+            "NULL", "true", "false", "EXIT_SUCCESS", "EXIT_FAILURE",
+        },
+    },
+    cpp = {
+        keywords = {
+            "alignas", "alignof", "and", "and_eq", "asm", "auto", "bitand",
+            "bitor", "bool", "break", "case", "catch", "char", "char8_t",
+            "char16_t", "char32_t", "class", "compl", "concept", "const",
+            "consteval", "constexpr", "constinit", "const_cast", "continue",
+            "co_await", "co_return", "co_yield", "decltype", "default", "delete",
+            "do", "double", "dynamic_cast", "else", "enum", "explicit", "export",
+            "extern", "false", "float", "for", "friend", "goto", "if", "inline",
+            "int", "long", "mutable", "namespace", "new", "noexcept", "not",
+            "not_eq", "nullptr", "operator", "or", "or_eq", "private", "protected",
+            "public", "register", "reinterpret_cast", "requires", "return",
+            "short", "signed", "sizeof", "static", "static_assert", "static_cast",
+            "struct", "switch", "template", "this", "thread_local", "throw",
+            "true", "try", "typedef", "typeid", "typename", "union", "unsigned",
+            "using", "virtual", "void", "volatile", "wchar_t", "while", "xor", "xor_eq",
+        },
+        types = {
+            "bool", "char", "double", "float", "int", "long", "short", "signed",
+            "unsigned", "void", "wchar_t", "char8_t", "char16_t", "char32_t",
+            "size_t", "ptrdiff_t", "nullptr_t",
+        },
+        builtins = {
+            -- 注意：nullptr, true, false 已在 keywords 中，这里只保留 std
+            "std",
+        },
+    },
+    java = {
+        keywords = {
+            "abstract", "assert", "boolean", "break", "byte", "case", "catch",
+            "char", "class", "const", "continue", "default", "do", "double",
+            "else", "enum", "extends", "final", "finally", "float", "for",
+            "goto", "if", "implements", "import", "instanceof", "int", "interface",
+            "long", "native", "new", "package", "private", "protected", "public",
+            "return", "short", "static", "strictfp", "super", "switch", "synchronized",
+            "this", "throw", "throws", "transient", "try", "void", "volatile", "while",
+            -- 字面量
+            "true", "false", "null",
+        },
+        types = {
+            "boolean", "byte", "char", "double", "float", "int", "long", "short",
+            "void", "Boolean", "Byte", "Character", "Double", "Float", "Integer",
+            "Long", "Short", "String", "Object",
+        },
+        builtins = {
+            -- 注意：true, false, null 已在 keywords，String, Object 已在 types
+            "System", "Math",
+        },
+    },
+    csharp = {
+        keywords = {
+            "abstract", "as", "base", "bool", "break", "byte", "case", "catch",
+            "char", "checked", "class", "const", "continue", "decimal", "default",
+            "delegate", "do", "double", "else", "enum", "event", "explicit",
+            "extern", "false", "finally", "fixed", "float", "for", "foreach",
+            "goto", "if", "implicit", "in", "int", "interface", "internal", "is",
+            "lock", "long", "namespace", "new", "null", "object", "operator",
+            "out", "override", "params", "private", "protected", "public",
+            "readonly", "ref", "return", "sbyte", "sealed", "short", "sizeof",
+            "stackalloc", "static", "string", "struct", "switch", "this", "throw",
+            "true", "try", "typeof", "uint", "ulong", "unchecked", "unsafe",
+            "ushort", "using", "virtual", "void", "volatile", "while",
+        },
+        types = {
+            "bool", "byte", "char", "decimal", "double", "float", "int", "long",
+            "object", "sbyte", "short", "string", "uint", "ulong", "ushort", "void",
+            "var", "dynamic", "String", "Object",
+        },
+        builtins = {
+            -- 注意：true, false, null 已在 keywords，String, Object 已在 types
+            "Console", "Math",
         },
     },
 }
