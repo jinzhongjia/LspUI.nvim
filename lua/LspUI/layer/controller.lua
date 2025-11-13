@@ -367,7 +367,8 @@ function ClassController:_generateContentForData(data, start_line_offset, ordere
         -- 为每个代码行建立映射
         local range_index = 1
         for _, row in ipairs(uri_rows) do
-            local line_code = vim.fn.trim(lines[row] or "")
+            local original_line = lines[row] or ""
+            local line_code = vim.fn.trim(original_line)
             local code_fmt = string.format("   %s", line_code)
 
             if not item.fold then
@@ -384,11 +385,25 @@ function ClassController:_generateContentForData(data, start_line_offset, ordere
                 range_index = range_index + 1
 
                 if filetype and filetype ~= "" then
+                    -- 计算源文件中被trim掉的前导空格数量
+                    local leading_spaces = 0
+                    if #original_line > 0 then
+                        local first_non_space = original_line:find("%S")
+                        if first_non_space then
+                            leading_spaces = first_non_space - 1
+                        else
+                            leading_spaces = #original_line  -- 全是空格的行
+                        end
+                    end
+
                     local line_content = content[#content]
                     local region_data = {
                         line = start_line_offset + #content - 1,
                         col_start = 3,
                         col_end = #line_content,
+                        source_buf = item.buffer_id,
+                        source_line = row,
+                        source_col_offset = leading_spaces,  -- 新增：源文件中的列偏移
                     }
                     table.insert(syntax_regions[filetype], region_data)
                 end
