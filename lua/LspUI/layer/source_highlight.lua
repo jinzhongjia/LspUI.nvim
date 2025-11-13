@@ -6,7 +6,13 @@ local M = {}
 -- 缓存已提取的高亮信息，避免重复解析
 -- cache[source_buf][line_num] = { {hl_group, start_col, end_col}, ... }
 --
--- 注意：缓存策略
+-- 性能优化策略：
+-- 1. 优先使用源 buffer 已有的 Treesitter highlighter（避免重新解析整个文件）
+-- 2. iter_captures 的行范围参数会让 Treesitter 只遍历相关节点（不是整个树）
+-- 3. 缓存提取结果，避免对同一行重复查询
+-- 4. Treesitter 的 parse 本身是增量的，只会重新解析变化的部分
+--
+-- 缓存策略：
 -- 1. 只在 BufDelete/BufWipeout 时清理，不监听文件内容变化
 -- 2. 假设源 buffer 在 SubView 显示期间不会被修改
 -- 3. 如果用户修改了源文件，SubView 通常会关闭并重新打开，缓存会被重建
@@ -37,16 +43,26 @@ function M.extract_line_highlights(source_buf, source_line)
 
     local highlights = {}
 
-    -- 直接尝试获取 parser，不创建新的 highlighter
-    local success, parser = pcall(vim.treesitter.get_parser, source_buf)
-    if not success or not parser then
+    -- 优先尝试使用已有的 highlighter（避免重复解析）
+    local has_ts_hl, ts_highlighter = pcall(require, "vim.treesitter.highlighter")
+    if not has_ts_hl then
         return {}
     end
 
-    -- 确保 parser 已解析
-    local parse_ok, trees = pcall(parser.parse, parser)
-    if not parse_ok or not trees or #trees == 0 then
-        return {}
+    -- 检查是否已经有活动的高亮器
+    local highlighter = ts_highlighter.active[source_buf]
+    local parser
+
+    if highlighter and highlighter.tree then
+        -- 使用已有的 parser，避免重新解析
+        parser = highlighter.tree
+    else
+        -- 没有活动高亮器，尝试获取 parser
+        local success
+        success, parser = pcall(vim.treesitter.get_parser, source_buf)
+        if not success or not parser then
+            return {}
+        end
     end
 
     -- 获取语言和 query
@@ -56,6 +72,25 @@ function M.extract_line_highlights(source_buf, source_line)
         return {}
     end
 
+    -- 只在需要时才解析（如果使用已有 highlighter，树已经是最新的）
+    local trees
+    if highlighter then
+        -- 使用已有的树，不需要重新解析
+        local parse_ok
+        parse_ok, trees = pcall(parser.parse, parser, nil)
+        if not parse_ok or not trees or #trees == 0 then
+            return {}
+        end
+    else
+        -- 需要解析，但只解析我们需要的区域
+        -- 注意：Treesitter 的 parse 是增量的，会自动优化
+        local parse_ok
+        parse_ok, trees = pcall(parser.parse, parser)
+        if not parse_ok or not trees or #trees == 0 then
+            return {}
+        end
+    end
+
     -- 遍历所有树（支持注入的语言）
     for _, tree in ipairs(trees) do
         local root = tree:root()
@@ -63,15 +98,23 @@ function M.extract_line_highlights(source_buf, source_line)
             goto continue
         end
 
-        -- 使用 query 获取该行的高亮
+        -- 重要优化：iter_captures 的第4和第5个参数指定了行范围
+        -- 这会让 Treesitter 只遍历与该行相交的节点，而不是整个树
         local iter_ok, iter = pcall(query.iter_captures, query, root, source_buf, source_line, source_line + 1)
         if not iter_ok then
             goto continue
         end
 
         for id, node, metadata in iter do
+            -- 快速获取节点范围
             local range_ok, start_row, start_col, end_row, end_col = pcall(node.range, node)
             if not range_ok then
+                goto continue_capture
+            end
+
+            -- 提前过滤：如果节点完全不在当前行，跳过
+            -- 注意：iter_captures 已经做了部分过滤，但可能包含跨行节点
+            if end_row < source_line or start_row > source_line then
                 goto continue_capture
             end
 
@@ -80,26 +123,23 @@ function M.extract_line_highlights(source_buf, source_line)
                 goto continue_capture
             end
 
-            -- 只处理与当前行相交的节点
-            if start_row <= source_line and end_row >= source_line then
-                -- 计算在当前行的实际列范围
-                local actual_start_col = start_row == source_line and start_col or 0
-                local actual_end_col = end_row == source_line and end_col or #line_text
+            -- 计算在当前行的实际列范围
+            local actual_start_col = start_row == source_line and start_col or 0
+            local actual_end_col = end_row == source_line and end_col or #line_text
 
-                if actual_start_col < actual_end_col then
-                    -- 提取优先级（如果有）
-                    local priority = 100
-                    if type(metadata) == "table" and type(metadata.priority) == "number" then
-                        priority = metadata.priority
-                    end
-
-                    table.insert(highlights, {
-                        hl_group = "@" .. capture_name,
-                        start_col = actual_start_col,
-                        end_col = actual_end_col,
-                        priority = priority,
-                    })
+            if actual_start_col < actual_end_col then
+                -- 提取优先级（如果有）
+                local priority = 100
+                if type(metadata) == "table" and type(metadata.priority) == "number" then
+                    priority = metadata.priority
                 end
+
+                table.insert(highlights, {
+                    hl_group = "@" .. capture_name,
+                    start_col = actual_start_col,
+                    end_col = actual_end_col,
+                    priority = priority,
+                })
             end
 
             ::continue_capture::
