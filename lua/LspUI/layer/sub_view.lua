@@ -10,6 +10,7 @@ local source_highlight = require("LspUI.layer.source_highlight")
 local ClassSubView = {}
 
 local subViewNamespace = api.nvim_create_namespace("LspUISubView")
+local source_highlight_ns = api.nvim_create_namespace("LspUI_source_highlight")
 
 setmetatable(ClassSubView, ClassView)
 ClassSubView.__index = ClassSubView
@@ -100,6 +101,7 @@ function ClassSubView:ApplySyntaxHighlight(code_regions)
         return self
     end
 
+    self._active_syntax_languages = self._active_syntax_languages or {}
     local bufid = self:GetBufID()
 
     -- 检查是否有数据
@@ -113,13 +115,15 @@ function ClassSubView:ApplySyntaxHighlight(code_regions)
 
     -- 第一遍：处理所有条目，区分已加载和未加载
     local lang_keyword_regions = {}  -- 未加载文件的关键字高亮
-    local pending_entries = {}       -- 需要异步加载的条目
+    local pending_sources = {}       -- 按源 buffer 分组的待处理条目
 
     for lang, entries in pairs(code_regions) do
         if lang and lang ~= "" then
+            local lang_has_regions = false
             for _, entry in ipairs(entries) do
                 if entry.line and entry.col_start and entry.col_end then
                     local used_treesitter = false
+                    lang_has_regions = true
 
                     -- 如果源 buffer 存在且已加载，立即应用 Treesitter 高亮
                     if entry.source_buf and entry.source_line then
@@ -137,10 +141,15 @@ function ClassSubView:ApplySyntaxHighlight(code_regions)
                             )
                         else
                             -- 源 buffer 未加载，记录下来稍后异步处理
-                            if not pending_entries[lang] then
-                                pending_entries[lang] = {}
+                            local source_buf = entry.source_buf
+                            if source_buf then
+                                if not pending_sources[source_buf] then
+                                    pending_sources[source_buf] = { entries = {} }
+                                end
+                                table.insert(pending_sources[source_buf].entries, {
+                                    entry = entry,
+                                })
                             end
-                            table.insert(pending_entries[lang], entry)
                         end
                     end
 
@@ -156,6 +165,10 @@ function ClassSubView:ApplySyntaxHighlight(code_regions)
                     end
                 end
             end
+
+            if lang_has_regions then
+                self._active_syntax_languages[lang] = true
+            end
         end
     end
 
@@ -167,30 +180,30 @@ function ClassSubView:ApplySyntaxHighlight(code_regions)
     end
 
     -- 异步加载未加载的源文件并应用 Treesitter 高亮
-    if not vim.tbl_isempty(pending_entries) then
+    if not vim.tbl_isempty(pending_sources) then
         vim.schedule(function()
             -- 再次检查 buffer 是否仍然有效
             if not api.nvim_buf_is_valid(bufid) then
                 return
             end
 
-            for lang, entries in pairs(pending_entries) do
-                for _, entry in ipairs(entries) do
-                    if api.nvim_buf_is_valid(entry.source_buf) then
-                        -- 异步加载源文件
-                        if not api.nvim_buf_is_loaded(entry.source_buf) then
-                            pcall(vim.fn.bufload, entry.source_buf)
-                        end
+            for source_buf, pack in pairs(pending_sources) do
+                if api.nvim_buf_is_valid(source_buf) then
+                    -- 异步加载源文件（仅执行一次）
+                    if not api.nvim_buf_is_loaded(source_buf) then
+                        pcall(vim.fn.bufload, source_buf)
+                    end
 
-                        -- 如果加载成功，应用 Treesitter 高亮（覆盖关键字高亮）
-                        if api.nvim_buf_is_loaded(entry.source_buf) then
+                    if api.nvim_buf_is_loaded(source_buf) then
+                        for _, item in ipairs(pack.entries) do
+                            local entry = item.entry
                             local source_offset = entry.source_col_offset or 0
                             source_highlight.apply_highlights(
                                 bufid,
                                 entry.line,
                                 entry.col_start,
                                 entry.col_end,
-                                entry.source_buf,
+                                source_buf,
                                 entry.source_line,
                                 source_offset
                             )
@@ -212,17 +225,30 @@ function ClassSubView:ClearSyntaxHighlight(languages)
         return self
     end
 
+    self._active_syntax_languages = self._active_syntax_languages or {}
     local bufid = self:GetBufID()
 
     -- 清除源文件 Treesitter 高亮的命名空间
-    local source_ns = api.nvim_create_namespace("LspUI_source_highlight")
-    api.nvim_buf_clear_namespace(bufid, source_ns, 0, -1)
+    api.nvim_buf_clear_namespace(bufid, source_highlight_ns, 0, -1)
 
     -- 如果提供了语言列表，逐个清除关键字高亮
-    if languages then
-        for lang, _ in pairs(languages) do
-            keyword_highlight.clear(bufid, lang)
-        end
+    local langs_to_clear = languages
+    if not langs_to_clear or vim.tbl_isempty(langs_to_clear) then
+        langs_to_clear = self._active_syntax_languages
+    end
+
+    local lang_list = {}
+    for lang, _ in pairs(langs_to_clear) do
+        table.insert(lang_list, lang)
+    end
+
+    for _, lang in ipairs(lang_list) do
+        keyword_highlight.clear(bufid, lang)
+        self._active_syntax_languages[lang] = nil
+    end
+
+    if not languages then
+        self._active_syntax_languages = {}
     end
 
     return self

@@ -3,6 +3,10 @@ local api = vim.api
 
 local M = {}
 
+local source_ns = api.nvim_create_namespace("LspUI_source_highlight")
+local source_highlight_group =
+    api.nvim_create_augroup("LspUI.source_highlight", { clear = true })
+
 -- 缓存已提取的高亮信息，避免重复解析
 -- cache[source_buf][line_num] = { {hl_group, start_col, end_col}, ... }
 --
@@ -180,9 +184,6 @@ function M.apply_highlights(target_buf, target_line, target_col_start, target_co
         return false
     end
 
-    -- 创建命名空间
-    local ns = api.nvim_create_namespace("LspUI_source_highlight")
-
     -- 获取目标行的实际文本，用于确定有效范围
     local target_line_text = api.nvim_buf_get_lines(target_buf, target_line, target_line + 1, false)[1]
     if not target_line_text then
@@ -212,7 +213,7 @@ function M.apply_highlights(target_buf, target_line, target_col_start, target_co
         if target_start < target_end and target_start >= 0 then
             pcall(api.nvim_buf_add_highlight,
                 target_buf,
-                ns,
+                source_ns,
                 hl.hl_group,
                 target_line,
                 target_start,
@@ -236,7 +237,14 @@ end
 
 -- 自动清理缓存的自动命令
 api.nvim_create_autocmd({"BufDelete", "BufWipeout"}, {
-    group = api.nvim_create_augroup("LspUI.source_highlight", { clear = true }),
+    group = source_highlight_group,
+    callback = function(ev)
+        M.clear_cache(ev.buf)
+    end,
+})
+
+api.nvim_create_autocmd({"TextChanged", "TextChangedI"}, {
+    group = source_highlight_group,
     callback = function(ev)
         M.clear_cache(ev.buf)
     end,
