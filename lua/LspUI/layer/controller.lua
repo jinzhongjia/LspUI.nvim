@@ -259,13 +259,6 @@ function ClassController:_generateContentForData(
     local syntax_regions = {}
     local max_width = 0
 
-    local function trim_line(str)
-        if type(str) ~= "string" then
-            return ""
-        end
-        return (str:gsub("^%s*(.-)%s*$", "%1"))
-    end
-
     -- 只在初始渲染时清空映射表（start_line_offset == 0）
     -- 虚拟滚动追加时保留已有映射，累加新映射
     if start_line_offset == 0 then
@@ -374,7 +367,7 @@ function ClassController:_generateContentForData(
         local range_index = 1
         for _, row in ipairs(uri_rows) do
             local original_line = lines[row] or ""
-            local line_code = trim_line(original_line)
+            local line_code = vim.trim(original_line)
             local code_fmt = string.format("   %s", line_code)
 
             if not item.fold then
