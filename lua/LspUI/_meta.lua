@@ -89,6 +89,7 @@
 --- @field enable boolean? whether enable `jump_history` module
 --- @field max_size integer? maximum number of history items
 --- @field command_enable boolean? whether enable command for `jump_history`
+--- @field win_max_height integer? maximum height of the history window
 --- @field smart_jumplist { min_distance: integer?, cross_file_only: boolean? }? smart jumplist configuration
 
 --- @class LspUI_virtual_scroll_config
