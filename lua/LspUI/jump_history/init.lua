@@ -1,8 +1,8 @@
 -- lua/LspUI/jump_history/init.lua
 local command = require("LspUI.command")
 local config = require("LspUI.config")
-local notify = require("LspUI.layer.notify")
 local controller_module = require("LspUI.layer.controller")
+local notify = require("LspUI.layer.notify")
 
 local M = {}
 

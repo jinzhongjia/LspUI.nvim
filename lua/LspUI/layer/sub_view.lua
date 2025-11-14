@@ -115,8 +115,8 @@ function ClassSubView:ApplySyntaxHighlight(code_regions)
     -- 2. 未加载的源文件：先应用关键字高亮，再异步加载并应用 Treesitter
 
     -- 第一遍：处理所有条目，区分已加载和未加载
-    local lang_keyword_regions = {}  -- 未加载文件的关键字高亮
-    local pending_sources = {}       -- 按源 buffer 分组的待处理条目
+    local lang_keyword_regions = {} -- 未加载文件的关键字高亮
+    local pending_sources = {} -- 按源 buffer 分组的待处理条目
 
     for lang, entries in pairs(code_regions) do
         if lang and lang ~= "" then
@@ -128,8 +128,10 @@ function ClassSubView:ApplySyntaxHighlight(code_regions)
 
                     -- 如果源 buffer 存在且已加载，立即应用 Treesitter 高亮
                     if entry.source_buf and entry.source_line then
-                        if api.nvim_buf_is_valid(entry.source_buf)
-                            and api.nvim_buf_is_loaded(entry.source_buf) then
+                        if
+                            api.nvim_buf_is_valid(entry.source_buf)
+                            and api.nvim_buf_is_loaded(entry.source_buf)
+                        then
                             local source_offset = entry.source_col_offset or 0
                             used_treesitter = source_highlight.apply_highlights(
                                 bufid,
@@ -141,7 +143,8 @@ function ClassSubView:ApplySyntaxHighlight(code_regions)
                                 source_offset
                             )
                             if used_treesitter then
-                                local line_map = self._active_keyword_lines[lang]
+                                local line_map =
+                                    self._active_keyword_lines[lang]
                                 if line_map and line_map[entry.line] then
                                     keyword_highlight.clear_line(
                                         bufid,
@@ -159,12 +162,16 @@ function ClassSubView:ApplySyntaxHighlight(code_regions)
                             local source_buf = entry.source_buf
                             if source_buf then
                                 if not pending_sources[source_buf] then
-                                    pending_sources[source_buf] = { entries = {} }
+                                    pending_sources[source_buf] =
+                                        { entries = {} }
                                 end
-                                table.insert(pending_sources[source_buf].entries, {
-                                    entry = entry,
-                                    lang = lang,
-                                })
+                                table.insert(
+                                    pending_sources[source_buf].entries,
+                                    {
+                                        entry = entry,
+                                        lang = lang,
+                                    }
+                                )
                             end
                         end
                     end
@@ -174,8 +181,8 @@ function ClassSubView:ApplySyntaxHighlight(code_regions)
                         if not lang_keyword_regions[lang] then
                             lang_keyword_regions[lang] = {}
                         end
-                        self._active_keyword_lines[lang] =
-                            self._active_keyword_lines[lang] or {}
+                        self._active_keyword_lines[lang] = self._active_keyword_lines[lang]
+                            or {}
                         self._active_keyword_lines[lang][entry.line] = true
                         table.insert(lang_keyword_regions[lang], {
                             { entry.line, entry.col_start },

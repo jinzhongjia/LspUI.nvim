@@ -39,7 +39,13 @@ function M.extract_line_highlights(source_buf, source_line)
     end
 
     -- 获取该行的文本
-    local ok, lines = pcall(api.nvim_buf_get_lines, source_buf, source_line, source_line + 1, false)
+    local ok, lines = pcall(
+        api.nvim_buf_get_lines,
+        source_buf,
+        source_line,
+        source_line + 1,
+        false
+    )
     if not ok or not lines or #lines == 0 then
         return {}
     end
@@ -48,7 +54,8 @@ function M.extract_line_highlights(source_buf, source_line)
     local highlights = {}
 
     -- 优先尝试使用已有的 highlighter（避免重复解析）
-    local has_ts_hl, ts_highlighter = pcall(require, "vim.treesitter.highlighter")
+    local has_ts_hl, ts_highlighter =
+        pcall(require, "vim.treesitter.highlighter")
     if not has_ts_hl then
         return {}
     end
@@ -104,14 +111,22 @@ function M.extract_line_highlights(source_buf, source_line)
 
         -- 重要优化：iter_captures 的第4和第5个参数指定了行范围
         -- 这会让 Treesitter 只遍历与该行相交的节点，而不是整个树
-        local iter_ok, iter = pcall(query.iter_captures, query, root, source_buf, source_line, source_line + 1)
+        local iter_ok, iter = pcall(
+            query.iter_captures,
+            query,
+            root,
+            source_buf,
+            source_line,
+            source_line + 1
+        )
         if not iter_ok then
             goto continue
         end
 
         for id, node, metadata in iter do
             -- 快速获取节点范围
-            local range_ok, start_row, start_col, end_row, end_col = pcall(node.range, node)
+            local range_ok, start_row, start_col, end_row, end_col =
+                pcall(node.range, node)
             if not range_ok then
                 goto continue_capture
             end
@@ -129,12 +144,16 @@ function M.extract_line_highlights(source_buf, source_line)
 
             -- 计算在当前行的实际列范围
             local actual_start_col = start_row == source_line and start_col or 0
-            local actual_end_col = end_row == source_line and end_col or #line_text
+            local actual_end_col = end_row == source_line and end_col
+                or #line_text
 
             if actual_start_col < actual_end_col then
                 -- 提取优先级（如果有）
                 local priority = 100
-                if type(metadata) == "table" and type(metadata.priority) == "number" then
+                if
+                    type(metadata) == "table"
+                    and type(metadata.priority) == "number"
+                then
                     priority = metadata.priority
                 end
 
@@ -175,7 +194,15 @@ end
 --- @param source_buf integer 源 buffer ID
 --- @param source_line integer 源行号（0-indexed）
 --- @param source_col_offset integer? 源文件中的列偏移（默认0），用于处理只显示部分代码的情况
-function M.apply_highlights(target_buf, target_line, target_col_start, target_col_end, source_buf, source_line, source_col_offset)
+function M.apply_highlights(
+    target_buf,
+    target_line,
+    target_col_start,
+    target_col_end,
+    source_buf,
+    source_line,
+    source_col_offset
+)
     source_col_offset = source_col_offset or 0
 
     local highlights = M.extract_line_highlights(source_buf, source_line)
@@ -185,7 +212,12 @@ function M.apply_highlights(target_buf, target_line, target_col_start, target_co
     end
 
     -- 获取目标行的实际文本，用于确定有效范围
-    local target_line_text = api.nvim_buf_get_lines(target_buf, target_line, target_line + 1, false)[1]
+    local target_line_text = api.nvim_buf_get_lines(
+        target_buf,
+        target_line,
+        target_line + 1,
+        false
+    )[1]
     if not target_line_text then
         return false
     end
@@ -211,7 +243,8 @@ function M.apply_highlights(target_buf, target_line, target_col_start, target_co
 
         -- 应用高亮
         if target_start < target_end and target_start >= 0 then
-            pcall(api.nvim_buf_add_highlight,
+            pcall(
+                api.nvim_buf_add_highlight,
                 target_buf,
                 source_ns,
                 hl.hl_group,
@@ -236,14 +269,14 @@ function M.clear_cache(source_buf)
 end
 
 -- 自动清理缓存的自动命令
-api.nvim_create_autocmd({"BufDelete", "BufWipeout"}, {
+api.nvim_create_autocmd({ "BufDelete", "BufWipeout" }, {
     group = source_highlight_group,
     callback = function(ev)
         M.clear_cache(ev.buf)
     end,
 })
 
-api.nvim_create_autocmd({"TextChanged", "TextChangedI"}, {
+api.nvim_create_autocmd({ "TextChanged", "TextChangedI" }, {
     group = source_highlight_group,
     callback = function(ev)
         M.clear_cache(ev.buf)

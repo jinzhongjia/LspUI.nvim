@@ -6,7 +6,7 @@ local api = vim.api
 local M = {}
 
 -- 常量定义
-local DEFAULT_CONTEXT_MAX_LEN = 60  -- 上下文字符串的最大长度
+local DEFAULT_CONTEXT_MAX_LEN = 60 -- 上下文字符串的最大长度
 
 --- @class JumpHistoryItem
 --- @field uri string 文件 URI
@@ -158,7 +158,7 @@ function M.format_item(item, index)
         -- 缓存到 item 中，避免重复读取
         item.context = context
     end
-    
+
     -- 确保上下文不超过限制
     if #context > DEFAULT_CONTEXT_MAX_LEN then
         context = context:sub(1, DEFAULT_CONTEXT_MAX_LEN - 3) .. "..."
@@ -205,10 +205,7 @@ function M.get_display_lines(state)
 
     -- 底部提示
     table.insert(lines, string.rep("─", 100))
-    table.insert(
-        lines,
-        " <CR>:Jump  d:Delete  c:Clear  q:Close"
-    )
+    table.insert(lines, " <CR>:Jump  d:Delete  c:Clear  q:Close")
 
     return lines
 end

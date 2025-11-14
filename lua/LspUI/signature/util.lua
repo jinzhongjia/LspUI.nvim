@@ -251,7 +251,8 @@ function M.autocmd()
             time = math.floor(config.options.signature.debounce)
         end
         -- 如果是 true，使用默认值
-        signature_handler, signature_handler_cleanup = tools.debounce(signature_handle, time)
+        signature_handler, signature_handler_cleanup =
+            tools.debounce(signature_handle, time)
     end
 
     -- LSP 附加事件 - 添加缓冲区到支持集合
@@ -296,7 +297,7 @@ function M.deautocmd()
     if signature_group then
         api.nvim_del_augroup_by_id(signature_group)
     end
-    
+
     -- 清理防抖计时器资源
     if signature_handler_cleanup then
         signature_handler_cleanup()
