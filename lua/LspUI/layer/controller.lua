@@ -528,6 +528,12 @@ function ClassController:_setupSubViewKeyBindings()
         return
     end
 
+    -- 防止重复注册 autocmd：每次重新绑定前先清理当前 buffer 下的组
+    pcall(api.nvim_clear_autocmds, {
+        group = "LspUI_SubView",
+        buffer = buf,
+    })
+
     local keyBindings = {
         [config.options.pos_keybind.secondary.jump] = function()
             self:ActionJump()
