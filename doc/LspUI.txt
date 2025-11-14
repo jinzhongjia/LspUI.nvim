@@ -39,6 +39,7 @@ Features:
   - Signature Help
   - Call Hierarchy
   - Lightbulb indicator
+  - Jump History viewer
 
 ==============================================================================
 2. Requirements					*lspui-requirements*
@@ -194,6 +195,25 @@ Full configuration with defaults: >lua
         },
         debounce = 300,
       },
+
+      -- Jump history module
+      jump_history = {
+        enable = true,
+        command_enable = true,
+        max_size = 50,
+        win_max_height = 20,
+        smart_jumplist = {
+          min_distance = 5,
+          cross_file_only = false,
+        },
+      },
+
+      -- Virtual scroll support
+      virtual_scroll = {
+        threshold = 500,
+        chunk_size = 200,
+        load_more_threshold = 50,
+      },
       
       -- Position keybindings for definition-like features
       pos_keybind = {
@@ -246,6 +266,8 @@ All commands are prefixed with `LspUI`:
 :LspUI reference			Open the reference
 
 :LspUI implementation			Open the implementation
+
+:LspUI history				Show the jump history viewer
 
 :LspUI inlay_hint			Toggle inlay hint on/off
 
@@ -452,6 +474,33 @@ Configuration: >lua
         bg = nil,              -- Background color
       },
       debounce = 300,          -- Debounce time in milliseconds
+    }
+<
+
+
+						*lspui-jump-history*
+Jump History Module~
+Keeps a rolling list of recent LSP jumps with searchable context. Use
+`:LspUI history` to open the floating viewer.
+
+Configuration: >lua
+    jump_history = {
+      enable = true,           -- Enable the module
+      command_enable = true,   -- Register :LspUI history
+      max_size = 50,           -- Maximum number of entries to keep
+      win_max_height = 20,     -- Maximum height of the history window
+      smart_jumplist = {
+        min_distance = 5,      -- Ignore tiny line movements
+        cross_file_only = false, -- Only track cross-file jumps when true
+      },
+    }
+<
+
+Virtual scrolling for large results can be tuned separately: >lua
+    virtual_scroll = {
+      threshold = 500,
+      chunk_size = 200,
+      load_more_threshold = 50,
     }
 <
 

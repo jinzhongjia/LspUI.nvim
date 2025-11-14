@@ -28,6 +28,7 @@ A modern, customizable Neovim plugin that enhances LSP functionality with beauti
 - **Signature Help** - Enhanced function signature assistance
 - **Call Hierarchy** - Interactive call hierarchy navigation
 - **Lightbulb** - Visual indicators for available code actions
+- **Jump History** - Review recent LSP jumps in a searchable list with context
 
 ## 📦 Installation
 
@@ -296,6 +297,31 @@ require("LspUI").setup({
 })
 ```
 
+#### Jump History & Virtual Scroll
+
+Jump history is configured independently so you can control storage limits and
+how aggressively virtual scrolling kicks in for large results:
+
+```lua
+require("LspUI").setup({
+  jump_history = {
+    enable = true,
+    command_enable = true,
+    max_size = 50,
+    win_max_height = 20,
+    smart_jumplist = {
+      min_distance = 5,
+      cross_file_only = false,
+    },
+  },
+  virtual_scroll = {
+    threshold = 500,
+    chunk_size = 200,
+    load_more_threshold = 50,
+  },
+})
+```
+
 For more detailed configuration options, see the [Configuration Wiki](https://github.com/jinzhongjia/LspUI.nvim/wiki/Config).
 
 ## 🚀 Commands
@@ -323,6 +349,7 @@ For more detailed configuration options, see the [Configuration Wiki](https://gi
 ### Utility Commands
 - `LspUI inlay_hint` - Toggle inlay hints on/off
 - `LspUI signature` - Show signature help
+- `LspUI history` - Open the interactive jump history viewer
 
 ### Advanced Features
 - **Lightbulb**: Automatically shows visual indicators when code actions are available
