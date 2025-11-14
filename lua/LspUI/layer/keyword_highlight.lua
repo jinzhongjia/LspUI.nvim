@@ -309,4 +309,10 @@ function M.clear(buf, lang)
     api.nvim_buf_clear_namespace(buf, highlight_ns, 0, -1)
 end
 
+-- 清除某一行的关键字高亮
+function M.clear_line(buf, lang, line)
+    local highlight_ns = api.nvim_create_namespace("LspUI_keyword_" .. lang)
+    api.nvim_buf_clear_namespace(buf, highlight_ns, line, line + 1)
+end
+
 return M

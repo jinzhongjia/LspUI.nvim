@@ -102,6 +102,7 @@ function ClassSubView:ApplySyntaxHighlight(code_regions)
     end
 
     self._active_syntax_languages = self._active_syntax_languages or {}
+    self._active_keyword_lines = self._active_keyword_lines or {}
     local bufid = self:GetBufID()
 
     -- 检查是否有数据
@@ -139,6 +140,20 @@ function ClassSubView:ApplySyntaxHighlight(code_regions)
                                 entry.source_line,
                                 source_offset
                             )
+                            if used_treesitter then
+                                local line_map = self._active_keyword_lines[lang]
+                                if line_map and line_map[entry.line] then
+                                    keyword_highlight.clear_line(
+                                        bufid,
+                                        lang,
+                                        entry.line
+                                    )
+                                    line_map[entry.line] = nil
+                                    if vim.tbl_isempty(line_map) then
+                                        self._active_keyword_lines[lang] = nil
+                                    end
+                                end
+                            end
                         else
                             -- 源 buffer 未加载，记录下来稍后异步处理
                             local source_buf = entry.source_buf
@@ -148,6 +163,7 @@ function ClassSubView:ApplySyntaxHighlight(code_regions)
                                 end
                                 table.insert(pending_sources[source_buf].entries, {
                                     entry = entry,
+                                    lang = lang,
                                 })
                             end
                         end
@@ -158,6 +174,9 @@ function ClassSubView:ApplySyntaxHighlight(code_regions)
                         if not lang_keyword_regions[lang] then
                             lang_keyword_regions[lang] = {}
                         end
+                        self._active_keyword_lines[lang] =
+                            self._active_keyword_lines[lang] or {}
+                        self._active_keyword_lines[lang][entry.line] = true
                         table.insert(lang_keyword_regions[lang], {
                             { entry.line, entry.col_start },
                             { entry.line, entry.col_end },
@@ -197,7 +216,20 @@ function ClassSubView:ApplySyntaxHighlight(code_regions)
                     if api.nvim_buf_is_loaded(source_buf) then
                         for _, item in ipairs(pack.entries) do
                             local entry = item.entry
+                            local lang = item.lang
                             local source_offset = entry.source_col_offset or 0
+                            local line_map = self._active_keyword_lines[lang]
+                            if line_map and line_map[entry.line] then
+                                keyword_highlight.clear_line(
+                                    bufid,
+                                    lang,
+                                    entry.line
+                                )
+                                line_map[entry.line] = nil
+                                if vim.tbl_isempty(line_map) then
+                                    self._active_keyword_lines[lang] = nil
+                                end
+                            end
                             source_highlight.apply_highlights(
                                 bufid,
                                 entry.line,
@@ -245,10 +277,14 @@ function ClassSubView:ClearSyntaxHighlight(languages)
     for _, lang in ipairs(lang_list) do
         keyword_highlight.clear(bufid, lang)
         self._active_syntax_languages[lang] = nil
+        if self._active_keyword_lines then
+            self._active_keyword_lines[lang] = nil
+        end
     end
 
     if not languages then
         self._active_syntax_languages = {}
+        self._active_keyword_lines = {}
     end
 
     return self
