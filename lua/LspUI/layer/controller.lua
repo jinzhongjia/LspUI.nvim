@@ -30,7 +30,7 @@ local ClassController = {
     ---@diagnostic disable-next-line: assign-type-mismatch
     _subView = nil,
     _current_item = {},
-    _debounce_delay = 50, -- 50ms 的防抖延迟
+    _debounce_delay = 100, -- 100ms 的防抖延迟
     _search_state = nil, -- 搜索状态
     _jump_history_state = nil, -- 跳转历史状态
     _current_method_name = nil, -- 当前 LSP 方法名
