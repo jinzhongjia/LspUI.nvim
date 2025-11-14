@@ -132,7 +132,7 @@ function M.autocmd()
         )
 
         local new_func, cleanup = debounce_func(current_buffer)
-        
+
         -- 保存清理函数
         if cleanup then
             buffer_cleanups[current_buffer] = cleanup
@@ -185,7 +185,7 @@ function M.un_autocmd()
         end
     end
     buffer_cleanups = {}
-    
+
     api.nvim_del_augroup_by_name(autogroup_name)
 end
 

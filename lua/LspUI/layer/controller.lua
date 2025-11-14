@@ -101,7 +101,8 @@ local function capture_history_context(buffer_id, line)
         end
     end
 
-    local ok, lines = pcall(api.nvim_buf_get_lines, buffer_id, line - 1, line, false)
+    local ok, lines =
+        pcall(api.nvim_buf_get_lines, buffer_id, line - 1, line, false)
     if not ok or not lines or not lines[1] then
         return nil
     end
@@ -239,7 +240,8 @@ function ClassController:_generateSubViewContentVirtual(
     end
 
     -- 调用完整渲染函数渲染切片数据（传递有序 URI 列表）
-    local width, height = self:_renderSubViewData(sliced_data, bufId, ordered_uris)
+    local width, height =
+        self:_renderSubViewData(sliced_data, bufId, ordered_uris)
 
     -- 添加"加载更多"提示
     if end_idx < total_file_count then
@@ -267,7 +269,11 @@ end
 ---@param start_line_offset integer 起始行偏移（用于计算行号）
 ---@param ordered_uris table|nil 可选的有序 URI 列表，如果提供则使用，否则自动排序
 ---@return string[], integer[], table[], table, integer 内容行、高亮行、extmarks、语法区域、最大宽度
-function ClassController:_generateContentForData(data, start_line_offset, ordered_uris)
+function ClassController:_generateContentForData(
+    data,
+    start_line_offset,
+    ordered_uris
+)
     local content = {}
     local hl_lines = {}
     local extmarks = {}
@@ -382,7 +388,7 @@ function ClassController:_generateContentForData(data, start_line_offset, ordere
         local title_line_num = start_line_offset + #content
         self._line_map[title_line_num] = {
             uri = uri,
-            range = nil,  -- 文件标题行没有具体的 range
+            range = nil, -- 文件标题行没有具体的 range
         }
 
         -- 为每个代码行建立映射
@@ -413,7 +419,7 @@ function ClassController:_generateContentForData(data, start_line_offset, ordere
                         if first_non_space then
                             leading_spaces = first_non_space - 1
                         else
-                            leading_spaces = #original_line  -- 全是空格的行
+                            leading_spaces = #original_line -- 全是空格的行
                         end
                     end
 
@@ -424,7 +430,7 @@ function ClassController:_generateContentForData(data, start_line_offset, ordere
                         col_end = #line_content,
                         source_buf = item.buffer_id,
                         source_line = row,
-                        source_col_offset = leading_spaces,  -- 新增：源文件中的列偏移
+                        source_col_offset = leading_spaces, -- 新增：源文件中的列偏移
                     }
                     table.insert(syntax_regions[filetype], region_data)
                 end
@@ -785,8 +791,12 @@ function ClassController:_loadMoreItems()
 
     -- 生成新内容并追加（复用渲染逻辑，传递有序 URI 列表）
     local append_start_line = api.nvim_buf_line_count(bufnr)
-    local width, height =
-        self:_appendSubViewData(new_data, bufnr, append_start_line, ordered_uris)
+    local width, height = self:_appendSubViewData(
+        new_data,
+        bufnr,
+        append_start_line,
+        ordered_uris
+    )
 
     -- 添加新的提示（如果还有更多）
     if end_idx < total_count then
@@ -894,8 +904,12 @@ function ClassController:_loadItemsUpTo(target_index)
 
     -- 生成新内容并追加（一次性追加所有内容，传递有序 URI 列表）
     local append_start_line = api.nvim_buf_line_count(bufnr)
-    local width, height =
-        self:_appendSubViewData(new_data, bufnr, append_start_line, ordered_uris)
+    local width, height = self:_appendSubViewData(
+        new_data,
+        bufnr,
+        append_start_line,
+        ordered_uris
+    )
 
     -- 添加新的提示（如果还有更多）
     if end_idx < total_count then
@@ -949,7 +963,12 @@ end
 ---@param bufId integer Buffer ID
 ---@param start_line integer 起始行号
 ---@param ordered_uris table|nil 可选的有序 URI 列表
-function ClassController:_appendSubViewData(data, bufId, start_line, ordered_uris)
+function ClassController:_appendSubViewData(
+    data,
+    bufId,
+    start_line,
+    ordered_uris
+)
     local extmark_ns = api.nvim_create_namespace("LspUIPathExtmarks")
 
     -- 生成内容（使用提取的共用函数，传递有序 URI 列表）
@@ -1047,7 +1066,8 @@ function ClassController:_getCursorPosForUri(uri, range)
             if range and mapping.range then
                 if
                     mapping.range.start.line == range.start.line
-                    and mapping.range.start.character == range.start.character
+                    and mapping.range.start.character
+                        == range.start.character
                 then
                     return lnum
                 end
@@ -1076,7 +1096,7 @@ function ClassController:_findPositionFromParams(params)
     local tmp = nil
 
     local lsp_data = self._lsp:GetData()
-    
+
     -- 对 URI 进行排序以确保顺序一致（与渲染时相同）
     local sorted_uris = {}
     for uri in pairs(lsp_data) do
@@ -1397,7 +1417,7 @@ function ClassController:RenderViews()
             table.insert(sorted_uris, uri)
         end
         table.sort(sorted_uris)
-        
+
         if #sorted_uris > 0 then
             firstBuffer = lsp_data[sorted_uris[1]].buffer_id
         end
@@ -1725,7 +1745,7 @@ function ClassController:ActionToggleMainView()
                 table.insert(sorted_uris, uri)
             end
             table.sort(sorted_uris)
-            
+
             if #sorted_uris > 0 then
                 firstBuffer = lsp_data[sorted_uris[1]].buffer_id
             end
@@ -2058,7 +2078,7 @@ function ClassController:ActionShowHistory()
 
     -- 添加高亮
     local ns = api.nvim_create_namespace("LspUIJumpHistory")
-    
+
     -- 高亮标题行（第1行）
     vim.highlight.range(
         buf,
@@ -2068,7 +2088,7 @@ function ClassController:ActionShowHistory()
         { 0, -1 },
         { priority = vim.highlight.priorities.user }
     )
-    
+
     -- 高亮分隔线（第2行和倒数第2行）
     vim.highlight.range(
         buf,
@@ -2078,7 +2098,7 @@ function ClassController:ActionShowHistory()
         { 1, -1 },
         { priority = vim.highlight.priorities.user }
     )
-    
+
     if #lines > 2 then
         vim.highlight.range(
             buf,
@@ -2089,7 +2109,7 @@ function ClassController:ActionShowHistory()
             { priority = vim.highlight.priorities.user }
         )
     end
-    
+
     -- 高亮历史项
     for i = 3, #lines - 2 do
         local line = lines[i]
@@ -2106,7 +2126,7 @@ function ClassController:ActionShowHistory()
                     { priority = vim.highlight.priorities.user }
                 )
             end
-            
+
             -- LSP 类型高亮（在第一个 │ 之前）
             local first_sep = line:find("│")
             if first_sep and time_end then
@@ -2119,7 +2139,7 @@ function ClassController:ActionShowHistory()
                     { priority = vim.highlight.priorities.user }
                 )
             end
-            
+
             -- 文件路径高亮（两个 │ 之间）
             local second_sep = line:find("│", first_sep + 1)
             if first_sep and second_sep then
@@ -2132,11 +2152,11 @@ function ClassController:ActionShowHistory()
                     { priority = vim.highlight.priorities.user }
                 )
             end
-            
+
             -- 代码上下文保持默认颜色（可以考虑添加语法高亮，但需要知道文件类型）
         end
     end
-    
+
     -- 高亮底部快捷键提示（最后一行）
     if #lines > 0 then
         local help_line = lines[#lines]
@@ -2146,13 +2166,16 @@ function ClassController:ActionShowHistory()
             { pattern = "c", hl = "ErrorMsg" },
             { pattern = "q", hl = "Special" },
         }
-        
+
         for _, key_info in ipairs(highlight_keys) do
             local start_pos = 1
             while true do
-                local key_start, key_end = help_line:find(key_info.pattern, start_pos, true)
-                if not key_start then break end
-                
+                local key_start, key_end =
+                    help_line:find(key_info.pattern, start_pos, true)
+                if not key_start then
+                    break
+                end
+
                 vim.highlight.range(
                     buf,
                     ns,
@@ -2375,7 +2398,8 @@ function ClassController:_generateSubViewContentSearchFiltered(data, bufId)
     end
 
     -- 渲染（传递有序 URI 列表）
-    local width, height = self:_renderSubViewData(filtered_data, bufId, ordered_uris)
+    local width, height =
+        self:_renderSubViewData(filtered_data, bufId, ordered_uris)
 
     -- 添加提示
     if end_idx < #matched_uris then

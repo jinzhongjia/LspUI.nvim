@@ -1,7 +1,7 @@
 local lsp, api, fn = vim.lsp, vim.api, vim.fn
 local hover_feature = lsp.protocol.Methods.textDocument_hover
-local ClassView = require("LspUI.layer.view")
 local ClassLsp = require("LspUI.layer.lsp")
+local ClassView = require("LspUI.layer.view")
 local config = require("LspUI.config")
 local notify = require("LspUI.layer.notify")
 local tools = require("LspUI.layer.tools")

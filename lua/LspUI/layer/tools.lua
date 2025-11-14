@@ -236,7 +236,7 @@ end
 --- @return function, function 返回防抖函数和清理函数
 function M.debounce(func, delay)
     local timer = nil
-    
+
     local debounced = function(...)
         local args = { ... }
         if timer then
@@ -261,7 +261,7 @@ function M.debounce(func, delay)
             end)
         )
     end
-    
+
     -- 提供清理函数，确保资源释放
     local cleanup = function()
         if timer then
@@ -270,7 +270,7 @@ function M.debounce(func, delay)
             timer = nil
         end
     end
-    
+
     return debounced, cleanup
 end
 

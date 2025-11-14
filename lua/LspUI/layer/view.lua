@@ -447,14 +447,14 @@ function ClassView:ShowView()
         end
         return self
     end
-    
+
     -- 窗口无效，尝试重新创建
     if self:BufValid() then
         -- 使用保存的配置重新创建窗口
         self._windowId =
             api.nvim_open_win(self._attachBuffer, self._enter, self._config)
     end
-    
+
     return self
 end
 
