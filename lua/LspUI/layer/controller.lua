@@ -274,6 +274,13 @@ function ClassController:_generateContentForData(data, start_line_offset, ordere
     local syntax_regions = {}
     local max_width = 0
 
+    local function trim_line(str)
+        if type(str) ~= "string" then
+            return ""
+        end
+        return (str:gsub("^%s*(.-)%s*$", "%1"))
+    end
+
     -- 只在初始渲染时清空映射表（start_line_offset == 0）
     -- 虚拟滚动追加时保留已有映射，累加新映射
     if start_line_offset == 0 then
@@ -296,7 +303,9 @@ function ClassController:_generateContentForData(data, start_line_offset, ordere
         return path:gsub("\\", "/")
     end
 
-    local cwd = normalize_path(vim.fn.getcwd())
+    local raw_cwd = vim.fn.getcwd()
+    local cwd = normalize_path(raw_cwd)
+    local cwd_len = #raw_cwd
 
     -- 如果没有提供有序列表，则对 URI 进行排序以确保一致的顺序
     local sorted_uris
@@ -322,7 +331,7 @@ function ClassController:_generateContentForData(data, start_line_offset, ordere
             normalize_path(vim.fn.fnamemodify(file_full_name, ":p"))
 
         if norm_file_path:sub(1, #cwd) == cwd then
-            local rel_to_cwd = file_full_name:sub(#vim.fn.getcwd() + 1)
+            local rel_to_cwd = file_full_name:sub(cwd_len + 1)
             if rel_to_cwd:sub(1, 1) == "/" or rel_to_cwd:sub(1, 1) == "\\" then
                 rel_to_cwd = rel_to_cwd:sub(2)
             end
@@ -353,7 +362,7 @@ function ClassController:_generateContentForData(data, start_line_offset, ordere
             })
         end
 
-        local file_fmt_len = vim.fn.strdisplaywidth(file_fmt)
+        local file_fmt_len = api.nvim_strwidth(file_fmt)
         if file_fmt_len > max_width then
             max_width = file_fmt_len
         end
@@ -380,7 +389,7 @@ function ClassController:_generateContentForData(data, start_line_offset, ordere
         local range_index = 1
         for _, row in ipairs(uri_rows) do
             local original_line = lines[row] or ""
-            local line_code = vim.fn.trim(original_line)
+            local line_code = trim_line(original_line)
             local code_fmt = string.format("   %s", line_code)
 
             if not item.fold then

@@ -23,13 +23,62 @@ function M.GetUriLines(buffer_id, uri, rows)
         end
     end
 
-    -- 从 buffer 读取指定行
+    if type(rows) ~= "table" or #rows == 0 then
+        return lines
+    end
+
+    -- 1. 过滤有效的数字行号并去重
+    local unique_rows = {}
+    local sorted_rows = {}
     for _, row in ipairs(rows) do
-        if not lines[row] then
-            local ok, result = pcall(api.nvim_buf_get_lines, buffer_id, row, row + 1, false)
-            if ok and result and result[1] then
-                lines[row] = result[1]
-            else
+        local num = tonumber(row)
+        if num and num >= 0 and not unique_rows[num] then
+            unique_rows[num] = true
+            table.insert(sorted_rows, num)
+        end
+    end
+
+    if #sorted_rows == 0 then
+        return lines
+    end
+
+    table.sort(sorted_rows)
+
+    -- 2. 将连续的行号合并为区间，避免一次性读取大跨度
+    local segments = {}
+    local seg_start = sorted_rows[1]
+    local seg_end = seg_start
+
+    for i = 2, #sorted_rows do
+        local row = sorted_rows[i]
+        if row == seg_end + 1 then
+            seg_end = row
+        else
+            table.insert(segments, { seg_start, seg_end })
+            seg_start = row
+            seg_end = row
+        end
+    end
+    table.insert(segments, { seg_start, seg_end })
+
+    -- 3. 分段读取，避免跨越巨大范围
+    for _, segment in ipairs(segments) do
+        local start_row = segment[1]
+        local end_row = segment[2]
+        local ok, chunk = pcall(
+            api.nvim_buf_get_lines,
+            buffer_id,
+            start_row,
+            end_row + 1,
+            false
+        )
+
+        if ok and type(chunk) == "table" then
+            for idx, line in ipairs(chunk) do
+                lines[start_row + idx - 1] = line or ""
+            end
+        else
+            for row = start_row, end_row do
                 lines[row] = ""
             end
         end
