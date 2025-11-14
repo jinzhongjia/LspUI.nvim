@@ -435,6 +435,11 @@ function ClassController:_renderSubViewData(data, bufId, ordered_uris)
     -- 允许修改缓冲区
     api.nvim_set_option_value("modifiable", true, { buf = bufId })
 
+    -- 清理旧的语法高亮，避免残留
+    if self._subView then
+        self._subView:ClearSyntaxHighlight()
+    end
+
     -- 设置文件类型
     local method = self._lsp:GetMethod()
     api.nvim_set_option_value(
