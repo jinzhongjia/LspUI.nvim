@@ -32,7 +32,7 @@ M.run = function(arg)
     util.render(arg)
 end
 -- init for diagnostic
-M.init = function()
+function M.init()
     if not is_enabled() or is_initialized then
         return
     end

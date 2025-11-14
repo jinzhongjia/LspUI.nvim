@@ -9,7 +9,7 @@ local notify = require("LspUI.layer.notify")
 local M = ClassLspFeature:New("call_hierarchy", "prepareCallHierarchy")
 
 -- 覆盖默认的初始化方法
-M.init = function()
+function M.init()
     if not config.options.call_hierarchy.enable or M.is_initialized then
         return
     end
