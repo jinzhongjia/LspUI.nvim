@@ -14,7 +14,7 @@ local is_initialized = false
 local command_key = "rename"
 
 -- init for the rename
-M.init = function()
+function M.init()
     if not config.options.rename.enable then
         return
     end
