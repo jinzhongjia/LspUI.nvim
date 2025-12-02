@@ -136,6 +136,8 @@ function ClassHover:Render(hover_tuple, total, options)
         :Render()
         :Winhl("Normal:Normal")
         :Option("wrap", true)
+        :Option("linebreak", true)
+        :Option("breakindent", true)
         :Winbl(options.transparency or 0)
 
     local winnr = view:GetWinID()
