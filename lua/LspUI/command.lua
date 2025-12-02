@@ -1,95 +1,123 @@
-local api, fn = vim.api, vim.fn
+local api = vim.api
 local notify = require("LspUI.layer.notify")
 local tools = require("LspUI.layer.tools")
 
-local command_store = {}
 local M = {}
 
--- init for the command
-M.init = function()
+--- @type table<string, { run: function, args: string[]|function|nil }>
+local command_store = {}
+
+--- @type string[]|nil cached sorted command names
+local sorted_commands_cache = nil
+
+--- Invalidate the sorted commands cache
+local function invalidate_cache()
+    sorted_commands_cache = nil
+end
+
+--- Get sorted command names (cached)
+--- @return string[]
+local function get_sorted_commands()
+    if not sorted_commands_cache then
+        sorted_commands_cache = vim.tbl_keys(command_store)
+        table.sort(sorted_commands_cache)
+    end
+    return sorted_commands_cache
+end
+
+--- Filter list by prefix
+--- @param list string[]
+--- @param prefix string
+--- @return string[]
+local function filter_by_prefix(list, prefix)
+    if prefix == "" then
+        return list
+    end
+    local result = {}
+    for _, item in ipairs(list) do
+        if item:find(prefix, 1, true) == 1 then
+            table.insert(result, item)
+        end
+    end
+    return result
+end
+
+--- Complete function for LspUI command
+--- @param arg_lead string
+--- @param cmd_line string
+--- @param cursor_pos integer
+--- @return string[]
+local function complete(arg_lead, cmd_line, cursor_pos)
+    -- Parse command line: "LspUI subcmd arg1 arg2..."
+    local parts = vim.split(cmd_line, "%s+", { trimempty = false })
+    -- parts[1] = "LspUI", parts[2] = subcmd, parts[3+] = args
+
+    -- Completing subcommand
+    if #parts <= 2 then
+        return filter_by_prefix(get_sorted_commands(), arg_lead)
+    end
+
+    -- Completing subcommand arguments
+    local subcmd = parts[2]
+    local cmd_entry = command_store[subcmd]
+    if not cmd_entry or not cmd_entry.args then
+        return {}
+    end
+
+    local completes = cmd_entry.args
+    if type(completes) == "function" then
+        return completes(arg_lead, cmd_line, cursor_pos) or {}
+    elseif type(completes) == "table" then
+        return filter_by_prefix(completes, arg_lead)
+    end
+
+    return {}
+end
+
+--- Initialize the command module
+function M.init()
     api.nvim_create_user_command("LspUI", function(args)
-        local key = args.fargs[1]
-        local cmd_args = { unpack(args.fargs, 2) }
+        local fargs = args.fargs
+        local key = fargs[1]
 
         if not key then
-            -- default function when command `LspUI` executes without args
-            notify.Info(string.format("Hello, version is %s", tools.version()))
+            notify.Info(string.format("LspUI version %s", tools.version()))
             return
         end
 
-        if command_store[key] then
-            -- 修改：传递所有参数
-            local ok, err = pcall(command_store[key].run, unpack(cmd_args))
-            if not ok then
-                notify.Error(
-                    string.format(
-                        "Command %s failed: %s",
-                        key,
-                        err or "unknown error"
-                    )
-                )
-            end
-        else
-            notify.Warn(string.format("command %s not exist!", key))
+        local cmd_entry = command_store[key]
+        if not cmd_entry then
+            notify.Warn(string.format("Unknown command: %s", key))
+            return
+        end
+
+        -- Pass remaining arguments to the command (LuaJIT uses unpack)
+        local cmd_args = { unpack(fargs, 2) }
+        local ok, err = pcall(cmd_entry.run, unpack(cmd_args))
+        if not ok then
+            notify.Error(string.format("Command '%s' failed: %s", key, err or "unknown error"))
         end
     end, {
         nargs = "*",
         desc = "LspUI commands",
-        complete = function(ArgLead, CmdLine, CursorPos)
-            local args = vim.split(CmdLine, "%s+")
-            local n = #args
-
-            -- 如果只有一个参数 (LspUI 命令本身)，或者第二个参数正在被补全
-            if n <= 1 or (n == 2 and CmdLine:match("%s+$")) then
-                local result = {}
-                for cmd, _ in pairs(command_store) do
-                    if ArgLead == "" or cmd:find(ArgLead, 1, true) then
-                        table.insert(result, cmd)
-                    end
-                end
-                table.sort(result)
-                return result
-            -- 如果已经输入了子命令，并且该子命令有定义补全选项
-            elseif n >= 2 then
-                local subcmd = args[2]
-                if command_store[subcmd] and command_store[subcmd].args then
-                    local completes = command_store[subcmd].args
-                    if type(completes) == "function" then
-                        return completes(ArgLead, CmdLine, CursorPos)
-                    elseif type(completes) == "table" then
-                        local result = {}
-                        local current_arg = args[n]
-                        for _, v in ipairs(completes) do
-                            if
-                                current_arg == ""
-                                or v:find(current_arg, 1, true)
-                            then
-                                table.insert(result, v)
-                            end
-                        end
-                        return result
-                    end
-                end
-                return {}
-            end
-
-            return {}
-        end,
+        complete = complete,
     })
 end
 
--- register command
+--- Register a command
 --- @param command_key string
 --- @param run function
---- @param args string[]|function
-M.register_command = function(command_key, run, args)
+--- @param args string[]|function|nil
+function M.register_command(command_key, run, args)
     command_store[command_key] = { run = run, args = args }
+    invalidate_cache()
 end
 
--- unregister command
+--- Unregister a command
 --- @param command_key string
-M.unregister_command = function(command_key)
+function M.unregister_command(command_key)
     command_store[command_key] = nil
+    invalidate_cache()
 end
 
 return M
