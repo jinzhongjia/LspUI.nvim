@@ -36,7 +36,11 @@ end
 local function apply_treesitter_highlight(bufnr, winnr)
     vim.wo[winnr].conceallevel = 2
     vim.wo[winnr].concealcursor = "n"
+    -- Disable legacy syntax to avoid loading syntax/markdown.vim chain
+    -- which may fail if dtd.vim is missing
+    vim.bo[bufnr].syntax = ""
     vim.bo[bufnr].filetype = "markdown"
+    -- Use treesitter only for highlighting
     pcall(vim.treesitter.start, bufnr)
 end
 
