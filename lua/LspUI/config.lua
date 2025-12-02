@@ -47,6 +47,11 @@ local default_diagnostic_config = {
     command_enable = true,
     transparency = default_transparency,
     border = "rounded",
+    severity = nil, -- nil means all severities
+    show_source = true,
+    show_code = true,
+    show_related_info = true,
+    max_width = 0.6, -- 60% of screen width
 }
 
 --- @type LspUI_hover_config

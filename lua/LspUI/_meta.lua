@@ -27,6 +27,11 @@
 --- @field command_enable boolean? whether enable command for `diagnostic`
 --- @field border "none"|"single"|"double"|"rounded"|"solid"|"shadow"|string[]? border style for diagnostic window
 --- @field transparency number? transparency for diagnostic
+--- @field severity table? filter diagnostics by severity (nil for all), see vim.diagnostic.severity
+--- @field show_source boolean? whether show diagnostic source (default: true)
+--- @field show_code boolean? whether show diagnostic code if available (default: true)
+--- @field show_related_info boolean? whether show related information (default: true)
+--- @field max_width number? maximum width of diagnostic window (0.6 = 60% of screen width)
 
 --- @class LspUI_hover_config
 --- @field enable boolean? whether enable `hover` module
