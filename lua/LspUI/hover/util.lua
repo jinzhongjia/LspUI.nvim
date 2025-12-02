@@ -52,11 +52,7 @@ local function hover_req_cb(client, hover_ctx)
         end
 
         if err == nil then
-            if not (result and result.contents) then
-                if lsp_config.silent ~= true then
-                    table.insert(hover_ctx.invalid_clients, client.name)
-                end
-            else
+            if result and result.contents then
                 -- stylua: ignore
                 local markdown_lines = lsp.util.convert_input_to_markdown_lines(result.contents)
 
@@ -97,23 +93,14 @@ local function hover_req_cb(client, hover_ctx)
                     }
                 )
             end
+            -- Note: if a single LSP server has no hover, we silently ignore it
+            -- Only notify user when ALL servers have no hover (handled by caller)
         end
 
         hover_ctx.requested_client_count = hover_ctx.requested_client_count + 1
 
         if hover_ctx.requested_client_count ~= #hover_ctx.clients then
             return
-        end
-        if not vim.tbl_isempty(hover_ctx.invalid_clients) then
-            local names = ""
-            for index, client_name in pairs(hover_ctx.invalid_clients) do
-                if index == 1 then
-                    names = names .. client_name
-                else
-                    names = names .. string.format(", %s", client_name)
-                end
-            end
-            notify.Info(string.format("No valid hover, %s", names))
         end
 
         hover_ctx.callback(hover_tuples)
@@ -144,7 +131,6 @@ function M.get_hovers(clients, buffer_id, callback)
     local hover_ctx = {
         clients = clients,
         requested_client_count = 0,
-        invalid_clients = {},
         callback = callback,
     }
 

@@ -59,7 +59,6 @@ end
 --- @class LspUI_hover_ctx
 --- @field clients vim.lsp.Client[]
 --- @field requested_client_count integer
---- @field invalid_clients string[]
 --- @field callback fun(hover_tuples: hover_tuple[])
 
 --- @alias hover_tuple { client: vim.lsp.Client, buffer_id: integer, width: integer, height: integer }
@@ -86,11 +85,7 @@ function ClassHover:CreateHoverCallback(client, hover_ctx)
         end
 
         if err == nil then
-            if not (result and result.contents) then
-                if lsp_config.silent ~= true then
-                    table.insert(hover_ctx.invalid_clients, client.name)
-                end
-            else
+            if result and result.contents then
                 -- 处理有效结果
                 local markdown_lines =
                     lsp.util.convert_input_to_markdown_lines(result.contents)
@@ -131,6 +126,8 @@ function ClassHover:CreateHoverCallback(client, hover_ctx)
                     ),
                 })
             end
+            -- Note: if a single LSP server has no hover, we silently ignore it
+            -- Only notify user when ALL servers have no hover (handled by caller)
         end
 
         -- 更新请求计数
@@ -138,11 +135,6 @@ function ClassHover:CreateHoverCallback(client, hover_ctx)
 
         -- 如果所有请求完成，调用回调
         if hover_ctx.requested_client_count == #hover_ctx.clients then
-            if not vim.tbl_isempty(hover_ctx.invalid_clients) then
-                local names = table.concat(hover_ctx.invalid_clients, ", ")
-                notify.Info(string.format("No valid hover: %s", names))
-            end
-
             hover_ctx.callback(self_ref._hover_tuples)
         end
     end
@@ -171,7 +163,6 @@ function ClassHover:GetHovers(clients, buffer_id, callback)
     local hover_ctx = {
         clients = clients,
         requested_client_count = 0,
-        invalid_clients = {},
         callback = callback,
     }
 
