@@ -21,7 +21,6 @@ function M.init()
     end
 
     is_initialized = true
-    vim.treesitter.language.register("markdown", "LspUI_hover")
 
     -- 创建 hover 管理器
     hover_manager = ClassHover:New()
