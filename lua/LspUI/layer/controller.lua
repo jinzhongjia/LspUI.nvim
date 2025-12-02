@@ -2009,8 +2009,8 @@ function ClassController:ActionShowHistory()
         return
     end
 
-    -- 获取显示内容
-    local lines = jump_history.get_display_lines(state)
+    -- 获取显示内容和高亮信息
+    local lines, highlight_infos = jump_history.get_display_lines(state)
 
     -- 创建浮动窗口
     local buf = api.nvim_create_buf(false, true)
@@ -2122,10 +2122,11 @@ function ClassController:ActionShowHistory()
                     { priority = vim.highlight.priorities.user }
                 )
             end
-
-            -- 代码上下文保持默认颜色（可以考虑添加语法高亮，但需要知道文件类型）
         end
     end
+
+    -- 应用代码上下文的语法高亮
+    self:_applyHistoryCodeHighlights(buf, highlight_infos)
 
     -- 高亮底部快捷键提示（最后一行）
     if #lines > 0 then
@@ -2273,6 +2274,70 @@ function ClassController:ActionShowHistory()
     vim.keymap.set("n", "k", "k", opts)
     vim.keymap.set("n", "gg", "gg", opts)
     vim.keymap.set("n", "G", "G", opts)
+end
+
+--- 为跳转历史窗口应用代码语法高亮
+---@private
+---@param buf integer 目标 buffer ID
+---@param highlight_infos table[] 高亮信息数组
+function ClassController:_applyHistoryCodeHighlights(buf, highlight_infos)
+    if not highlight_infos or #highlight_infos == 0 then
+        return
+    end
+
+    local source_highlight = require("LspUI.layer.source_highlight")
+    local keyword_highlight = require("LspUI.layer.keyword_highlight")
+
+    -- 按语言分组收集关键字高亮区域（用于 fallback）
+    local keyword_regions = {}
+
+    for _, info in ipairs(highlight_infos) do
+        local used_treesitter = false
+
+        -- 确保源 buffer 存在
+        local source_buf = info.source_buf
+        if not api.nvim_buf_is_valid(source_buf) then
+            source_buf = vim.uri_to_bufnr(info.uri)
+        end
+
+        -- 尝试使用 Treesitter 高亮
+        if api.nvim_buf_is_valid(source_buf) then
+            -- 如果源 buffer 未加载，先尝试加载
+            if not api.nvim_buf_is_loaded(source_buf) then
+                pcall(vim.fn.bufload, source_buf)
+            end
+
+            if api.nvim_buf_is_loaded(source_buf) then
+                used_treesitter = source_highlight.apply_highlights(
+                    buf,
+                    info.line,
+                    info.col_start,
+                    info.col_end,
+                    source_buf,
+                    info.source_line,
+                    0 -- 无列偏移，因为 context 已经是 trim 后的代码
+                )
+            end
+        end
+
+        -- 如果 Treesitter 高亮失败，使用关键字高亮作为 fallback
+        if not used_treesitter and info.filetype and info.filetype ~= "" then
+            if not keyword_regions[info.filetype] then
+                keyword_regions[info.filetype] = {}
+            end
+            table.insert(keyword_regions[info.filetype], {
+                { info.line, info.col_start },
+                { info.line, info.col_end },
+            })
+        end
+    end
+
+    -- 应用关键字高亮（fallback）
+    for lang, regions in pairs(keyword_regions) do
+        if #regions > 0 then
+            keyword_highlight.apply(buf, lang, regions)
+        end
+    end
 end
 
 --- 重新应用搜索高亮（在重新生成内容后调用）

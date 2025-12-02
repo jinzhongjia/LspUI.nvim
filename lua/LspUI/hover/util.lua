@@ -116,7 +116,7 @@ function M.get_hovers(clients, buffer_id, callback)
     local lsp_instance = ClassLsp:New()
     local ready, reason = lsp_instance:CheckClientsReady(clients)
     if not ready then
-        notify.Warn(reason)
+        notify.Warn(reason or "LSP client not ready")
         return
     end
 
