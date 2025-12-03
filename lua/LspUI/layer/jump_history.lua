@@ -176,6 +176,7 @@ end
 --- @return string formatted_text 格式化文本
 --- @return integer context_start_col 代码上下文起始列
 --- @return integer context_indent 代码的前导空格数（用于高亮偏移）
+--- @return integer actual_code_len 实际代码长度（不包括省略号）
 function M.format_item(item, index)
     -- 格式化时间
     local time_str = os.date("%H:%M:%S", item.timestamp)
@@ -205,9 +206,11 @@ function M.format_item(item, index)
         item.context_indent = context_indent
     end
 
-    -- 确保上下文不超过限制
+    -- 确保上下文不超过限制，记录实际代码长度（不包括省略号）
+    local actual_code_len = #context
     if #context > DEFAULT_CONTEXT_MAX_LEN then
-        context = context:sub(1, DEFAULT_CONTEXT_MAX_LEN - 3) .. "..."
+        actual_code_len = DEFAULT_CONTEXT_MAX_LEN - 3 -- 不包括 "..."
+        context = context:sub(1, actual_code_len) .. "..."
     end
 
     -- 构建前缀部分（用于计算代码上下文的起始位置）
@@ -215,7 +218,7 @@ function M.format_item(item, index)
     local prefix = string.format("[%s] %s │ %s │ ", time_str, type_str, pos_str)
     local context_start_col = #prefix
 
-    return string.format("%s%s", prefix, context), context_start_col, context_indent
+    return string.format("%s%s", prefix, context), context_start_col, context_indent, actual_code_len
 end
 
 --- 获取历史列表的显示内容
@@ -246,7 +249,7 @@ function M.get_display_lines(state)
     -- 历史项（倒序显示，最新的在上面）
     for i = #state.items, 1, -1 do
         local item = state.items[i]
-        local formatted, context_start_col, context_indent = M.format_item(item, i)
+        local formatted, context_start_col, context_indent, actual_code_len = M.format_item(item, i)
         local display_line = " " .. formatted
         table.insert(lines, display_line)
 
@@ -255,7 +258,8 @@ function M.get_display_lines(state)
             local line_index = #lines - 1 -- 0-based 行号
             -- +1 是因为前面加了一个空格
             local col_start = context_start_col + 1
-            local col_end = #display_line
+            -- col_end 只包括实际代码，不包括省略号 "..."
+            local col_end = col_start + actual_code_len
 
             table.insert(highlight_infos, {
                 line = line_index,
