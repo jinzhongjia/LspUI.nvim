@@ -807,18 +807,48 @@ function ClassLsp:ExecCodeAction(action_tuple)
         return false, "no client available"
     end
 
-    -- 应用操作逻辑
+    -- 检查是否需要 resolve（action 没有 edit 且没有 command，但有 data 字段）
+    local needs_resolve = (not action.edit and not action.command)
+        or action.data ~= nil
+
+    if needs_resolve and client:supports_method(self.code_action_resolve_feature) then
+        -- 需要先 resolve 获取完整的 action
+        client:request(
+            self.code_action_resolve_feature,
+            action,
+            function(err, resolved_action)
+                if err then
+                    lib_notify.Warn(
+                        string.format("code action resolve error: %s", err.message)
+                    )
+                    return
+                end
+                -- 使用 resolved action 执行
+                self:_applyCodeAction(resolved_action, client, action_tuple.buffer_id)
+            end,
+            action_tuple.buffer_id
+        )
+    else
+        -- 直接执行
+        self:_applyCodeAction(action, client, action_tuple.buffer_id)
+    end
+
+    return true
+end
+
+-- 应用代码操作（内部方法）
+function ClassLsp:_applyCodeAction(action, client, buffer_id)
+    -- 应用 edit
     if action.edit then
         lsp.util.apply_workspace_edit(action.edit, client.offset_encoding)
     end
 
+    -- 执行 command
     if action.command then
         local command = type(action.command) == "table" and action.command
             or action
-        self:ExecCommand(client, command, action_tuple.buffer_id)
+        self:ExecCommand(client, command, buffer_id)
     end
-
-    return true
 end
 
 -- 执行命令
