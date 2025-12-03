@@ -35,8 +35,13 @@ function M.render(buffer_id, line)
 end
 
 -- clear sign
-function M.clear_render()
-    fn.sign_unplace(global.lightbulb.sign_group)
+--- @param buffer_id integer? buffer's id, if nil, clear all buffers
+function M.clear_render(buffer_id)
+    if buffer_id then
+        fn.sign_unplace(global.lightbulb.sign_group, { buffer = buffer_id })
+    else
+        fn.sign_unplace(global.lightbulb.sign_group)
+    end
 end
 
 -- register the sign
@@ -88,12 +93,9 @@ end
 
 local function debounce_func(buffer_id)
     local _rq_cb = function(result)
-        M.clear_render()
+        M.clear_render(buffer_id)
         if result then
             local line = fn.line(".")
-            if line == nil then
-                return
-            end
             M.render(buffer_id, line)
         end
     end
@@ -102,17 +104,12 @@ local function debounce_func(buffer_id)
         M.request(buffer_id, _rq_cb)
     end
 
-    if not config.options.lightbulb.debounce then
+    local debounce_time = config.options.lightbulb.debounce
+    if not debounce_time then
         return func, nil
-    elseif config.options.lightbulb.debounce == true then
-        return tools.debounce(func, 250)
     end
-
-    return tools.debounce(
-        func,
-        ---@diagnostic disable-next-line: param-type-mismatch
-        math.floor(config.options.lightbulb.debounce)
-    )
+    local delay = (debounce_time == true) and 250 or math.floor(debounce_time)
+    return tools.debounce(func, delay)
 end
 
 -- 存储每个 buffer 的清理函数
@@ -133,6 +130,11 @@ function M.autocmd()
 
         local new_func, cleanup = debounce_func(current_buffer)
 
+        -- 先清理旧的 debounce timer（防止 LspAttach 多次触发导致泄漏）
+        if buffer_cleanups[current_buffer] then
+            buffer_cleanups[current_buffer]()
+        end
+
         -- 保存清理函数
         if cleanup then
             buffer_cleanups[current_buffer] = cleanup
@@ -148,7 +150,9 @@ function M.autocmd()
         api.nvim_create_autocmd({ "InsertEnter", "WinLeave" }, {
             group = group_id,
             buffer = current_buffer,
-            callback = M.clear_render,
+            callback = function()
+                M.clear_render(current_buffer)
+            end,
             desc = tools.command_desc("Lightbulb update when InsertEnter"),
         })
 

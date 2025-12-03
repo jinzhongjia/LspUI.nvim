@@ -43,7 +43,7 @@ end
 
 -- choice action tuple
 --- @param action_tuple action_tuple
-local function choice_action_tupe(action_tuple)
+local function choice_action_tuple(action_tuple)
     local success, err = ClassLsp:ExecCodeAction(action_tuple)
     if not success then
         notify.Warn(err)
@@ -96,16 +96,16 @@ local function keybinding_autocmd(view, action_tuples)
             return
         end
         local action_tuple = action_tuples[action_tuple_index]
-        choice_action_tupe(action_tuple)
+        choice_action_tuple(action_tuple)
         view:Destroy()
-    end, "execute acode action")
+    end, "execute a code action")
 
     -- number keys exec action
-    for action_tuple_index, action_tuple in pairs(action_tuples) do
+    for action_tuple_index, action_tuple in ipairs(action_tuples) do
         -- stylua: ignore
-        local desc = string.format("exec action with numberk key [%d]", action_tuple_index)
+        local desc = string.format("exec action with number key [%d]", action_tuple_index)
         view:KeyMap("n", tostring(action_tuple_index), function()
-            choice_action_tupe(action_tuple)
+            choice_action_tuple(action_tuple)
             view:Destroy()
         end, desc)
     end
@@ -135,7 +135,7 @@ function M.render(action_tuples)
     local title = "code_action"
     local max_width = 0
 
-    for index, action_tuple in pairs(action_tuples) do
+    for index, action_tuple in ipairs(action_tuples) do
         local action_title = ""
         if action_tuple.action.title then
             action_title =
