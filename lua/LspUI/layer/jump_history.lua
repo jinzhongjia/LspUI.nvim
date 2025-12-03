@@ -16,7 +16,8 @@ local DEFAULT_CONTEXT_MAX_LEN = 60 -- 上下文字符串的最大长度
 --- @field lsp_type string LSP 跳转类型（definition/reference/implementation 等）
 --- @field file_name string 文件名（不含路径）
 --- @field file_path string 完整文件路径
---- @field context string 代码上下文（跳转位置所在行的代码）
+--- @field context string 代码上下文（跳转位置所在行的代码，已去除前后空格）
+--- @field context_indent integer 代码上下文的前导空格数（用于高亮偏移计算）
 --- @field filetype string 文件类型（用于语法高亮）
 --- @field timestamp integer 时间戳
 
@@ -26,6 +27,7 @@ local DEFAULT_CONTEXT_MAX_LEN = 60 -- 上下文字符串的最大长度
 --- @field col_end integer 代码上下文结束列（0-based）
 --- @field source_buf integer 源 buffer ID
 --- @field source_line integer 源行号（0-based）
+--- @field source_col_offset integer 源代码列偏移（前导空格数）
 --- @field filetype string 文件类型
 
 --- @class JumpHistoryState
@@ -78,31 +80,48 @@ function M.add_item(state, item)
     end
 end
 
+--- 计算前导空格数量
+--- @param str string
+--- @return integer
+local function count_leading_spaces(str)
+    local _, spaces = str:find("^%s*")
+    return spaces or 0
+end
+
 --- 获取指定行的代码上下文
 --- @param uri string
 --- @param line integer 行号（1-based）
---- @return string
+--- @return string context 去除前后空格的代码
+--- @return integer leading_spaces 前导空格数量
 function M.get_line_context(uri, line)
     local bufnr = vim.uri_to_bufnr(uri)
+    local raw_line = ""
 
     -- 如果 buffer 已加载
     if api.nvim_buf_is_loaded(bufnr) then
         local ok, lines =
             pcall(api.nvim_buf_get_lines, bufnr, line - 1, line, false)
         if ok and lines and lines[1] then
-            return vim.fn.trim(lines[1])
+            raw_line = lines[1]
         end
     end
 
-    -- 如果 buffer 未加载，尝试读取文件
-    local file_path = vim.uri_to_fname(uri)
-    local ok, lines = pcall(vim.fn.readfile, file_path, "", line)
-    if ok and lines and #lines > 0 then
-        -- readfile 返回前 n 行，我们需要的是最后一行（即第 line 行）
-        return vim.fn.trim(lines[#lines])
+    -- 如果 buffer 未加载或获取失败，尝试读取文件
+    if raw_line == "" then
+        local file_path = vim.uri_to_fname(uri)
+        local ok, lines = pcall(vim.fn.readfile, file_path, "", line)
+        if ok and lines and #lines > 0 then
+            raw_line = lines[#lines]
+        end
     end
 
-    return ""
+    if raw_line == "" then
+        return "", 0
+    end
+
+    local leading_spaces = count_leading_spaces(raw_line)
+    local trimmed = vim.fn.trim(raw_line)
+    return trimmed, leading_spaces
 end
 
 --- 检测文件类型
@@ -154,7 +173,9 @@ end
 --- 格式化历史项为显示文本
 --- @param item JumpHistoryItem
 --- @param index integer 索引（用于显示序号）
---- @return string formatted_text, integer context_start_col 返回格式化文本和代码上下文起始列
+--- @return string formatted_text 格式化文本
+--- @return integer context_start_col 代码上下文起始列
+--- @return integer context_indent 代码的前导空格数（用于高亮偏移）
 function M.format_item(item, index)
     -- 格式化时间
     local time_str = os.date("%H:%M:%S", item.timestamp)
@@ -175,10 +196,13 @@ function M.format_item(item, index)
 
     -- 懒加载代码上下文：只在显示时才获取（如果还未获取）
     local context = item.context
+    local context_indent = item.context_indent or 0
+
     if not context or context == "" then
-        context = M.get_line_context(item.uri, item.line)
+        context, context_indent = M.get_line_context(item.uri, item.line)
         -- 缓存到 item 中，避免重复读取
         item.context = context
+        item.context_indent = context_indent
     end
 
     -- 确保上下文不超过限制
@@ -191,7 +215,7 @@ function M.format_item(item, index)
     local prefix = string.format("[%s] %s │ %s │ ", time_str, type_str, pos_str)
     local context_start_col = #prefix
 
-    return string.format("%s%s", prefix, context), context_start_col
+    return string.format("%s%s", prefix, context), context_start_col, context_indent
 end
 
 --- 获取历史列表的显示内容
@@ -222,7 +246,7 @@ function M.get_display_lines(state)
     -- 历史项（倒序显示，最新的在上面）
     for i = #state.items, 1, -1 do
         local item = state.items[i]
-        local formatted, context_start_col = M.format_item(item, i)
+        local formatted, context_start_col, context_indent = M.format_item(item, i)
         local display_line = " " .. formatted
         table.insert(lines, display_line)
 
@@ -239,6 +263,7 @@ function M.get_display_lines(state)
                 col_end = col_end,
                 source_buf = item.buffer_id,
                 source_line = item.line - 1, -- 转换为 0-based
+                source_col_offset = context_indent, -- 前导空格偏移
                 filetype = item.filetype,
                 uri = item.uri, -- 用于确保 buffer 可用
             })

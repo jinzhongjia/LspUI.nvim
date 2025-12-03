@@ -2308,6 +2308,10 @@ function ClassController:_applyHistoryCodeHighlights(buf, highlight_infos)
             end
 
             if api.nvim_buf_is_loaded(source_buf) then
+                -- 使用 source_col_offset 来正确映射高亮位置
+                -- 因为 context 被 trim 了，需要告诉 source_highlight
+                -- 源代码的实际起始列位置（即前导空格数）
+                local col_offset = info.source_col_offset or 0
                 used_treesitter = source_highlight.apply_highlights(
                     buf,
                     info.line,
@@ -2315,7 +2319,7 @@ function ClassController:_applyHistoryCodeHighlights(buf, highlight_infos)
                     info.col_end,
                     source_buf,
                     info.source_line,
-                    0 -- 无列偏移，因为 context 已经是 trim 后的代码
+                    col_offset
                 )
             end
         end
