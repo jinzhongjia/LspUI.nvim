@@ -42,7 +42,7 @@ local function setup_view_bindings(
         })
 
     -- 执行重命名的键绑定（支持多种模式）
-    for _, mode in pairs({ "i", "n", "v" }) do
+    for _, mode in ipairs({ "i", "n", "v" }) do
         view:KeyMap(mode, config.options.rename.key_binding.exec, function()
             local new_name = vim.trim(api.nvim_get_current_line())
 

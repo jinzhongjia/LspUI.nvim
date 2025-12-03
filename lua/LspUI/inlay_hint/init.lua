@@ -72,7 +72,7 @@ end
 -- 应用于所有缓冲区
 local function apply_to_all_buffers()
     local all_buffers = api.nvim_list_bufs()
-    for _, buffer_id in pairs(all_buffers) do
+    for _, buffer_id in ipairs(all_buffers) do
         set_inlay_hint(buffer_id)
     end
 end

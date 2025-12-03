@@ -730,7 +730,7 @@ function ClassLsp:RequestCodeActions(buffer_id, params, callback, options)
     if not options.skip_registered then
         local register_actions =
             register.handle(params.textDocument.uri, params.range)
-        for _, val in pairs(register_actions) do
+        for _, val in ipairs(register_actions) do
             table.insert(action_tuples, {
                 action = { title = val.title },
                 buffer_id = buffer_id,
@@ -759,7 +759,7 @@ function ClassLsp:RequestCodeActions(buffer_id, params, callback, options)
     end
 
     -- 请求LSP服务器的代码操作
-    for _, client in pairs(clients) do
+    for _, client in ipairs(clients) do
         client:request(
             self.code_action_feature,
             params,
@@ -770,7 +770,7 @@ function ClassLsp:RequestCodeActions(buffer_id, params, callback, options)
                     )
                 else
                     -- 处理结果
-                    for _, action in pairs(result or {}) do
+                    for _, action in ipairs(result or {}) do
                         if action.title and action.title ~= "" then
                             table.insert(action_tuples, {
                                 action = action,

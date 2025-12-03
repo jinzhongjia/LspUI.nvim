@@ -6,7 +6,7 @@ local M = {}
 M.debug = function(...)
     local date = os.date("%Y-%m-%d %H:%M:%S")
     local args = { ... }
-    for _, value in pairs(args) do
+    for _, value in ipairs(args) do
         print(date, vim.inspect(value))
     end
 end

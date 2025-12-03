@@ -29,7 +29,7 @@ function M.handle(uri, range)
     for _, callback in pairs(list) do
         if callback then
             local res = callback(uri, range)
-            for _, val in pairs(res) do
+            for _, val in ipairs(res) do
                 table.insert(result, val)
             end
         end
