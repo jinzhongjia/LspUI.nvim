@@ -146,11 +146,21 @@ local function format_diagnostic(diagnostic, opts)
     -- Add diagnostic code if available and configured
     if opts.show_code and diagnostic.code then
         local code_str = string.format("  [%s]", tostring(diagnostic.code))
-        if #highlights > 0 then
-            local last_hl_idx = #highlights
+        if #lines > 0 then
+            -- Append to the last line of the message
             local last_line_idx = #lines
             lines[last_line_idx] = lines[last_line_idx] .. code_str
-            highlights[last_hl_idx].end_col = #lines[last_line_idx]
+            highlights[#highlights].end_col = #lines[last_line_idx]
+        else
+            -- No message, show only the code
+            local line = vim.trim(code_str)
+            table.insert(lines, line)
+            table.insert(highlights, {
+                severity = diagnostic.severity,
+                lnum = 0,
+                col = 0,
+                end_col = #line,
+            })
         end
     end
 
@@ -172,6 +182,18 @@ local function format_diagnostic(diagnostic, opts)
                 end
             end
         end
+    end
+
+    -- Fallback if no content to display
+    if #lines == 0 then
+        local fallback = "No diagnostic message"
+        table.insert(lines, fallback)
+        table.insert(highlights, {
+            severity = diagnostic.severity,
+            lnum = 0,
+            col = 0,
+            end_col = #fallback,
+        })
     end
 
     return lines, highlights
