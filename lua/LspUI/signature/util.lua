@@ -2,7 +2,6 @@ local api, lsp, fn = vim.api, vim.lsp, vim.fn
 local signature_feature = lsp.protocol.Methods.textDocument_signatureHelp
 
 local config = require("LspUI.config")
-local notify = require("LspUI.layer.notify")
 local tools = require("LspUI.layer.tools")
 
 local M = {}
@@ -18,13 +17,15 @@ local M = {}
 local buffer_set = {}
 local signature_namespace = api.nvim_create_namespace("LspUI_signature")
 local signature_group
-local cached_signature_info = nil
+-- 按 buffer 缓存签名信息，避免多 buffer 切换时的混乱
+local cached_signature_info = {}
 local signature_handler
+-- 用于取消之前的请求
+local pending_cancel = nil
 
 --- @param help lsp.SignatureHelp|nil
---- @param _ string|nil client name
 --- @return signature_info? res len will not be zero
-local function build_signature_info(help, _)
+local function build_signature_info(help)
     if not help or not help.signatures or #help.signatures == 0 then
         return nil
     end
@@ -57,7 +58,7 @@ local function build_signature_info(help, _)
         return res
     end
 
-    -- 优先使用签名的活动参数
+    -- 优先使用签名级别的活动参数
     if current_signature.activeParameter then
         active_parameter = current_signature.activeParameter + 1
     end
@@ -79,6 +80,7 @@ local function build_signature_info(help, _)
         if type(parameter.label) == "string" then
             label = parameter.label
         else
+            -- LSP 协议：label 是 [start, end] 的 0-indexed 数组
             label = string.sub(
                 current_signature.label,
                 parameter.label[1] + 1,
@@ -114,37 +116,35 @@ local function request(buffer_id, callback)
         return
     end
 
-    local clients = M.get_clients(buffer_id)
-    if not clients or #clients < 1 then
-        return
+    -- 取消之前的请求
+    if pending_cancel then
+        pcall(pending_cancel)
+        pending_cancel = nil
     end
 
-    -- 检查客户端是否就绪
-    local ClassLsp = require("LspUI.layer.lsp")
-    local lsp_instance = ClassLsp:New()
-    local ready, reason = lsp_instance:CheckClientsReady(clients)
-    if not ready then
-        notify.Warn(reason or "LSP client not ready")
+    local clients = M.get_clients(buffer_id)
+    if not clients or #clients < 1 then
         return
     end
 
     local client = clients[1] -- 只使用第一个支持签名功能的客户端
     local params = lsp.util.make_position_params(0, client.offset_encoding)
 
-    client:request(signature_feature, params, function(err, result, _, _)
-        if err then
-            notify.Error(
-                string.format(
-                    "sorry, lsp %s report signature error:%d, %s",
-                    client.name,
-                    err.code,
-                    err.message
-                )
-            )
-            return
-        end
-        callback(result, client.name)
-    end, buffer_id)
+    local _, cancel = client:request(
+        signature_feature,
+        params,
+        function(err, result, _, _)
+            pending_cancel = nil
+            -- 签名请求错误通常静默忽略，避免刷屏
+            if err then
+                return
+            end
+            callback(result, client.name)
+        end,
+        buffer_id
+    )
+
+    pending_cancel = cancel
 end
 
 -- 处理签名请求和展示
@@ -153,14 +153,14 @@ local function signature_handle()
 
     -- 当前缓冲区不支持签名功能时
     if not buffer_set[current_buffer] then
-        cached_signature_info = nil
+        cached_signature_info[current_buffer] = nil
         return
     end
 
     request(current_buffer, function(result, client_name)
-        -- 检查是否仍在插入模式
+        -- 更精确的插入模式检查：i, ic, ix, R, Rc, Rv, Rx
         local mode = api.nvim_get_mode().mode
-        if not (mode:find("i") or mode:find("ic")) then
+        if not mode:match("^[iR]") then
             return
         end
 
@@ -179,18 +179,21 @@ end
 
 --- @param data lsp.SignatureHelp|nil
 --- @param buffer_id integer
---- @param _ integer window id
---- @param client_name string|nil
-function M.render(data, buffer_id, _, client_name)
-    local info = build_signature_info(data, client_name)
-    cached_signature_info = info
+--- @param _win integer window id (unused)
+--- @param _client_name string|nil client name (unused)
+function M.render(data, buffer_id, _win, _client_name)
+    local info = build_signature_info(data)
+    cached_signature_info[buffer_id] = info
 
     -- 无签名信息或无活动参数时不渲染
     if not info or not info.parameters or not info.active_parameter then
         return
     end
 
-    local row = fn.line(".") == 1 and 1 or fn.line(".") - 2
+    -- 修复: extmark 的 row 是 0-indexed
+    -- 虚拟文本显示在当前行上方，第一行时显示在当前行
+    local current_line = fn.line(".") -- 1-indexed
+    local row = math.max(0, current_line - 2) -- 0-indexed，上一行
     local col = fn.virtcol(".") - 1
     local active_param = info.parameters[info.active_parameter]
 
@@ -219,6 +222,7 @@ function M.clean_render(buffer_id)
     if api.nvim_buf_is_valid(buffer_id) then
         api.nvim_buf_clear_namespace(buffer_id, signature_namespace, 0, -1)
     end
+    cached_signature_info[buffer_id] = nil
 end
 
 -- 创建自动命令帮助函数
@@ -256,11 +260,12 @@ function M.autocmd()
     end
 
     -- LSP 附加事件 - 添加缓冲区到支持集合
-    create_autocmd("LspAttach", function()
-        local current_buffer = api.nvim_get_current_buf()
-        local clients = M.get_clients(current_buffer)
+    -- 修复: 使用 args.buf 而不是 nvim_get_current_buf()
+    create_autocmd("LspAttach", function(args)
+        local buffer_id = args.buf
+        local clients = M.get_clients(buffer_id)
         if clients then
-            buffer_set[current_buffer] = true
+            buffer_set[buffer_id] = true
         end
     end, "Lsp attach signature cmd")
 
@@ -272,10 +277,11 @@ function M.autocmd()
     )
 
     -- LSP 分离事件 - 清理和移除缓冲区
-    create_autocmd("LspDetach", function()
-        local current_buffer = api.nvim_get_current_buf()
-        M.clean_render(current_buffer)
-        buffer_set[current_buffer] = nil
+    -- 修复: 使用 args.buf 而不是 nvim_get_current_buf()
+    create_autocmd("LspDetach", function(args)
+        local buffer_id = args.buf
+        M.clean_render(buffer_id)
+        buffer_set[buffer_id] = nil
     end, "Clean signature when LSP detached")
 
     -- 缓冲区删除事件 - 防止内存泄漏
@@ -303,12 +309,19 @@ function M.deautocmd()
         signature_handler_cleanup()
         signature_handler_cleanup = nil
     end
+
+    -- 取消挂起的请求
+    if pending_cancel then
+        pcall(pending_cancel)
+        pending_cancel = nil
+    end
 end
 
 -- 提供用于状态栏的签名信息
 --- @return signature_info?
 M.status_line = function()
-    return cached_signature_info
+    local buf = api.nvim_get_current_buf()
+    return cached_signature_info[buf]
 end
 
 return M
