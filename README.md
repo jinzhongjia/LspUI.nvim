@@ -1,46 +1,34 @@
 # LspUI.nvim
 
-A modern, customizable Neovim plugin that enhances LSP functionality with beautiful and intuitive user interfaces.
+A modern Neovim plugin that enhances LSP functionality with beautiful and intuitive user interfaces.
 
-## ✨ Features
+## Features
 
-- **13 Enhanced LSP Modules**: Custom implementations of essential LSP operations with improved UI/UX
-- **Beautiful Out-of-the-box UI**: Thoughtfully designed interfaces for better code navigation and editing
-- **Optimized Performance**: Reimplemented LSP functions for potentially better performance than builtin Neovim functions
-- **Highly Customizable**: Extensive configuration options for each module
-- **Smart UI Components**: 
-  - Floating windows with borders and highlights
-  - Interactive lightbulb indicators for code actions
-  - Breadcrumb navigation for call hierarchy
-  - Customizable keybindings for all interfaces
+LspUI.nvim provides 13 enhanced LSP modules with custom UI implementations:
 
-### Supported LSP Features:
-- **Code Action** - Enhanced code action menu with plugin registration support
-- **Rename** - Smart symbol renaming with preview
-- **Hover** - Rich hover information with markdown support
-- **Diagnostics** - Beautiful diagnostic displays with navigation
-- **Definition** - Go to definition with enhanced UI
-- **Type Definition** - Navigate to type definitions
-- **Declaration** - Jump to symbol declarations  
-- **Reference** - Find all references with organized display
-- **Implementation** - Locate implementations with filtering
-- **Inlay Hint** - Toggle inlay hints with visual feedback
-- **Signature Help** - Enhanced function signature assistance
-- **Call Hierarchy** - Interactive call hierarchy navigation
-- **Lightbulb** - Visual indicators for available code actions
-- **Jump History** - Review recent LSP jumps in a searchable list with context
+- Code Action - Enhanced code action menu with plugin registration support
+- Rename - Smart symbol renaming with preview
+- Hover - Rich hover information with markdown support
+- Diagnostics - Beautiful diagnostic displays with navigation
+- Definition - Go to definition with enhanced UI
+- Type Definition - Navigate to type definitions
+- Declaration - Jump to symbol declarations
+- Reference - Find all references with organized display
+- Implementation - Locate implementations with filtering
+- Inlay Hint - Toggle inlay hints with visual feedback
+- Signature Help - Enhanced function signature assistance
+- Call Hierarchy - Interactive call hierarchy navigation
+- Lightbulb - Visual indicators for available code actions
+- Jump History - Review recent LSP jumps in a searchable list with context
 
-## 📦 Installation
+## Installation
 
-### Requirements
-
-- Neovim `0.11+`
+Requirements:
+- Neovim 0.11+
 - A configured LSP server
-- **Recommended**: A markdown plugin for enhanced hover features:
-  - [render-markdown.nvim](https://github.com/MeanderingProgrammer/render-markdown.nvim)
-  - [markview.nvim](https://github.com/OXY2DEV/markview.nvim)
+- Recommended: A markdown plugin for enhanced hover features (render-markdown.nvim or markview.nvim)
 
-### [lazy.nvim](https://github.com/folke/lazy.nvim)
+Using lazy.nvim:
 
 ```lua
 {
@@ -54,253 +42,178 @@ A modern, customizable Neovim plugin that enhances LSP functionality with beauti
 }
 ```
 
-### [packer.nvim](https://github.com/wbthomason/packer.nvim)
+Using packer.nvim:
 
 ```lua
 use {
   "jinzhongjia/LspUI.nvim",
-	branch = 'main',
-	config = function()
+  branch = "main",
+  config = function()
     require("LspUI").setup({
-	  -- config options go here
-	  })
+      -- config options go here
+    })
   end
 }
 ```
 
-## ⚙️ Configuration
+## Configuration
 
-### Basic Setup
+Basic setup:
 
 ```lua
 local LspUI = require("LspUI")
 LspUI.setup()
 ```
 
-### Custom Configuration
+Custom configuration:
 
 ```lua
 require("LspUI").setup({
-  -- General settings
-  prompt = {
-    border = true,
-    borderchars = { "─", "│", "─", "│", "╭", "╮", "╯", "╰" },
+  -- Rename configuration
+  rename = {
+    enable = true,
+    command_enable = true,
+    auto_select = true,
+    fixed_width = false,
+    width = 30,
+    key_binding = {
+      exec = "<CR>",
+      quit = "<ESC>",
+    },
+    border = "rounded",
+    transparency = 0,
   },
   
   -- Code Action configuration
   code_action = {
     enable = true,
     command_enable = true,
-    gitsigns = false,
-    extend_gitsigns = false,
-    ui = {
-      title = "Code Action",
-      border = "rounded",
-      winblend = 0,
-    },
-    keys = {
+    gitsigns = true,
+    key_binding = {
+      exec = "<cr>",
+      prev = "k",
+      next = "j",
       quit = "q",
-      exec = "<CR>",
     },
+    border = "rounded",
+    transparency = 0,
   },
   
-  -- Hover configuration  
+  -- Hover configuration
   hover = {
     enable = true,
     command_enable = true,
-    ui = {
-      title = "Hover",
-      border = "rounded",
-      winblend = 0,
-    },
-    keys = {
+    key_binding = {
+      prev = "p",
+      next = "n",
       quit = "q",
     },
-  },
-  
-  -- Rename configuration
-  rename = {
-    enable = true,
-    command_enable = true,
-    auto_save = false,
-    ui = {
-      title = "Rename",
-      border = "rounded",
-      winblend = 0,
-    },
-    keys = {
-      quit = "<C-c>",
-      exec = "<CR>",
-    },
+    border = "rounded",
+    transparency = 0,
   },
   
   -- Diagnostic configuration
   diagnostic = {
     enable = true,
     command_enable = true,
-    ui = {
-      title = "Diagnostic",
-      border = "rounded",
-      winblend = 0,
-    },
-    keys = {
-      quit = "q",
-      exec = "<CR>",
-    },
-  },
-  
-  -- Definition configuration
-  definition = {
-    enable = true,
-    command_enable = true,
-    ui = {
-      title = "Definition",
-      border = "rounded",
-      winblend = 0,
-    },
-    keys = {
-      quit = "q",
-      exec = "<CR>",
-      vsplit = "v",
-      split = "s",
-      tabe = "t",
-    },
-  },
-  
-  -- Reference configuration
-  reference = {
-    enable = true,
-    command_enable = true,
-    ui = {
-      title = "Reference",
-      border = "rounded",
-      winblend = 0,
-    },
-    keys = {
-      quit = "q",
-      exec = "<CR>",
-      vsplit = "v",
-      split = "s",
-      tabe = "t",
-    },
-  },
-  
-  -- Implementation configuration
-  implementation = {
-    enable = true,
-    command_enable = true,
-    ui = {
-      title = "Implementation",
-      border = "rounded",
-      winblend = 0,
-    },
-    keys = {
-      quit = "q",
-      exec = "<CR>",
-      vsplit = "v",
-      split = "s",
-      tabe = "t",
-    },
-  },
-  
-  -- Type Definition configuration
-  type_definition = {
-    enable = true,
-    command_enable = true,
-    ui = {
-      title = "Type Definition",
-      border = "rounded",
-      winblend = 0,
-    },
-    keys = {
-      quit = "q",
-      exec = "<CR>",
-      vsplit = "v",
-      split = "s",
-      tabe = "t",
-    },
-  },
-  
-  -- Declaration configuration
-  declaration = {
-    enable = true,
-    command_enable = true,
-    ui = {
-      title = "Declaration",
-      border = "rounded",
-      winblend = 0,
-    },
-    keys = {
-      quit = "q",
-      exec = "<CR>",
-      vsplit = "v",
-      split = "s",
-      tabe = "t",
-    },
-  },
-  
-  -- Call Hierarchy configuration
-  call_hierarchy = {
-    enable = true,
-    command_enable = true,
-    ui = {
-      title = "Call Hierarchy",
-      border = "rounded",
-      winblend = 0,
-    },
-    keys = {
-      quit = "q",
-      exec = "<CR>",
-      expand = "o",
-      jump = "e",
-      vsplit = "v",
-      split = "s",
-      tabe = "t",
-    },
+    border = "rounded",
+    transparency = 0,
+    severity = nil,
+    show_source = true,
+    show_code = true,
+    show_related_info = true,
+    max_width = 0.6,
   },
   
   -- Lightbulb configuration
   lightbulb = {
     enable = true,
-    command_enable = true,
+    is_cached = true,
     icon = "💡",
-    action_kind = {
-      QuickFix = "🔧",
-      Refactor = "♻️",
-      RefactorExtract = "📤",
-      RefactorInline = "📥",
-      RefactorRewrite = "✏️",
-      Source = "📄",
-      SourceOrganizeImports = "📦",
-    },
+    debounce = 250,
   },
   
   -- Inlay Hint configuration
   inlay_hint = {
     enable = true,
     command_enable = true,
+    filter = {
+      whitelist = {},
+      blacklist = {},
+    },
   },
   
-  -- Signature Help configuration
+  -- Signature configuration
   signature = {
+    enable = false,
+    icon = "✨",
+    color = {
+      fg = "#FF8C00",
+      bg = nil,
+    },
+    debounce = 300,
+  },
+  
+  -- Definition, Reference, Implementation, Type Definition, Declaration
+  definition = {
     enable = true,
     command_enable = true,
-    ui = {
-      title = "Signature Help",
-      border = "rounded",
-      winblend = 0,
+  },
+  
+  reference = {
+    enable = true,
+    command_enable = true,
+  },
+  
+  implementation = {
+    enable = true,
+    command_enable = true,
+  },
+  
+  type_definition = {
+    enable = true,
+    command_enable = true,
+  },
+  
+  declaration = {
+    enable = true,
+    command_enable = true,
+  },
+  
+  -- Call Hierarchy configuration
+  call_hierarchy = {
+    enable = true,
+    command_enable = true,
+  },
+  
+  -- Position keybinds for definition, reference, etc.
+  pos_keybind = {
+    main = {
+      back = "<leader>l",
+      hide_secondary = "<leader>h",
     },
-    keys = {
+    secondary = {
+      jump = "o",
+      jump_split = "sh",
+      jump_vsplit = "sv",
+      jump_tab = "t",
+      toggle_fold = "<CR>",
+      next_entry = "J",
+      prev_entry = "K",
       quit = "q",
+      hide_main = "<leader>h",
+      fold_all = "w",
+      expand_all = "e",
+      enter = "<leader>l",
     },
+    transparency = 0,
+    main_border = "none",
+    secondary_border = "single",
   },
 })
 ```
 
-#### Jump History & Virtual Scroll
-
-Jump history is configured independently so you can control storage limits and
-how aggressively virtual scrolling kicks in for large results:
+Jump History and Virtual Scroll configuration:
 
 ```lua
 require("LspUI").setup({
@@ -322,55 +235,40 @@ require("LspUI").setup({
 })
 ```
 
-For more detailed configuration options, see the [Configuration Wiki](https://github.com/jinzhongjia/LspUI.nvim/wiki/Config).
+For more detailed configuration options, see the Configuration Wiki at https://github.com/jinzhongjia/LspUI.nvim/wiki/Config
 
-## 🚀 Commands
+## Commands
 
-### Basic LSP Operations
-- `LspUI hover` - Open an LSP hover window above cursor
-- `LspUI rename` - Rename the symbol below the cursor  
-- `LspUI code_action` - Open a code action selection prompt
+Basic LSP Operations:
+- LspUI hover - Open an LSP hover window above cursor
+- LspUI rename - Rename the symbol below the cursor
+- LspUI code_action - Open a code action selection prompt
 
-### Navigation Commands
-- `LspUI definition` - Go to definition
-- `LspUI type_definition` - Go to type definition  
-- `LspUI declaration` - Go to declaration
-- `LspUI reference` - Show all references
-- `LspUI implementation` - Show all implementations
+Navigation Commands:
+- LspUI definition - Go to definition
+- LspUI type_definition - Go to type definition
+- LspUI declaration - Go to declaration
+- LspUI reference - Show all references
+- LspUI implementation - Show all implementations
 
-### Diagnostic Commands
-- `LspUI diagnostic next` - Go to the next diagnostic
-- `LspUI diagnostic prev` - Go to the previous diagnostic
+Diagnostic Commands:
+- LspUI diagnostic next - Go to the next diagnostic
+- LspUI diagnostic prev - Go to the previous diagnostic
 
-### Call Hierarchy Commands
-- `LspUI call_hierarchy incoming_calls` - Show incoming calls
-- `LspUI call_hierarchy outgoing_calls` - Show outgoing calls
+Call Hierarchy Commands:
+- LspUI call_hierarchy incoming_calls - Show incoming calls
+- LspUI call_hierarchy outgoing_calls - Show outgoing calls
 
-### Utility Commands
-- `LspUI inlay_hint` - Toggle inlay hints on/off
-- `LspUI signature` - Show signature help
-- `LspUI history` - Open the interactive jump history viewer
+Utility Commands:
+- LspUI inlay_hint - Toggle inlay hints on/off
+- LspUI signature - Show signature help
+- LspUI history - Open the interactive jump history viewer
 
-### Advanced Features
-- **Lightbulb**: Automatically shows visual indicators when code actions are available
-- **Plugin Integration**: Supports code action registration from other Neovim plugins
-
-## 📖 Documentation
-
-For comprehensive documentation including keybindings, API reference, and advanced configuration:
-
-```vim
-:help LspUI
-```
-
-Or visit the [Wiki](https://github.com/jinzhongjia/LspUI.nvim/wiki) for additional resources.
-
-## 💡 Quick Start Example
+Keybinding example:
 
 ```lua
--- Basic keybinding setup
 vim.keymap.set("n", "K", "<cmd>LspUI hover<CR>")
-vim.keymap.set("n", "gr", "<cmd>LspUI reference<CR>")  
+vim.keymap.set("n", "gr", "<cmd>LspUI reference<CR>")
 vim.keymap.set("n", "gd", "<cmd>LspUI definition<CR>")
 vim.keymap.set("n", "gt", "<cmd>LspUI type_definition<CR>")
 vim.keymap.set("n", "gi", "<cmd>LspUI implementation<CR>")
@@ -380,19 +278,11 @@ vim.keymap.set("n", "<leader>ci", "<cmd>LspUI call_hierarchy incoming_calls<CR>"
 vim.keymap.set("n", "<leader>co", "<cmd>LspUI call_hierarchy outgoing_calls<CR>")
 ```
 
-## 📸 [Screenshots](https://github.com/jinzhongjia/LspUI.nvim/wiki/Screen-Shot)
+## Screenshots
 
-See the [Screenshots Wiki](https://github.com/jinzhongjia/LspUI.nvim/wiki/Screen-Shot) for visual examples of all features.
+See https://github.com/jinzhongjia/LspUI.nvim/wiki/Screen-Shot for visual examples of all features.
 
-## 🗺️ Current Goals / Roadmap
-
-You can see the current development goals and upcoming features [here](https://github.com/jinzhongjia/LspUI.nvim/issues/12).
-
-## 🤝 Contributing
-
-Contributions are welcome! Please feel free to submit pull requests or open issues for bugs, feature requests, or suggestions.
-
-## 📚 Reference
+## Reference
 
 This plugin was inspired by and references:
 
