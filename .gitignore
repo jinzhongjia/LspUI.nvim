@@ -3,3 +3,4 @@ lua/LspUI/.luarc.json
 .vim
 .direnv
 doc/tags
+deps/

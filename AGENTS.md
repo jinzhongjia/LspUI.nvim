@@ -67,3 +67,16 @@ This plugin must support all three major platforms:
 - Avoid platform-specific shell commands or paths
 - Test path separators work correctly across platforms (`/` vs `\`)
 - Use Neovim's built-in APIs (`vim.fn`, `vim.api`, `vim.lsp`) which are cross-platform by design
+- Our code need to support multiple platform environments(linux mac windows) without any issues
+
+## LLM NOTES
+
+- Ensure all UI elements are responsive and adapt to different terminal sizes
+- Use Neovim's native floating window APIs for all popups and dialogs
+- Provide clear error messages and fallbacks for unsupported LSP features
+- Optimize performance for large codebases and files
+- Follow Neovim's best practices for async operations to avoid blocking the UI
+- Maintain a consistent user experience across all LSP features
+- If need to access file system, use `vim.loop` (libuv) for cross-platform compatibility
+- LLM can modify this file to add more notes as needed
+
