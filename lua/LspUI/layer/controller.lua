@@ -5,6 +5,7 @@ local ClassMainView = require("LspUI.layer.main_view")
 local ClassSubView = require("LspUI.layer.sub_view")
 local config = require("LspUI.config")
 local jump_history = require("LspUI.layer.jump_history")
+local lib_path = require("LspUI.lib.path")
 local notify = require("LspUI.layer.notify")
 local search = require("LspUI.layer.search")
 local tools = require("LspUI.layer.tools")
@@ -265,25 +266,10 @@ function ClassController:_generateContentForData(
         self._line_map = {}
     end
 
-    -- 统一路径格式的辅助函数
-    local function normalize_path(path)
-        local result = path:gsub("\\", "/")
-        if vim.fn.has("win32") == 1 then
-            result = result:lower()
-        end
-        if result:sub(-1) ~= "/" then
-            result = result .. "/"
-        end
-        return result
-    end
-
-    local function normalize_display_path(path)
-        return path:gsub("\\", "/")
-    end
+    -- Detect Windows platform once for path normalization
+    local is_windows = vim.fn.has("win32") == 1
 
     local raw_cwd = vim.fn.getcwd()
-    local cwd = normalize_path(raw_cwd)
-    local cwd_len = #raw_cwd
 
     -- 如果没有提供有序列表，则对 URI 进行排序以确保一致的顺序
     local sorted_uris
@@ -305,26 +291,12 @@ function ClassController:_generateContentForData(
         local filetype = tools.detect_filetype(file_full_name)
 
         local rel_path = ""
-        local norm_file_path =
-            normalize_path(vim.fn.fnamemodify(file_full_name, ":p"))
+        local relative = lib_path.get_relative_path(file_full_name, raw_cwd, is_windows)
 
-        if norm_file_path:sub(1, #cwd) == cwd then
-            local rel_to_cwd = file_full_name:sub(cwd_len + 1)
-            if rel_to_cwd:sub(1, 1) == "/" or rel_to_cwd:sub(1, 1) == "\\" then
-                rel_to_cwd = rel_to_cwd:sub(2)
-            end
-            rel_to_cwd = normalize_display_path(rel_to_cwd)
-            local rel_dir = vim.fn.fnamemodify(rel_to_cwd, ":h")
-            rel_dir = normalize_display_path(rel_dir)
-            if rel_dir == "." then
-                rel_path = " (./)"
-            else
-                rel_path = " (./" .. rel_dir .. ")"
-            end
+        if relative then
+            rel_path = lib_path.format_relative_display(relative)
         else
-            local dir = vim.fn.fnamemodify(file_full_name, ":h")
-            dir = normalize_display_path(dir)
-            rel_path = " (" .. dir .. ")"
+            rel_path = lib_path.format_absolute_display(file_full_name)
         end
 
         local file_fmt =

@@ -1,32 +1,14 @@
 local api, fn = vim.api, vim.fn
 local ClassView = require("LspUI.layer.view")
 local config = require("LspUI.config")
+local diag_lib = require("LspUI.lib.diagnostic")
 local notify = require("LspUI.layer.notify")
 local tools = require("LspUI.layer.tools")
 
 local M = {}
 
---- @class LspUI_diagnostic_highlight
---- @field severity integer
---- @field lnum integer
---- @field col integer
---- @field end_col integer
-
 local autocmd_group = "Lspui_diagnostic"
 local ns_id = api.nvim_create_namespace("LspUI-diagnostic")
-
--- Convert severity to floating highlight group
---- @param severity integer
---- @return string
-local function severity_to_floating_highlight(severity)
-    local arr = {
-        "DiagnosticFloatingError",
-        "DiagnosticFloatingWarn",
-        "DiagnosticFloatingInfo",
-        "DiagnosticFloatingHint",
-    }
-    return arr[severity] or "DiagnosticFloatingError"
-end
 
 --- @type ClassView|nil
 local diagnostic_view
@@ -52,15 +34,10 @@ local function ensure_diagnostic_view()
     return diagnostic_view, true
 end
 
-local function clean_string(str)
-    return str:match("^%s*(.-)%s*$"):gsub("%.+$", "")
-end
-
 local function clean_autocmds()
     pcall(api.nvim_del_augroup_by_name, autocmd_group)
 end
 
---- Get all diagnostics for the buffer, sorted by position and severity
 --- @param bufnr integer
 --- @param severity_filter? table
 --- @return vim.Diagnostic[]
@@ -68,138 +45,10 @@ local function get_all_diagnostics(bufnr, severity_filter)
     local diagnostics = vim.diagnostic.get(bufnr, {
         severity = severity_filter,
     })
-
-    -- Sort by position (lnum, col) then by severity
-    table.sort(diagnostics, function(a, b)
-        if a.lnum ~= b.lnum then
-            return a.lnum < b.lnum
-        end
-        if a.col ~= b.col then
-            return a.col < b.col
-        end
-        return a.severity < b.severity
-    end)
-
-    return diagnostics
+    return diag_lib.sort_diagnostics(diagnostics)
 end
 
---- Find the index of diagnostic at or after cursor position
---- @param diagnostics vim.Diagnostic[]
---- @param cursor_row integer 0-indexed
---- @param cursor_col integer 0-indexed
---- @return integer index (1-based), 0 if not found
-local function find_diagnostic_at_or_after_cursor(diagnostics, cursor_row, cursor_col)
-    for i, d in ipairs(diagnostics) do
-        if d.lnum > cursor_row then
-            return i
-        elseif d.lnum == cursor_row and d.col >= cursor_col then
-            return i
-        end
-    end
-    return 0
-end
 
---- Find the index of diagnostic at or before cursor position
---- @param diagnostics vim.Diagnostic[]
---- @param cursor_row integer 0-indexed
---- @param cursor_col integer 0-indexed
---- @return integer index (1-based), 0 if not found
-local function find_diagnostic_at_or_before_cursor(diagnostics, cursor_row, cursor_col)
-    for i = #diagnostics, 1, -1 do
-        local d = diagnostics[i]
-        if d.lnum < cursor_row then
-            return i
-        elseif d.lnum == cursor_row and d.col <= cursor_col then
-            return i
-        end
-    end
-    return 0
-end
-
---- Format a single diagnostic for display
---- @param diagnostic vim.Diagnostic
---- @param opts table
---- @return string[], LspUI_diagnostic_highlight[]
-local function format_diagnostic(diagnostic, opts)
-    local lines = {}
-    local highlights = {}
-
-    -- Split message by newlines and semicolons
-    local messages =
-        vim.split(diagnostic.message, "[\n;]", { plain = false, trimempty = true })
-    for i, part in ipairs(messages) do
-        messages[i] = vim.trim(part)
-    end
-
-    for _, msg in ipairs(messages) do
-        if msg ~= "" then
-            table.insert(highlights, {
-                severity = diagnostic.severity,
-                lnum = #lines,
-                col = 0,
-                end_col = #msg,
-            })
-            table.insert(lines, msg)
-        end
-    end
-
-    -- Add diagnostic code if available and configured
-    if opts.show_code and diagnostic.code then
-        local code_str = string.format("  [%s]", tostring(diagnostic.code))
-        if #lines > 0 then
-            -- Append to the last line of the message
-            local last_line_idx = #lines
-            lines[last_line_idx] = lines[last_line_idx] .. code_str
-            highlights[#highlights].end_col = #lines[last_line_idx]
-        else
-            -- No message, show only the code
-            local line = vim.trim(code_str)
-            table.insert(lines, line)
-            table.insert(highlights, {
-                severity = diagnostic.severity,
-                lnum = 0,
-                col = 0,
-                end_col = #line,
-            })
-        end
-    end
-
-    -- Add related information if available (stored in user_data by LSP)
-    if opts.show_related_info and diagnostic.user_data then
-        local lsp_data = diagnostic.user_data.lsp
-        local related_info = lsp_data and lsp_data.relatedInformation
-        if related_info then
-            for _, info in ipairs(related_info) do
-                if info.message then
-                    local rel_msg = string.format("  → %s", vim.trim(info.message))
-                    table.insert(highlights, {
-                        severity = vim.diagnostic.severity.HINT,
-                        lnum = #lines,
-                        col = 0,
-                        end_col = #rel_msg,
-                    })
-                    table.insert(lines, rel_msg)
-                end
-            end
-        end
-    end
-
-    -- Fallback if no content to display
-    if #lines == 0 then
-        local fallback = "No diagnostic message"
-        table.insert(lines, fallback)
-        table.insert(highlights, {
-            severity = diagnostic.severity,
-            lnum = 0,
-            col = 0,
-            end_col = #fallback,
-        })
-    end
-
-    return lines, highlights
-end
-
---- Render a diagnostic in the float window
 --- @param diagnostic vim.Diagnostic
 --- @param index integer
 --- @param total integer
@@ -214,9 +63,8 @@ local function render_diagnostic(diagnostic, index, total, opts)
         return nil, nil
     end
 
-    local lines, highlights = format_diagnostic(diagnostic, opts)
+    local lines, highlights = diag_lib.format_diagnostic(diagnostic, opts)
 
-    -- Calculate max width
     local max_width = 0
     for _, line in ipairs(lines) do
         max_width = math.max(max_width, fn.strdisplaywidth(line))
@@ -225,17 +73,15 @@ local function render_diagnostic(diagnostic, index, total, opts)
     local max_allowed_width = math.floor(tools.get_max_width() * opts.max_width)
     local width = math.min(max_width, max_allowed_width)
 
-    -- Add source info to footer
     local footer = ""
     if opts.show_source and diagnostic.source then
-        footer = clean_string(diagnostic.source)
+        footer = diag_lib.clean_string(diagnostic.source)
         local footer_width = fn.strdisplaywidth(footer) + 4
         if footer_width > width then
             width = math.min(footer_width, max_allowed_width)
         end
     end
 
-    -- Clear and set buffer content
     api.nvim_buf_clear_namespace(buf_id, ns_id, 0, -1)
 
     view:BufOption("modifiable", true)
@@ -245,9 +91,8 @@ local function render_diagnostic(diagnostic, index, total, opts)
     api.nvim_buf_set_lines(buf_id, 0, -1, false, lines)
     view:BufOption("modifiable", false)
 
-    -- Apply highlights
     for _, hl in ipairs(highlights) do
-        local hl_group = severity_to_floating_highlight(hl.severity)
+        local hl_group = diag_lib.severity_to_highlight(hl.severity)
         vim.hl.range(buf_id, ns_id, hl_group, { hl.lnum, hl.col }, { hl.lnum, hl.end_col })
     end
 
@@ -364,25 +209,10 @@ function M.show()
     local cursor_row = cursor[1] - 1
     local cursor_col = cursor[2]
 
-    -- Find diagnostic at cursor position
-    local found_index = 0
-    for i, d in ipairs(all_diagnostics) do
-        -- Check if cursor is within diagnostic range
-        local end_col = d.end_col or d.col
-        if d.lnum == cursor_row and d.col <= cursor_col and end_col >= cursor_col then
-            found_index = i
-            break
-        end
-    end
+    local found_index = diag_lib.find_diagnostic_at_cursor(all_diagnostics, cursor_row, cursor_col)
 
-    -- If no diagnostic at cursor, find nearest on same line
     if found_index == 0 then
-        for i, d in ipairs(all_diagnostics) do
-            if d.lnum == cursor_row then
-                found_index = i
-                break
-            end
-        end
+        found_index = diag_lib.find_diagnostic_on_line(all_diagnostics, cursor_row)
     end
 
     if found_index == 0 then
@@ -429,19 +259,18 @@ function M.render(action)
             end
         end
     else
-        -- First time: find based on cursor position
         local cursor = api.nvim_win_get_cursor(0)
         local cursor_row = cursor[1] - 1
         local cursor_col = cursor[2]
 
         if action == "next" then
-            local next_index = find_diagnostic_at_or_after_cursor(all_diagnostics, cursor_row, cursor_col)
+            local next_index = diag_lib.find_diagnostic_at_or_after(all_diagnostics, cursor_row, cursor_col)
             if next_index == 0 then
                 next_index = 1
             end
             current_index = next_index
         else
-            local prev_index = find_diagnostic_at_or_before_cursor(all_diagnostics, cursor_row, cursor_col)
+            local prev_index = diag_lib.find_diagnostic_at_or_before(all_diagnostics, cursor_row, cursor_col)
             if prev_index == 0 then
                 prev_index = #all_diagnostics
             end
