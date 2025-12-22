@@ -2,100 +2,17 @@ local api, lsp, fn = vim.api, vim.lsp, vim.fn
 local signature_feature = lsp.protocol.Methods.textDocument_signatureHelp
 
 local config = require("LspUI.config")
+local sig_lib = require("LspUI.lib.signature")
 local tools = require("LspUI.layer.tools")
 
 local M = {}
 
--- 类型定义
---- @class signature_info
---- @field label string 签名标签
---- @field active_parameter integer? 活动参数的索引
---- @field parameters {label: string, doc: (string|lsp.MarkupContent)?}[]? 参数信息数组
---- @field doc string? 文档字符串
-
--- 使用集合管理支持签名功能的缓冲区
 local buffer_set = {}
 local signature_namespace = api.nvim_create_namespace("LspUI_signature")
 local signature_group
--- 按 buffer 缓存签名信息，避免多 buffer 切换时的混乱
 local cached_signature_info = {}
 local signature_handler
--- 用于取消之前的请求
 local pending_cancel = nil
-
---- @param help lsp.SignatureHelp|nil
---- @return signature_info? res len will not be zero
-local function build_signature_info(help)
-    if not help or not help.signatures or #help.signatures == 0 then
-        return nil
-    end
-
-    local active_signature = (help.activeSignature or 0) + 1
-    -- 确保签名索引有效
-    if active_signature > #help.signatures then
-        active_signature = 1
-    end
-
-    local current_signature = help.signatures[active_signature]
-    local active_parameter = (help.activeParameter or 0) + 1
-
-    -- 构建基本签名信息
-    --- @type signature_info
-    local res = {
-        label = current_signature.label,
-        -- 修复: 正确处理 lsp.MarkupContent 类型
-        ---@diagnostic disable-next-line: assign-type-mismatch
-        doc = type(current_signature.documentation) == "table"
-                and current_signature.documentation.value
-            or (current_signature.documentation or nil),
-    }
-
-    -- 如果没有参数，直接返回基本信息
-    if
-        not current_signature.parameters
-        or #current_signature.parameters == 0
-    then
-        return res
-    end
-
-    -- 优先使用签名级别的活动参数
-    if current_signature.activeParameter then
-        active_parameter = current_signature.activeParameter + 1
-    end
-
-    -- 确保活动参数索引有效
-    if
-        active_parameter > #current_signature.parameters
-        or active_parameter < 1
-    then
-        active_parameter = 1
-    end
-
-    -- 构建参数列表
-    res.parameters = {}
-    res.active_parameter = active_parameter
-
-    for _, parameter in ipairs(current_signature.parameters) do
-        local label
-        if type(parameter.label) == "string" then
-            label = parameter.label
-        else
-            -- LSP 协议：label 是 [start, end] 的 0-indexed 数组
-            label = string.sub(
-                current_signature.label,
-                parameter.label[1] + 1,
-                parameter.label[2]
-            )
-        end
-
-        table.insert(res.parameters, {
-            label = label,
-            doc = parameter.documentation,
-        })
-    end
-
-    return res
-end
 
 -- get all valid clients for signature help
 --- @param buffer_id integer
@@ -182,31 +99,22 @@ end
 --- @param _win integer window id (unused)
 --- @param _client_name string|nil client name (unused)
 function M.render(data, buffer_id, _win, _client_name)
-    local info = build_signature_info(data)
+    local info = sig_lib.build_signature_info(data)
     cached_signature_info[buffer_id] = info
 
-    -- 无签名信息或无活动参数时不渲染
-    if not info or not info.parameters or not info.active_parameter then
+    local active_label = sig_lib.get_active_parameter_label(info)
+    if not active_label then
         return
     end
 
-    -- 修复: extmark 的 row 是 0-indexed
-    -- 虚拟文本显示在当前行上方，第一行时显示在当前行
-    local current_line = fn.line(".") -- 1-indexed
-    local row = math.max(0, current_line - 2) -- 0-indexed，上一行
+    local current_line = fn.line(".")
+    local row = math.max(0, current_line - 2)
     local col = fn.virtcol(".") - 1
-    local active_param = info.parameters[info.active_parameter]
 
-    -- 确保活动参数存在
-    if not active_param then
-        return
-    end
-
-    -- 设置虚拟文本
     local render_text = string.format(
         "%s %s",
         config.options.signature.icon,
-        active_param.label
+        active_label
     )
 
     api.nvim_buf_set_extmark(buffer_id, signature_namespace, row, 0, {

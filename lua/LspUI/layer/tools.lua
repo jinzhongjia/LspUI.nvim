@@ -1,4 +1,6 @@
 local api, fn, uv = vim.api, vim.fn, vim.uv
+local lib_path = require("LspUI.lib.path")
+local lib_util = require("LspUI.lib.util")
 local M = {}
 
 local version = "v3"
@@ -87,28 +89,12 @@ function M.GetUriLines(buffer_id, uri, rows)
     return lines
 end
 
---- 比较两个 URI 是否指向同一文件
---- @param uri_1 lsp.URI 第一个 URI
---- @param uri_2 lsp.URI 第二个 URI
---- @return boolean 是否相同
+--- @param uri_1 lsp.URI
+--- @param uri_2 lsp.URI
+--- @return boolean
 function M.compare_uri(uri_1, uri_2)
-    -- 快速路径：URI 字符串相同时直接返回 true
-    if uri_1 == uri_2 then
-        return true
-    end
-
-    -- 转换为本地路径
-    local path_1 = vim.uri_to_fname(uri_1)
-    local path_2 = vim.uri_to_fname(uri_2)
-
-    -- Windows 系统上执行不区分大小写的比较并规范化路径分隔符
-    if vim.fn.has("win32") == 1 then
-        -- 转换为小写并将所有路径分隔符统一为 '/'
-        path_1 = path_1:lower():gsub("\\", "/")
-        path_2 = path_2:lower():gsub("\\", "/")
-    end
-
-    return path_1 == path_2
+    local is_windows = fn.has("win32") == 1
+    return lib_path.compare_uri(uri_1, uri_2, vim.uri_to_fname, is_windows)
 end
 
 -- check buffer is listed ?
@@ -134,39 +120,17 @@ M.get_max_height = function()
         - (api.nvim_get_option_value("showtabline", {}) > 0 and 1 or 0)
 end
 
---- 计算窗口内容的显示高度
---- @param contents string[] 要显示的内容
---- @param width integer 窗口宽度
---- @return integer 内容在给定宽度下需要的高度
+--- @param contents string[]
+--- @param width integer
+--- @return integer
 M.compute_height_for_windows = function(contents, width)
-    if not width or width <= 0 then
-        return #contents -- 如果宽度无效，至少返回行数
-    end
-
-    local height = 0
-    for _, line in ipairs(contents) do
-        local line_width = fn.strdisplaywidth(line)
-        height = height + math.max(1, math.ceil(line_width / width))
-    end
-
-    return height
+    return lib_util.compute_height_for_contents(contents, width, fn.strdisplaywidth)
 end
 
--- 添加一个辅助函数到 tools 模块，用于检查是否为列表类型
--- 在 lua\LspUI\layer\tools.lua 中添加：
+--- @param t any
+--- @return boolean
 function M.islist(t)
-    if type(t) ~= "table" then
-        return false
-    end
-    -- 检查是否为序列
-    local count = 0
-    for _ in pairs(t) do
-        count = count + 1
-        if t[count] == nil then
-            return false
-        end
-    end
-    return count > 0
+    return lib_util.islist(t)
 end
 
 --- 保存当前位置到 jumplist 中

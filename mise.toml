@@ -1,0 +1,42 @@
+[tools]
+neovim = "0.11"
+"cargo:stylua" = "latest"
+
+[settings]
+windows_default_inline_shell_args = "pwsh -NoProfile -Command"
+
+[tasks.deps]
+description = "Install test dependencies (mini.nvim)"
+run = """
+mkdir -p deps
+test -d deps/mini.nvim/.git || (rm -rf deps/mini.nvim && git clone --depth 1 https://github.com/echasnovski/mini.nvim deps/mini.nvim)
+"""
+run_windows = """
+if (-not (Test-Path deps)) { New-Item -ItemType Directory -Path deps | Out-Null }
+if (-not (Test-Path deps/mini.nvim/.git)) { Remove-Item -Recurse -Force deps/mini.nvim -ErrorAction SilentlyContinue; git clone --depth 1 https://github.com/echasnovski/mini.nvim deps/mini.nvim }
+"""
+
+[tasks.test]
+description = "Run all unit tests"
+depends = ["deps"]
+run = "nvim --headless -u tests/minimal_init.lua -c 'lua MiniTest.run()'"
+run_windows = 'nvim --headless -u tests/minimal_init.lua -c "lua MiniTest.run()"'
+
+[tasks."test:file"]
+description = "Run tests for a specific file"
+depends = ["deps"]
+run = 'nvim --headless -u tests/minimal_init.lua -c "lua MiniTest.run_file(\"{{arg(name=\"file\")}}\")"'
+run_windows = 'nvim --headless -u tests/minimal_init.lua -c "lua MiniTest.run_file([[{{arg(name=\"file\")}}]])"'
+
+[tasks.lint]
+description = "Check code formatting with stylua"
+run = "stylua --check ."
+
+[tasks.fmt]
+description = "Format code with stylua"
+run = "stylua ."
+
+[tasks.clean]
+description = "Clean test dependencies"
+run = "rm -rf deps"
+run_windows = "Remove-Item -Recurse -Force deps -ErrorAction SilentlyContinue"
