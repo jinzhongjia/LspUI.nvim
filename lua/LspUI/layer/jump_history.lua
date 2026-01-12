@@ -215,10 +215,14 @@ function M.format_item(item, index)
 
     -- 构建前缀部分（用于计算代码上下文的起始位置）
     -- 格式: "[HH:MM:SS] TYPE       │ file:line                 │ "
-    local prefix = string.format("[%s] %s │ %s │ ", time_str, type_str, pos_str)
+    local prefix =
+        string.format("[%s] %s │ %s │ ", time_str, type_str, pos_str)
     local context_start_col = #prefix
 
-    return string.format("%s%s", prefix, context), context_start_col, context_indent, actual_code_len
+    return string.format("%s%s", prefix, context),
+        context_start_col,
+        context_indent,
+        actual_code_len
 end
 
 --- 获取历史列表的显示内容
@@ -249,12 +253,18 @@ function M.get_display_lines(state)
     -- 历史项（倒序显示，最新的在上面）
     for i = #state.items, 1, -1 do
         local item = state.items[i]
-        local formatted, context_start_col, context_indent, actual_code_len = M.format_item(item, i)
+        local formatted, context_start_col, context_indent, actual_code_len =
+            M.format_item(item, i)
         local display_line = " " .. formatted
         table.insert(lines, display_line)
 
         -- 收集高亮信息（只有当有代码上下文时）
-        if item.context and item.context ~= "" and item.filetype and item.filetype ~= "" then
+        if
+            item.context
+            and item.context ~= ""
+            and item.filetype
+            and item.filetype ~= ""
+        then
             local line_index = #lines - 1 -- 0-based 行号
             -- +1 是因为前面加了一个空格
             local col_start = context_start_col + 1

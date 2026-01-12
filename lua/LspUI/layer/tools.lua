@@ -124,7 +124,11 @@ end
 --- @param width integer
 --- @return integer
 M.compute_height_for_windows = function(contents, width)
-    return lib_util.compute_height_for_contents(contents, width, fn.strdisplaywidth)
+    return lib_util.compute_height_for_contents(
+        contents,
+        width,
+        fn.strdisplaywidth
+    )
 end
 
 --- @param t any

@@ -47,28 +47,78 @@ end
 
 T["compute_height_for_contents"]["returns content count for invalid width"] = function()
     local contents = { "line1", "line2", "line3" }
-    h.eq(3, lib_util.compute_height_for_contents(contents, 0, mock_width_calculator))
-    h.eq(3, lib_util.compute_height_for_contents(contents, -1, mock_width_calculator))
-    h.eq(3, lib_util.compute_height_for_contents(contents, nil, mock_width_calculator))
+    h.eq(
+        3,
+        lib_util.compute_height_for_contents(contents, 0, mock_width_calculator)
+    )
+    h.eq(
+        3,
+        lib_util.compute_height_for_contents(
+            contents,
+            -1,
+            mock_width_calculator
+        )
+    )
+    h.eq(
+        3,
+        lib_util.compute_height_for_contents(
+            contents,
+            nil,
+            mock_width_calculator
+        )
+    )
 end
 
 T["compute_height_for_contents"]["returns correct height for single-line content"] = function()
     local contents = { "hello" }
-    h.eq(1, lib_util.compute_height_for_contents(contents, 10, mock_width_calculator))
-    h.eq(1, lib_util.compute_height_for_contents(contents, 5, mock_width_calculator))
+    h.eq(
+        1,
+        lib_util.compute_height_for_contents(
+            contents,
+            10,
+            mock_width_calculator
+        )
+    )
+    h.eq(
+        1,
+        lib_util.compute_height_for_contents(contents, 5, mock_width_calculator)
+    )
 end
 
 T["compute_height_for_contents"]["calculates wrapped lines correctly"] = function()
     local contents = { "1234567890" }
-    h.eq(1, lib_util.compute_height_for_contents(contents, 10, mock_width_calculator))
-    h.eq(2, lib_util.compute_height_for_contents(contents, 5, mock_width_calculator))
-    h.eq(4, lib_util.compute_height_for_contents(contents, 3, mock_width_calculator))
+    h.eq(
+        1,
+        lib_util.compute_height_for_contents(
+            contents,
+            10,
+            mock_width_calculator
+        )
+    )
+    h.eq(
+        2,
+        lib_util.compute_height_for_contents(contents, 5, mock_width_calculator)
+    )
+    h.eq(
+        4,
+        lib_util.compute_height_for_contents(contents, 3, mock_width_calculator)
+    )
 end
 
 T["compute_height_for_contents"]["handles multiple lines"] = function()
     local contents = { "12345", "1234567890" }
-    h.eq(2, lib_util.compute_height_for_contents(contents, 10, mock_width_calculator))
-    h.eq(3, lib_util.compute_height_for_contents(contents, 5, mock_width_calculator))
+    h.eq(
+        2,
+        lib_util.compute_height_for_contents(
+            contents,
+            10,
+            mock_width_calculator
+        )
+    )
+    h.eq(
+        3,
+        lib_util.compute_height_for_contents(contents, 5, mock_width_calculator)
+    )
 end
 
 T["compute_height_for_contents"]["handles empty content"] = function()
@@ -77,7 +127,14 @@ end
 
 T["compute_height_for_contents"]["handles empty lines"] = function()
     local contents = { "", "abc", "" }
-    h.eq(3, lib_util.compute_height_for_contents(contents, 10, mock_width_calculator))
+    h.eq(
+        3,
+        lib_util.compute_height_for_contents(
+            contents,
+            10,
+            mock_width_calculator
+        )
+    )
 end
 
 return T

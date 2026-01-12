@@ -72,7 +72,11 @@ end
 function M.find_diagnostic_at_cursor(diagnostics, cursor_row, cursor_col)
     for i, d in ipairs(diagnostics) do
         local end_col = d.end_col or d.col
-        if d.lnum == cursor_row and d.col <= cursor_col and end_col >= cursor_col then
+        if
+            d.lnum == cursor_row
+            and d.col <= cursor_col
+            and end_col >= cursor_col
+        then
             return i
         end
     end
@@ -109,8 +113,11 @@ function M.format_diagnostic(diagnostic, opts)
     local lines = {}
     local highlights = {}
 
-    local messages =
-        vim.split(diagnostic.message, "[\n;]", { plain = false, trimempty = true })
+    local messages = vim.split(
+        diagnostic.message,
+        "[\n;]",
+        { plain = false, trimempty = true }
+    )
     for i, part in ipairs(messages) do
         messages[i] = vim.trim(part)
     end
@@ -151,7 +158,8 @@ function M.format_diagnostic(diagnostic, opts)
         if related_info then
             for _, info in ipairs(related_info) do
                 if info.message then
-                    local rel_msg = string.format("  -> %s", vim.trim(info.message))
+                    local rel_msg =
+                        string.format("  -> %s", vim.trim(info.message))
                     table.insert(highlights, {
                         severity = 4,
                         lnum = #lines,

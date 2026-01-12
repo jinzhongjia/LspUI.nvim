@@ -291,7 +291,8 @@ function ClassController:_generateContentForData(
         local filetype = tools.detect_filetype(file_full_name)
 
         local rel_path = ""
-        local relative = lib_path.get_relative_path(file_full_name, raw_cwd, is_windows)
+        local relative =
+            lib_path.get_relative_path(file_full_name, raw_cwd, is_windows)
 
         if relative then
             rel_path = lib_path.format_relative_display(relative)

@@ -61,7 +61,8 @@ local function create_hover_buffer(markdown_lines)
         width = math.max(width, fn.strdisplaywidth(str))
     end
     width = math.min(width, math.floor(tools.get_max_width() * 0.5))
-    local height = math.min(#markdown_lines, math.floor(tools.get_max_height() * 0.6))
+    local height =
+        math.min(#markdown_lines, math.floor(tools.get_max_height() * 0.6))
 
     return new_buffer, width, height
 end
@@ -69,7 +70,8 @@ end
 --- @param buffer_id integer
 --- @return vim.lsp.Client[]|nil
 function ClassHover:GetClients(buffer_id)
-    local clients = lsp.get_clients({ bufnr = buffer_id, method = hover_feature })
+    local clients =
+        lsp.get_clients({ bufnr = buffer_id, method = hover_feature })
     return vim.tbl_isempty(clients) and nil or clients
 end
 
@@ -89,30 +91,43 @@ function ClassHover:GetHovers(clients, buffer_id, callback)
     local pending = #clients
 
     for _, client in ipairs(clients) do
-        client:request(hover_feature, params, function(err, result, _, lsp_config)
-            lsp_config = lsp_config or {}
+        client:request(
+            hover_feature,
+            params,
+            function(err, result, _, lsp_config)
+                lsp_config = lsp_config or {}
 
-            if err and lsp_config.silent ~= true then
-                notify.Warn(string.format(
-                    "server %s, err code is %d, err msg is %s",
-                    client.name, err.code, err.message
-                ))
-            elseif result and result.contents then
-                local markdown_lines = lsp.util.convert_input_to_markdown_lines(result.contents)
-                local buf, width, height = create_hover_buffer(markdown_lines)
-                table.insert(self._hover_tuples, {
-                    client = client,
-                    buffer_id = buf,
-                    width = width,
-                    height = height,
-                })
-            end
+                if err and lsp_config.silent ~= true then
+                    notify.Warn(
+                        string.format(
+                            "server %s, err code is %d, err msg is %s",
+                            client.name,
+                            err.code,
+                            err.message
+                        )
+                    )
+                elseif result and result.contents then
+                    local markdown_lines =
+                        lsp.util.convert_input_to_markdown_lines(
+                            result.contents
+                        )
+                    local buf, width, height =
+                        create_hover_buffer(markdown_lines)
+                    table.insert(self._hover_tuples, {
+                        client = client,
+                        buffer_id = buf,
+                        width = width,
+                        height = height,
+                    })
+                end
 
-            pending = pending - 1
-            if pending == 0 then
-                callback(self._hover_tuples)
-            end
-        end, buffer_id)
+                pending = pending - 1
+                if pending == 0 then
+                    callback(self._hover_tuples)
+                end
+            end,
+            buffer_id
+        )
     end
 end
 
@@ -206,16 +221,19 @@ function ClassHover:SetAutoCommands(buffer_id)
         return
     end
 
-    api.nvim_create_autocmd({ "CursorMoved", "InsertEnter", "BufDelete", "BufLeave" }, {
-        buffer = buffer_id,
-        callback = function()
-            if not self._enter_lock then
-                self:Close()
-                return true
-            end
-        end,
-        desc = tools.command_desc("auto close hover when cursor moves"),
-    })
+    api.nvim_create_autocmd(
+        { "CursorMoved", "InsertEnter", "BufDelete", "BufLeave" },
+        {
+            buffer = buffer_id,
+            callback = function()
+                if not self._enter_lock then
+                    self:Close()
+                    return true
+                end
+            end,
+            desc = tools.command_desc("auto close hover when cursor moves"),
+        }
+    )
 end
 
 --- @param callback function

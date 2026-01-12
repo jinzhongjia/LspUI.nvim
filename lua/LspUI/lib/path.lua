@@ -74,7 +74,9 @@ end
 --- @param full_path string
 --- @return string
 function M.format_absolute_display(full_path)
-    local dir = full_path:match("(.+)/[^/]+$") or full_path:match("(.+)\\[^\\]+$") or full_path
+    local dir = full_path:match("(.+)/[^/]+$")
+        or full_path:match("(.+)\\[^\\]+$")
+        or full_path
     dir = M.normalize_display_path(dir)
     return " (" .. dir .. ")"
 end
