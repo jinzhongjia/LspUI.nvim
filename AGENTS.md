@@ -69,6 +69,81 @@ This plugin must support all three major platforms:
 - Use Neovim's built-in APIs (`vim.fn`, `vim.api`, `vim.lsp`) which are cross-platform by design
 - Our code need to support multiple platform environments(linux mac windows) without any issues
 
+## Testing
+
+### Testing Philosophy
+
+All tests in this project are **internal integration tests** that do not require external dependencies:
+- No real LSP server required
+- No external plugins required (gitsigns, render-markdown, etc.)
+- No real terminal UI interaction required
+- No network access required
+
+### What We Test
+
+| Category | What We Test |
+|----------|--------------|
+| **Module Initialization** | init/deinit behavior, idempotency |
+| **Configuration** | Default values, config merging, option validation |
+| **Command System** | Registration, unregistration, completion, error handling |
+| **Disabled State** | Graceful handling when features are disabled |
+| **No-Client Warnings** | Proper notifications when no LSP client available |
+| **Pure Utilities** | lib/path, lib/util, lib/diagnostic, lib/signature |
+| **UI Components** | ClassView API (buffer/window creation, keymaps) |
+
+### What We Do NOT Test
+
+These require external conditions and are excluded from automated tests:
+- Actual LSP request/response cycles (requires real LSP server)
+- Real code action execution
+- Actual rename operations across files
+- Live hover content from LSP
+- Syntax highlighting rendering (requires Treesitter)
+- External plugin integrations (gitsigns, markdown renderers)
+- Debounce timing with real delays
+
+### Running Tests
+
+```bash
+# Install dependencies
+mise run deps
+
+# Run all tests
+mise run test
+
+# Run specific test file
+mise run test:file file=tests/test_config.lua
+```
+
+### Test Framework
+
+- **Framework**: mini.test (from mini.nvim)
+- **Pattern**: `tests/test_*.lua`
+- **Child Neovim**: Tests run in isolated child Neovim instances via `MiniTest.new_child_neovim()`
+
+### Writing New Tests
+
+Follow the existing pattern:
+```lua
+local h = require("tests.helpers")
+local new_set = MiniTest.new_set
+local child = MiniTest.new_child_neovim()
+
+local T = new_set({
+    hooks = {
+        pre_case = function() h.child_start(child) end,
+        post_once = child.stop,
+    },
+})
+
+T["module name"]["test description"] = function()
+    local result = child.lua([[ ... ]])
+    h.eq(expected, result)
+end
+
+return T
+```
+
 ## LLM NOTES
 
 - Ensure all UI elements are responsive and adapt to different terminal sizes
