@@ -15,8 +15,8 @@ T["islist"]["returns false for non-table values"] = function()
     h.eq(false, lib_util.islist(function() end))
 end
 
-T["islist"]["returns false for empty table"] = function()
-    h.eq(false, lib_util.islist({}))
+T["islist"]["returns true for empty table"] = function()
+    h.eq(true, lib_util.islist({}))
 end
 
 T["islist"]["returns true for array-like tables"] = function()

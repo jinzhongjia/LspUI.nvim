@@ -67,7 +67,7 @@ This plugin must support all three major platforms:
 - Avoid platform-specific shell commands or paths
 - Test path separators work correctly across platforms (`/` vs `\`)
 - Use Neovim's built-in APIs (`vim.fn`, `vim.api`, `vim.lsp`) which are cross-platform by design
-- Our code need to support multiple platform environments(linux mac windows) without any issues
+- Our code needs to support multiple platform environments (Linux, macOS, Windows) without any issues
 
 ## Testing
 

@@ -57,12 +57,12 @@ T["islist"]["returns false for mixed tables"] = function()
     h.eq(false, result)
 end
 
-T["islist"]["returns false for empty table"] = function()
+T["islist"]["returns true for empty table"] = function()
     local result = child.lua([[
         local tools = require("LspUI.layer.tools")
         return tools.islist({})
     ]])
-    h.eq(false, result)
+    h.eq(true, result)
 end
 
 T["islist"]["returns false for non-table"] = function()

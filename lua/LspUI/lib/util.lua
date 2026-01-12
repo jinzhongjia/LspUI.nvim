@@ -3,17 +3,7 @@ local M = {}
 --- @param t any
 --- @return boolean
 function M.islist(t)
-    if type(t) ~= "table" then
-        return false
-    end
-    local count = 0
-    for _ in pairs(t) do
-        count = count + 1
-        if t[count] == nil then
-            return false
-        end
-    end
-    return count > 0
+    return vim.islist(t)
 end
 
 --- @param contents string[]
