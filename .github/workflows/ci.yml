@@ -1,0 +1,47 @@
+name: CI
+
+on:
+  push:
+    branches: [main, unit-test]
+  pull_request:
+    branches: [main]
+
+jobs:
+  lint:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Check formatting with stylua
+        uses: JohnnyMorganz/stylua-action@v4
+        with:
+          token: ${{ secrets.GITHUB_TOKEN }}
+          version: latest
+          args: --check .
+
+  test:
+    needs: lint
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ubuntu-latest, macos-latest, windows-latest]
+    runs-on: ${{ matrix.os }}
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Install Neovim
+        uses: rhysd/action-setup-vim@v1
+        with:
+          neovim: true
+          version: v0.11.0
+
+      - name: Install test dependencies
+        shell: bash
+        run: |
+          mkdir -p deps
+          git clone --depth 1 https://github.com/echasnovski/mini.nvim deps/mini.nvim
+
+      - name: Run tests
+        shell: bash
+        run: |
+          nvim --headless -u tests/minimal_init.lua -c 'lua MiniTest.run()'
