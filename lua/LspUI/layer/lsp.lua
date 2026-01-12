@@ -811,7 +811,10 @@ function ClassLsp:ExecCodeAction(action_tuple)
     local needs_resolve = (not action.edit and not action.command)
         or action.data ~= nil
 
-    if needs_resolve and client:supports_method(self.code_action_resolve_feature) then
+    if
+        needs_resolve
+        and client:supports_method(self.code_action_resolve_feature)
+    then
         -- 需要先 resolve 获取完整的 action
         client:request(
             self.code_action_resolve_feature,
@@ -819,12 +822,19 @@ function ClassLsp:ExecCodeAction(action_tuple)
             function(err, resolved_action)
                 if err then
                     lib_notify.Warn(
-                        string.format("code action resolve error: %s", err.message)
+                        string.format(
+                            "code action resolve error: %s",
+                            err.message
+                        )
                     )
                     return
                 end
                 -- 使用 resolved action 执行
-                self:_applyCodeAction(resolved_action, client, action_tuple.buffer_id)
+                self:_applyCodeAction(
+                    resolved_action,
+                    client,
+                    action_tuple.buffer_id
+                )
             end,
             action_tuple.buffer_id
         )

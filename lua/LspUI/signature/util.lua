@@ -111,11 +111,8 @@ function M.render(data, buffer_id, _win, _client_name)
     local row = math.max(0, current_line - 2)
     local col = fn.virtcol(".") - 1
 
-    local render_text = string.format(
-        "%s %s",
-        config.options.signature.icon,
-        active_label
-    )
+    local render_text =
+        string.format("%s %s", config.options.signature.icon, active_label)
 
     api.nvim_buf_set_extmark(buffer_id, signature_namespace, row, 0, {
         virt_text = { { render_text, "LspUI_Signature" } },

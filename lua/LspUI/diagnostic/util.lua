@@ -48,7 +48,6 @@ local function get_all_diagnostics(bufnr, severity_filter)
     return diag_lib.sort_diagnostics(diagnostics)
 end
 
-
 --- @param diagnostic vim.Diagnostic
 --- @param index integer
 --- @param total integer
@@ -93,7 +92,13 @@ local function render_diagnostic(diagnostic, index, total, opts)
 
     for _, hl in ipairs(highlights) do
         local hl_group = diag_lib.severity_to_highlight(hl.severity)
-        vim.hl.range(buf_id, ns_id, hl_group, { hl.lnum, hl.col }, { hl.lnum, hl.end_col })
+        vim.hl.range(
+            buf_id,
+            ns_id,
+            hl_group,
+            { hl.lnum, hl.col },
+            { hl.lnum, hl.end_col }
+        )
     end
 
     local height = tools.compute_height_for_windows(lines, width)
@@ -209,10 +214,15 @@ function M.show()
     local cursor_row = cursor[1] - 1
     local cursor_col = cursor[2]
 
-    local found_index = diag_lib.find_diagnostic_at_cursor(all_diagnostics, cursor_row, cursor_col)
+    local found_index = diag_lib.find_diagnostic_at_cursor(
+        all_diagnostics,
+        cursor_row,
+        cursor_col
+    )
 
     if found_index == 0 then
-        found_index = diag_lib.find_diagnostic_on_line(all_diagnostics, cursor_row)
+        found_index =
+            diag_lib.find_diagnostic_on_line(all_diagnostics, cursor_row)
     end
 
     if found_index == 0 then
@@ -223,7 +233,11 @@ function M.show()
     current_index = found_index
     clean_autocmds()
 
-    show_diagnostic_window(all_diagnostics[current_index], current_index, #all_diagnostics)
+    show_diagnostic_window(
+        all_diagnostics[current_index],
+        current_index,
+        #all_diagnostics
+    )
 end
 
 --- Jump to next/prev diagnostic and show float window
@@ -264,13 +278,21 @@ function M.render(action)
         local cursor_col = cursor[2]
 
         if action == "next" then
-            local next_index = diag_lib.find_diagnostic_at_or_after(all_diagnostics, cursor_row, cursor_col)
+            local next_index = diag_lib.find_diagnostic_at_or_after(
+                all_diagnostics,
+                cursor_row,
+                cursor_col
+            )
             if next_index == 0 then
                 next_index = 1
             end
             current_index = next_index
         else
-            local prev_index = diag_lib.find_diagnostic_at_or_before(all_diagnostics, cursor_row, cursor_col)
+            local prev_index = diag_lib.find_diagnostic_at_or_before(
+                all_diagnostics,
+                cursor_row,
+                cursor_col
+            )
             if prev_index == 0 then
                 prev_index = #all_diagnostics
             end

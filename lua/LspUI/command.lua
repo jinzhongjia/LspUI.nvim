@@ -95,7 +95,13 @@ function M.init()
         local cmd_args = { unpack(fargs, 2) }
         local ok, err = pcall(cmd_entry.run, unpack(cmd_args))
         if not ok then
-            notify.Error(string.format("Command '%s' failed: %s", key, err or "unknown error"))
+            notify.Error(
+                string.format(
+                    "Command '%s' failed: %s",
+                    key,
+                    err or "unknown error"
+                )
+            )
         end
     end, {
         nargs = "*",

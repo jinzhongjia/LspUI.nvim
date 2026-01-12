@@ -43,7 +43,10 @@ M.run = function(arg)
         util.show()
     else
         notify.Warn(
-            string.format("diagnostic: unknown action '%s'. Use: next, prev, or show", arg)
+            string.format(
+                "diagnostic: unknown action '%s'. Use: next, prev, or show",
+                arg
+            )
         )
     end
 end
