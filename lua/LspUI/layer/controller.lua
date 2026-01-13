@@ -1661,6 +1661,11 @@ function ClassController:ActionPrevEntry()
 end
 
 function ClassController:ActionQuit()
+    if self._debounce_timer then
+        vim.fn.timer_stop(self._debounce_timer)
+        self._debounce_timer = nil
+    end
+
     -- 先清除主视图的高亮
     if self._mainView:Valid() then
         self._mainView:ClearHighlight()
