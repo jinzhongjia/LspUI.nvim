@@ -42,12 +42,12 @@ function M.implementation(bufnr, params)
     M.go("implementation", bufnr, params)
 end
 
--- 关闭所有控制器
 function M.close_all()
     local controller = ClassController.GetInstance(false)
     if controller and controller:IsActive() then
         controller:ActionQuit()
     end
+    ClassController.ResetInstance()
     active_controller = nil
 end
 
