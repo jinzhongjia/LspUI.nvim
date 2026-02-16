@@ -14,9 +14,8 @@ local T = new_set({
 
 T["controller"] = new_set()
 
-T["controller"]["onCursorMoved short-circuits unchanged selection"] =
-    function()
-        local result = child.lua([[
+T["controller"]["onCursorMoved short-circuits unchanged selection"] = function()
+    local result = child.lua([[
             local ClassController = require("LspUI.layer.controller")
 
             local ctl = setmetatable({}, ClassController)
@@ -73,15 +72,14 @@ T["controller"]["onCursorMoved short-circuits unchanged selection"] =
             }
         ]])
 
-        h.eq(0, result.heavy_calls)
-        h.eq(1, result.load_more_calls)
-        h.eq(true, result.uri_unchanged)
-        h.eq(true, result.range_unchanged)
-    end
+    h.eq(0, result.heavy_calls)
+    h.eq(1, result.load_more_calls)
+    h.eq(true, result.uri_unchanged)
+    h.eq(true, result.range_unchanged)
+end
 
-T["controller"]["onCursorMoved still updates when selection changes"] =
-    function()
-        local result = child.lua([[
+T["controller"]["onCursorMoved still updates when selection changes"] = function()
+    local result = child.lua([[
             local ClassController = require("LspUI.layer.controller")
 
             local ctl = setmetatable({}, ClassController)
@@ -137,8 +135,8 @@ T["controller"]["onCursorMoved still updates when selection changes"] =
             }
         ]])
 
-        h.eq(true, result.heavy_calls > 0)
-        h.eq(2, result.new_line)
-    end
+    h.eq(true, result.heavy_calls > 0)
+    h.eq(2, result.new_line)
+end
 
 return T
