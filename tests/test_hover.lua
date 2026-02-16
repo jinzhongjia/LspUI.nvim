@@ -138,6 +138,46 @@ T["hover module"]["deinit unregisters command"] = function()
     h.eq(false, result.has_command_after)
 end
 
+T["hover module"]["layer hover close cleans autocmd group"] = function()
+    local result = child.lua([[
+        local ClassHover = require("LspUI.layer.hover")
+        local ClassView = require("LspUI.layer.view")
+
+        local hover = ClassHover:New()
+        local view = ClassView:New(true)
+            :Size(20, 3)
+            :Pos(1, 1)
+            :Anchor("NW")
+            :Relative("editor")
+            :Style("minimal")
+            :Render()
+
+        hover._view = view
+        local bufnr = view:GetBufID()
+
+        hover:SetAutoCommands(bufnr)
+        local group_id = hover._autocmd_group
+
+        local before_ok = pcall(vim.api.nvim_get_autocmds, { group = group_id })
+
+        hover:Close()
+
+        local after_ok = pcall(vim.api.nvim_get_autocmds, { group = group_id })
+
+        return {
+            before_ok = before_ok,
+            after_ok = after_ok,
+            group_cleared = hover._autocmd_group == nil,
+            view_closed = not view:Valid(),
+        }
+    ]])
+
+    h.eq(true, result.before_ok)
+    h.eq(false, result.after_ok)
+    h.eq(true, result.group_cleared)
+    h.eq(true, result.view_closed)
+end
+
 T["hover module"]["double init is idempotent"] = function()
     local result = child.lua([[
         local config = require("LspUI.config")

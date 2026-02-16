@@ -38,6 +38,11 @@ function M.deinit()
     end
 
     is_initialized = false
+
+    if hover_manager then
+        hover_manager:Close()
+    end
+
     command.unregister_command(command_key)
 end
 

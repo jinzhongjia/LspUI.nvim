@@ -589,6 +589,29 @@ function ClassController:_onCursorMoved()
         return
     end
 
+    -- 如果选中项没有变化，跳过后续重操作
+    local prev = self._current_item
+    if prev and prev.uri == uri then
+        local prev_range = prev.range
+        local same_range = false
+
+        if prev_range == nil and range == nil then
+            same_range = true
+        elseif prev_range and range then
+            same_range = prev_range.start.line == range.start.line
+                and prev_range.start.character == range.start.character
+                and prev_range.finish.line == range.finish.line
+                and prev_range.finish.character == range.finish.character
+        end
+
+        if same_range then
+            if self._virtual_scroll.enabled then
+                self:_checkAndLoadMore()
+            end
+            return
+        end
+    end
+
     -- 设置当前项目，即使没有range（表示是文件路径行）
     self._current_item = {
         uri = uri,
@@ -941,12 +964,8 @@ function ClassController:_appendSubViewData(
 
     -- 添加 extmark
     for _, mark in ipairs(extmarks) do
-        local line_content = api.nvim_buf_get_lines(
-            bufId,
-            mark.line,
-            mark.line + 1,
-            false
-        )[1] or ""
+        local relative_line = mark.line - start_line + 1
+        local line_content = content[relative_line] or ""
         api.nvim_buf_set_extmark(bufId, extmark_ns, mark.line, #line_content, {
             virt_text = { { mark.text, mark.hl_group } },
             virt_text_pos = "eol",

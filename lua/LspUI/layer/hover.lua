@@ -14,11 +14,13 @@ local tools = require("LspUI.layer.tools")
 --- @field private _hover_tuples hover_tuple[]
 --- @field private _current_index integer
 --- @field private _enter_lock boolean
+--- @field private _autocmd_group integer|nil
 local ClassHover = {
     _view = nil,
     _hover_tuples = {},
     _current_index = 1,
     _enter_lock = false,
+    _autocmd_group = nil,
 }
 
 ClassHover.__index = ClassHover
@@ -221,9 +223,20 @@ function ClassHover:SetAutoCommands(buffer_id)
         return
     end
 
+    if self._autocmd_group then
+        pcall(api.nvim_del_augroup_by_id, self._autocmd_group)
+        self._autocmd_group = nil
+    end
+
+    self._autocmd_group = api.nvim_create_augroup(
+        "LspUI_hover_" .. tostring(buffer_id),
+        { clear = true }
+    )
+
     api.nvim_create_autocmd(
         { "CursorMoved", "InsertEnter", "BufDelete", "BufLeave" },
         {
+            group = self._autocmd_group,
             buffer = buffer_id,
             callback = function()
                 if not self._enter_lock then
@@ -255,6 +268,11 @@ function ClassHover:Focus()
 end
 
 function ClassHover:Close()
+    if self._autocmd_group then
+        pcall(api.nvim_del_augroup_by_id, self._autocmd_group)
+        self._autocmd_group = nil
+    end
+
     if self:IsValid() then
         self._view:Destroy()
         self._view = nil

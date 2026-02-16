@@ -6,6 +6,7 @@ local M = {}
 local source_ns = api.nvim_create_namespace("LspUI_source_highlight")
 local source_highlight_group =
     api.nvim_create_augroup("LspUI.source_highlight", { clear = true })
+local has_ts_hl, ts_highlighter = pcall(require, "vim.treesitter.highlighter")
 
 -- 缓存已提取的高亮信息，避免重复解析
 -- cache[source_buf][line_num] = { {hl_group, start_col, end_col}, ... }
@@ -54,8 +55,6 @@ function M.extract_line_highlights(source_buf, source_line)
     local highlights = {}
 
     -- 优先尝试使用已有的 highlighter（避免重复解析）
-    local has_ts_hl, ts_highlighter =
-        pcall(require, "vim.treesitter.highlighter")
     if not has_ts_hl then
         return {}
     end

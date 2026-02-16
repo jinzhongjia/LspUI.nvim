@@ -185,6 +185,11 @@ function ClassMainView:SaveKeyMappings(buf_id)
         return self
     end
 
+    -- 仅在首次接管该 buffer 时保存映射，避免高频 maparg 开销
+    if self._keymap_history[buf_id] then
+        return self
+    end
+
     local keybinds = {
         config.options.pos_keybind.main.back,
         config.options.pos_keybind.main.hide_secondary,
