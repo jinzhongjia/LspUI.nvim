@@ -996,6 +996,18 @@ function ClassController:_debouncedCursorMoved()
     end)
 end
 
+--- 立即刷新光标更新，取消待处理的防抖定时器
+---@private
+function ClassController:_flushCursorUpdate()
+    if self._debounce_timer then
+        vim.fn.timer_stop(self._debounce_timer)
+        self._debounce_timer = nil
+    end
+    if self._subView:Valid() then
+        self:_onCursorMoved()
+    end
+end
+
 ---@private
 ---@param lnum integer
 ---@return string? uri, LspUIRange? range
@@ -1465,6 +1477,8 @@ end
 
 ---@param cmd string|nil 可选的跳转命令
 function ClassController:ActionJump(cmd)
+    self:_flushCursorUpdate()
+
     if not self._current_item.uri then
         return
     end
@@ -1553,6 +1567,8 @@ function ClassController:ActionJump(cmd)
 end
 
 function ClassController:ActionToggleFold()
+    self:_flushCursorUpdate()
+
     if not self._current_item.uri then
         return
     end
@@ -1604,11 +1620,19 @@ function ClassController:ActionToggleFold()
 end
 
 function ClassController:ActionNextEntry()
-    if not self._current_item.uri then
+    self:_flushCursorUpdate()
+
+    local winid = self._subView:GetWinID()
+    if not winid or not api.nvim_win_is_valid(winid) then
         return
     end
 
-    local current_uri = self._current_item.uri
+    local current_lnum = api.nvim_win_get_cursor(winid)[1]
+    local mapping = self._line_map[current_lnum]
+    if not mapping then
+        return
+    end
+    local current_uri = mapping.uri
     local data = self._lsp:GetData()
     local found = false
     local line = 1
@@ -1626,6 +1650,7 @@ function ClassController:ActionNextEntry()
         if found then
             ---@diagnostic disable-next-line: param-type-mismatch
             api.nvim_win_set_cursor(self._subView:GetWinID(), { line, 0 })
+            self:_onCursorMoved()
             return
         end
 
@@ -1641,11 +1666,19 @@ function ClassController:ActionNextEntry()
 end
 
 function ClassController:ActionPrevEntry()
-    if not self._current_item.uri then
+    self:_flushCursorUpdate()
+
+    local winid = self._subView:GetWinID()
+    if not winid or not api.nvim_win_is_valid(winid) then
         return
     end
 
-    local current_uri = self._current_item.uri
+    local current_lnum = api.nvim_win_get_cursor(winid)[1]
+    local mapping = self._line_map[current_lnum]
+    if not mapping then
+        return
+    end
+    local current_uri = mapping.uri
     local data = self._lsp:GetData()
     local line = 1
     local prev_line = 1
@@ -1667,6 +1700,7 @@ function ClassController:ActionPrevEntry()
                     self._subView:GetWinID(),
                     { prev_line, 0 }
                 )
+                self:_onCursorMoved()
             end
             return
         end
@@ -1804,6 +1838,8 @@ end
 
 ---@param fold boolean 是否全部折叠
 function ClassController:ActionFoldAll(fold)
+    self:_flushCursorUpdate()
+
     local current_uri = self._current_item.uri
     local data = self._lsp:GetData()
     local changed = false
@@ -1827,8 +1863,11 @@ function ClassController:ActionFoldAll(fold)
 
         -- 恢复光标位置
         local lnum = self:_getCursorPosForUri(current_uri)
-        ---@diagnostic disable-next-line: param-type-mismatch
-        api.nvim_win_set_cursor(self._subView:GetWinID(), { lnum, 0 })
+        local win = self._subView:GetWinID()
+        if win and api.nvim_win_is_valid(win) then
+            api.nvim_win_set_cursor(win, { lnum, 0 })
+            self:_onCursorMoved()
+        end
     end
 end
 
