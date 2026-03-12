@@ -1627,7 +1627,13 @@ function ClassController:_incrementalToggleFold(uri)
     else
         new_line = old_line:gsub("▶", "▼")
     end
-    api.nvim_buf_set_lines(bufId, header_lnum - 1, header_lnum, true, { new_line })
+    api.nvim_buf_set_lines(
+        bufId,
+        header_lnum - 1,
+        header_lnum,
+        true,
+        { new_line }
+    )
 
     -- 4b. 增量修改 buffer 行
     if is_collapsing then
@@ -1700,23 +1706,30 @@ function ClassController:_incrementalToggleFold(uri)
         if mapping.range == nil then
             local file_full_name = vim.uri_to_fname(mapping.uri)
             local rel_path = ""
-            local relative = lib_path.get_relative_path(
-                file_full_name,
-                raw_cwd,
-                is_windows
-            )
+            local relative =
+                lib_path.get_relative_path(file_full_name, raw_cwd, is_windows)
             if relative then
                 rel_path = lib_path.format_relative_display(relative)
             else
                 rel_path = lib_path.format_absolute_display(file_full_name)
             end
             if rel_path ~= "" then
-                local line_content =
-                    api.nvim_buf_get_lines(bufId, lnum - 1, lnum, true)[1] or ""
-                api.nvim_buf_set_extmark(bufId, extmark_ns, lnum - 1, #line_content, {
-                    virt_text = { { rel_path, "Comment" } },
-                    virt_text_pos = "eol",
-                })
+                local line_content = api.nvim_buf_get_lines(
+                    bufId,
+                    lnum - 1,
+                    lnum,
+                    true
+                )[1] or ""
+                api.nvim_buf_set_extmark(
+                    bufId,
+                    extmark_ns,
+                    lnum - 1,
+                    #line_content,
+                    {
+                        virt_text = { { rel_path, "Comment" } },
+                        virt_text_pos = "eol",
+                    }
+                )
             end
         end
     end
@@ -1770,13 +1783,12 @@ function ClassController:_incrementalToggleFold(uri)
                         end
                     end
 
-                    local line_content =
-                        api.nvim_buf_get_lines(
-                            bufId,
-                            entry.lnum - 1,
-                            entry.lnum,
-                            true
-                        )[1] or ""
+                    local line_content = api.nvim_buf_get_lines(
+                        bufId,
+                        entry.lnum - 1,
+                        entry.lnum,
+                        true
+                    )[1] or ""
                     table.insert(all_syntax_regions[filetype], {
                         line = entry.lnum - 1,
                         col_start = 3,
