@@ -408,9 +408,6 @@ function ClassController:_renderSubViewData(data, bufId, ordered_uris)
         { buf = bufId }
     )
 
-    -- 先清空缓冲区，避免与旧内容冲突
-    api.nvim_buf_set_lines(bufId, 0, -1, true, {})
-
     -- 创建命名空间用于extmark，并清除旧的extmark
     local extmark_ns = api.nvim_create_namespace("LspUIPathExtmarks")
     api.nvim_buf_clear_namespace(bufId, extmark_ns, 0, -1)
@@ -1566,6 +1563,250 @@ function ClassController:ActionJump(cmd)
     vim.cmd("norm! zz")
 end
 
+--- 为单个 URI 生成代码行内容
+---@private
+---@param uri string URI
+---@param item table data[uri] 的数据项
+---@return string[] code_lines 格式化后的代码行文本
+function ClassController:_generateCodeLinesForUri(uri, item)
+    local uri_rows = {}
+    for _, range in ipairs(item.range) do
+        table.insert(uri_rows, range.start.line)
+    end
+
+    local lines = tools.GetUriLines(item.buffer_id, uri, uri_rows)
+    local code_lines = {}
+
+    for _, row in ipairs(uri_rows) do
+        local original_line = lines[row] or ""
+        local line_code = vim.trim(original_line)
+        table.insert(code_lines, string.format("   %s", line_code))
+    end
+
+    return code_lines
+end
+
+--- 增量折叠/展开，仅修改变化的行，避免全量重建导致的闪烁
+---@private
+---@param uri string 要切换折叠状态的 URI
+function ClassController:_incrementalToggleFold(uri)
+    local data = self._lsp:GetData()
+    local bufId = self._subView:GetBufID()
+    if not bufId or not api.nvim_buf_is_valid(bufId) then
+        return
+    end
+
+    -- 1. 找到文件标题行
+    local header_lnum = nil
+    for lnum, mapping in pairs(self._line_map) do
+        if mapping.uri == uri and mapping.range == nil then
+            header_lnum = lnum
+            break
+        end
+    end
+    if not header_lnum then
+        return
+    end
+
+    -- 2. 判断操作方向
+    local is_collapsing = not data[uri].fold -- 当前未折叠，将要折叠
+    local range_count = #data[uri].range
+
+    -- 3. 修改 fold 状态
+    data[uri].fold = not data[uri].fold
+
+    -- 4. 更新 buffer 内容
+    api.nvim_set_option_value("modifiable", true, { buf = bufId })
+
+    -- 4a. 更新标题行图标
+    local old_line =
+        api.nvim_buf_get_lines(bufId, header_lnum - 1, header_lnum, true)[1]
+    local new_line
+    if is_collapsing then
+        new_line = old_line:gsub("▼", "▶")
+    else
+        new_line = old_line:gsub("▶", "▼")
+    end
+    api.nvim_buf_set_lines(bufId, header_lnum - 1, header_lnum, true, { new_line })
+
+    -- 4b. 增量修改 buffer 行
+    if is_collapsing then
+        -- 删除代码行
+        api.nvim_buf_set_lines(
+            bufId,
+            header_lnum,
+            header_lnum + range_count,
+            true,
+            {}
+        )
+    else
+        -- 生成代码行并插入
+        local code_lines = self:_generateCodeLinesForUri(uri, data[uri])
+        api.nvim_buf_set_lines(
+            bufId,
+            header_lnum,
+            header_lnum,
+            true,
+            code_lines
+        )
+    end
+
+    api.nvim_set_option_value("modifiable", false, { buf = bufId })
+
+    -- 5. 增量更新 _line_map
+    local new_line_map = {}
+    local delta = is_collapsing and -range_count or range_count
+    for lnum, mapping in pairs(self._line_map) do
+        if is_collapsing and mapping.uri == uri and mapping.range ~= nil then
+            -- 被折叠的代码行，丢弃
+        elseif lnum > header_lnum then
+            new_line_map[lnum + delta] = mapping
+        else
+            new_line_map[lnum] = mapping
+        end
+    end
+    -- 展开时，添加新的代码行映射
+    if not is_collapsing then
+        for i, range in ipairs(data[uri].range) do
+            new_line_map[header_lnum + i] = { uri = uri, range = range }
+        end
+    end
+    self._line_map = new_line_map
+
+    -- 6. 刷新高亮
+    -- 6a. 清除并重建 Directory 高亮
+    local subViewNamespace = api.nvim_create_namespace("LspUISubView")
+    api.nvim_buf_clear_namespace(bufId, subViewNamespace, 0, -1)
+    for lnum, mapping in pairs(self._line_map) do
+        if mapping.range == nil then
+            vim.highlight.range(
+                bufId,
+                subViewNamespace,
+                "Directory",
+                { lnum - 1, 3 },
+                { lnum - 1, -1 },
+                { priority = vim.highlight.priorities.user }
+            )
+        end
+    end
+
+    -- 6b. 清除并重建 extmarks（路径提示）
+    local extmark_ns = api.nvim_create_namespace("LspUIPathExtmarks")
+    api.nvim_buf_clear_namespace(bufId, extmark_ns, 0, -1)
+
+    local is_windows = vim.fn.has("win32") == 1
+    local raw_cwd = vim.fn.getcwd()
+    for lnum, mapping in pairs(self._line_map) do
+        if mapping.range == nil then
+            local file_full_name = vim.uri_to_fname(mapping.uri)
+            local rel_path = ""
+            local relative = lib_path.get_relative_path(
+                file_full_name,
+                raw_cwd,
+                is_windows
+            )
+            if relative then
+                rel_path = lib_path.format_relative_display(relative)
+            else
+                rel_path = lib_path.format_absolute_display(file_full_name)
+            end
+            if rel_path ~= "" then
+                local line_content =
+                    api.nvim_buf_get_lines(bufId, lnum - 1, lnum, true)[1] or ""
+                api.nvim_buf_set_extmark(bufId, extmark_ns, lnum - 1, #line_content, {
+                    virt_text = { { rel_path, "Comment" } },
+                    virt_text_pos = "eol",
+                })
+            end
+        end
+    end
+
+    -- 6c. 重建语法高亮
+    self._subView:ClearSyntaxHighlight()
+
+    -- 按 URI 分组收集可见代码行，批量获取源文件内容
+    local uri_code_lines = {} -- uri -> { { lnum, range } ... }
+    for lnum, mapping in pairs(self._line_map) do
+        if mapping.range ~= nil then
+            if not uri_code_lines[mapping.uri] then
+                uri_code_lines[mapping.uri] = {}
+            end
+            table.insert(
+                uri_code_lines[mapping.uri],
+                { lnum = lnum, range = mapping.range }
+            )
+        end
+    end
+
+    local all_syntax_regions = {}
+    for group_uri, entries in pairs(uri_code_lines) do
+        local item_data = data[group_uri]
+        if item_data then
+            local file_full_name = vim.uri_to_fname(group_uri)
+            local filetype = tools.detect_filetype(file_full_name)
+            if filetype and filetype ~= "" then
+                if not all_syntax_regions[filetype] then
+                    all_syntax_regions[filetype] = {}
+                end
+
+                -- 批量获取该 URI 的所有源行
+                local uri_rows = {}
+                for _, entry in ipairs(entries) do
+                    table.insert(uri_rows, entry.range.start.line)
+                end
+                local source_lines =
+                    tools.GetUriLines(item_data.buffer_id, group_uri, uri_rows)
+
+                for _, entry in ipairs(entries) do
+                    local source_line = entry.range.start.line
+                    local original_line = source_lines[source_line] or ""
+                    local leading_spaces = 0
+                    if #original_line > 0 then
+                        local first_non_space = original_line:find("%S")
+                        if first_non_space then
+                            leading_spaces = first_non_space - 1
+                        else
+                            leading_spaces = #original_line
+                        end
+                    end
+
+                    local line_content =
+                        api.nvim_buf_get_lines(
+                            bufId,
+                            entry.lnum - 1,
+                            entry.lnum,
+                            true
+                        )[1] or ""
+                    table.insert(all_syntax_regions[filetype], {
+                        line = entry.lnum - 1,
+                        col_start = 3,
+                        col_end = #line_content,
+                        source_buf = item_data.buffer_id,
+                        source_line = source_line,
+                        source_col_offset = leading_spaces,
+                    })
+                end
+            end
+        end
+    end
+    self._subView:ApplySyntaxHighlight(all_syntax_regions)
+
+    -- 7. 调整窗口高度
+    local total_lines = api.nvim_buf_line_count(bufId)
+    local height = self:_limitSubViewHeight(total_lines + 1)
+    -- 保持宽度不变，仅调整高度
+    local win = self._subView:GetWinID()
+    if win and api.nvim_win_is_valid(win) then
+        api.nvim_win_set_config(win, { height = height })
+    end
+
+    -- 8. 设置光标位置（折叠→停在标题行，展开→停在标题行）
+    if win and api.nvim_win_is_valid(win) then
+        api.nvim_win_set_cursor(win, { header_lnum, 0 })
+        self:_onCursorMoved()
+    end
+end
+
 function ClassController:ActionToggleFold()
     self:_flushCursorUpdate()
 
@@ -1573,9 +1814,7 @@ function ClassController:ActionToggleFold()
         return
     end
 
-    -- 保存当前状态，包括当前的范围
     local uri = self._current_item.uri
-    local currentRange = self._current_item.range
     local data = self._lsp:GetData()
 
     if not data[uri] then
@@ -1584,39 +1823,17 @@ function ClassController:ActionToggleFold()
 
     -- 如果启用了虚拟滚动，需要确保该文件已加载
     if self._virtual_scroll.enabled then
-        -- 使用反向映射进行 O(1) 查找（性能优化）
         local uri_index = self._virtual_scroll.uri_to_index[uri]
-
-        -- 如果该文件未加载，一次性加载到该位置（优化：避免循环调用和 UI 闪烁）
         if uri_index and uri_index > self._virtual_scroll.loaded_file_count then
             self:_loadItemsUpTo(uri_index)
         end
     end
 
-    -- 切换折叠状态
-    data[uri].fold = not data[uri].fold
+    -- 使用增量更新
+    self:_incrementalToggleFold(uri)
 
-    -- 重新生成SubView内容
-    local width, height = self:_generateSubViewContent()
-    height = self:_limitSubViewHeight(height)
-    self._subView:Size(width, height)
-
-    -- 重新应用搜索高亮（如果搜索已启用）
+    -- 重新应用搜索高亮
     self:_reapplySearchHighlight()
-
-    -- 设置光标位置到适当的行
-    local lnum = self:_getCursorPosForUri(uri, currentRange)
-    if
-        self._subView:GetWinID()
-        ---@diagnostic disable-next-line: param-type-mismatch
-        and api.nvim_win_is_valid(self._subView:GetWinID())
-    then
-        ---@diagnostic disable-next-line: param-type-mismatch
-        api.nvim_win_set_cursor(self._subView:GetWinID(), { lnum, 0 })
-
-        -- 手动触发一次光标移动处理更新当前项
-        self:_onCursorMoved()
-    end
 end
 
 function ClassController:ActionNextEntry()
@@ -1853,6 +2070,18 @@ function ClassController:ActionFoldAll(fold)
     end
 
     if changed then
+        -- 保存视口状态
+        local win = self._subView:GetWinID()
+        local screen_row = 0
+        if win and api.nvim_win_is_valid(win) then
+            local cursor_lnum = api.nvim_win_get_cursor(win)[1]
+            local wininfo = vim.fn.getwininfo(win)
+            if wininfo and wininfo[1] then
+                local topline = wininfo[1].topline
+                screen_row = cursor_lnum - topline
+            end
+        end
+
         -- 重新渲染
         local width, height = self:_generateSubViewContent()
         height = self:_limitSubViewHeight(height)
@@ -1861,11 +2090,18 @@ function ClassController:ActionFoldAll(fold)
         -- 重新应用搜索高亮
         self:_reapplySearchHighlight()
 
-        -- 恢复光标位置
+        -- 恢复光标 + 视口锚定（重新获取 win，因为重建可能替换了窗口）
         local lnum = self:_getCursorPosForUri(current_uri)
-        local win = self._subView:GetWinID()
+        win = self._subView:GetWinID()
         if win and api.nvim_win_is_valid(win) then
-            api.nvim_win_set_cursor(win, { lnum, 0 })
+            local new_topline = math.max(1, lnum - screen_row)
+            api.nvim_win_call(win, function()
+                vim.fn.winrestview({
+                    topline = new_topline,
+                    lnum = lnum,
+                    col = 0,
+                })
+            end)
             self:_onCursorMoved()
         end
     end
