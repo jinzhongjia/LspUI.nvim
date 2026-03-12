@@ -408,51 +408,17 @@ function ClassController:_renderSubViewData(data, bufId, ordered_uris)
         { buf = bufId }
     )
 
-    -- 创建命名空间用于extmark，并清除旧的extmark
-    local extmark_ns = api.nvim_create_namespace("LspUIPathExtmarks")
-    api.nvim_buf_clear_namespace(bufId, extmark_ns, 0, -1)
-
     -- 生成内容（使用提取的共用函数，传递有序 URI 列表）
-    local content, hl_lines, extmarks, syntax_regions, max_width =
+    local content, _, _, _, max_width =
         self:_generateContentForData(data, 0, ordered_uris)
 
     -- 设置内容
     api.nvim_buf_set_lines(bufId, 0, -1, true, content)
 
-    -- 应用语法高亮
-    self._subView:ApplySyntaxHighlight(syntax_regions)
-
-    -- 设置高亮
-    local subViewNamespace = api.nvim_create_namespace("LspUISubView")
-    api.nvim_buf_clear_namespace(bufId, subViewNamespace, 0, -1)
-
-    for _, lnum in ipairs(hl_lines) do
-        vim.highlight.range(
-            bufId,
-            subViewNamespace,
-            "Directory",
-            { lnum - 1, 3 },
-            { lnum - 1, -1 },
-            { priority = vim.highlight.priorities.user }
-        )
-    end
-
-    -- 添加所有extmark
-    for _, mark in ipairs(extmarks) do
-        if mark.line >= 0 and mark.line < #content then
-            local line_content = content[mark.line + 1] or ""
-            api.nvim_buf_set_extmark(
-                bufId,
-                extmark_ns,
-                mark.line,
-                #line_content,
-                {
-                    virt_text = { { mark.text, mark.hl_group } },
-                    virt_text_pos = "eol",
-                }
-            )
-        end
-    end
+    -- 刷新所有高亮（从 _line_map 重建）
+    self:_refreshDirectoryHighlight(bufId)
+    self:_refreshExtmarks(bufId)
+    self:_refreshSyntaxHighlight(bufId)
 
     -- 禁止修改
     api.nvim_set_option_value("modifiable", false, { buf = bufId })
@@ -1586,6 +1552,143 @@ function ClassController:_generateCodeLinesForUri(uri, item)
     return code_lines
 end
 
+--- 刷新 Directory 高亮（从 _line_map 重建）
+---@private
+---@param bufId integer Buffer ID
+function ClassController:_refreshDirectoryHighlight(bufId)
+    local subViewNamespace = api.nvim_create_namespace("LspUISubView")
+    api.nvim_buf_clear_namespace(bufId, subViewNamespace, 0, -1)
+    for lnum, mapping in pairs(self._line_map) do
+        if mapping.range == nil then
+            vim.highlight.range(
+                bufId,
+                subViewNamespace,
+                "Directory",
+                { lnum - 1, 3 },
+                { lnum - 1, -1 },
+                { priority = vim.highlight.priorities.user }
+            )
+        end
+    end
+end
+
+--- 刷新路径提示 extmarks（从 _line_map 重建）
+---@private
+---@param bufId integer Buffer ID
+function ClassController:_refreshExtmarks(bufId)
+    local extmark_ns = api.nvim_create_namespace("LspUIPathExtmarks")
+    api.nvim_buf_clear_namespace(bufId, extmark_ns, 0, -1)
+
+    local is_windows = vim.fn.has("win32") == 1
+    local raw_cwd = vim.fn.getcwd()
+    for lnum, mapping in pairs(self._line_map) do
+        if mapping.range == nil then
+            local file_full_name = vim.uri_to_fname(mapping.uri)
+            local rel_path = ""
+            local relative =
+                lib_path.get_relative_path(file_full_name, raw_cwd, is_windows)
+            if relative then
+                rel_path = lib_path.format_relative_display(relative)
+            else
+                rel_path = lib_path.format_absolute_display(file_full_name)
+            end
+            if rel_path ~= "" then
+                local line_content = api.nvim_buf_get_lines(
+                    bufId,
+                    lnum - 1,
+                    lnum,
+                    true
+                )[1] or ""
+                api.nvim_buf_set_extmark(
+                    bufId,
+                    extmark_ns,
+                    lnum - 1,
+                    #line_content,
+                    {
+                        virt_text = { { rel_path, "Comment" } },
+                        virt_text_pos = "eol",
+                    }
+                )
+            end
+        end
+    end
+end
+
+--- 刷新语法高亮（从 _line_map 重建）
+---@private
+---@param bufId integer Buffer ID
+function ClassController:_refreshSyntaxHighlight(bufId)
+    local data = self._lsp:GetData()
+
+    self._subView:ClearSyntaxHighlight()
+
+    -- 按 URI 分组收集可见代码行，批量获取源文件内容
+    local uri_code_lines = {} -- uri -> { { lnum, range } ... }
+    for lnum, mapping in pairs(self._line_map) do
+        if mapping.range ~= nil then
+            if not uri_code_lines[mapping.uri] then
+                uri_code_lines[mapping.uri] = {}
+            end
+            table.insert(
+                uri_code_lines[mapping.uri],
+                { lnum = lnum, range = mapping.range }
+            )
+        end
+    end
+
+    local all_syntax_regions = {}
+    for group_uri, entries in pairs(uri_code_lines) do
+        local item_data = data[group_uri]
+        if item_data then
+            local file_full_name = vim.uri_to_fname(group_uri)
+            local filetype = tools.detect_filetype(file_full_name)
+            if filetype and filetype ~= "" then
+                if not all_syntax_regions[filetype] then
+                    all_syntax_regions[filetype] = {}
+                end
+
+                -- 批量获取该 URI 的所有源行
+                local uri_rows = {}
+                for _, entry in ipairs(entries) do
+                    table.insert(uri_rows, entry.range.start.line)
+                end
+                local source_lines =
+                    tools.GetUriLines(item_data.buffer_id, group_uri, uri_rows)
+
+                for _, entry in ipairs(entries) do
+                    local source_line = entry.range.start.line
+                    local original_line = source_lines[source_line] or ""
+                    local leading_spaces = 0
+                    if #original_line > 0 then
+                        local first_non_space = original_line:find("%S")
+                        if first_non_space then
+                            leading_spaces = first_non_space - 1
+                        else
+                            leading_spaces = #original_line
+                        end
+                    end
+
+                    local line_content = api.nvim_buf_get_lines(
+                        bufId,
+                        entry.lnum - 1,
+                        entry.lnum,
+                        true
+                    )[1] or ""
+                    table.insert(all_syntax_regions[filetype], {
+                        line = entry.lnum - 1,
+                        col_start = 3,
+                        col_end = #line_content,
+                        source_buf = item_data.buffer_id,
+                        source_line = source_line,
+                        source_col_offset = leading_spaces,
+                    })
+                end
+            end
+        end
+    end
+    self._subView:ApplySyntaxHighlight(all_syntax_regions)
+end
+
 --- 增量折叠/展开，仅修改变化的行，避免全量重建导致的闪烁
 ---@private
 ---@param uri string 要切换折叠状态的 URI
@@ -1680,128 +1783,9 @@ function ClassController:_incrementalToggleFold(uri)
     self._line_map = new_line_map
 
     -- 6. 刷新高亮
-    -- 6a. 清除并重建 Directory 高亮
-    local subViewNamespace = api.nvim_create_namespace("LspUISubView")
-    api.nvim_buf_clear_namespace(bufId, subViewNamespace, 0, -1)
-    for lnum, mapping in pairs(self._line_map) do
-        if mapping.range == nil then
-            vim.highlight.range(
-                bufId,
-                subViewNamespace,
-                "Directory",
-                { lnum - 1, 3 },
-                { lnum - 1, -1 },
-                { priority = vim.highlight.priorities.user }
-            )
-        end
-    end
-
-    -- 6b. 清除并重建 extmarks（路径提示）
-    local extmark_ns = api.nvim_create_namespace("LspUIPathExtmarks")
-    api.nvim_buf_clear_namespace(bufId, extmark_ns, 0, -1)
-
-    local is_windows = vim.fn.has("win32") == 1
-    local raw_cwd = vim.fn.getcwd()
-    for lnum, mapping in pairs(self._line_map) do
-        if mapping.range == nil then
-            local file_full_name = vim.uri_to_fname(mapping.uri)
-            local rel_path = ""
-            local relative =
-                lib_path.get_relative_path(file_full_name, raw_cwd, is_windows)
-            if relative then
-                rel_path = lib_path.format_relative_display(relative)
-            else
-                rel_path = lib_path.format_absolute_display(file_full_name)
-            end
-            if rel_path ~= "" then
-                local line_content = api.nvim_buf_get_lines(
-                    bufId,
-                    lnum - 1,
-                    lnum,
-                    true
-                )[1] or ""
-                api.nvim_buf_set_extmark(
-                    bufId,
-                    extmark_ns,
-                    lnum - 1,
-                    #line_content,
-                    {
-                        virt_text = { { rel_path, "Comment" } },
-                        virt_text_pos = "eol",
-                    }
-                )
-            end
-        end
-    end
-
-    -- 6c. 重建语法高亮
-    self._subView:ClearSyntaxHighlight()
-
-    -- 按 URI 分组收集可见代码行，批量获取源文件内容
-    local uri_code_lines = {} -- uri -> { { lnum, range } ... }
-    for lnum, mapping in pairs(self._line_map) do
-        if mapping.range ~= nil then
-            if not uri_code_lines[mapping.uri] then
-                uri_code_lines[mapping.uri] = {}
-            end
-            table.insert(
-                uri_code_lines[mapping.uri],
-                { lnum = lnum, range = mapping.range }
-            )
-        end
-    end
-
-    local all_syntax_regions = {}
-    for group_uri, entries in pairs(uri_code_lines) do
-        local item_data = data[group_uri]
-        if item_data then
-            local file_full_name = vim.uri_to_fname(group_uri)
-            local filetype = tools.detect_filetype(file_full_name)
-            if filetype and filetype ~= "" then
-                if not all_syntax_regions[filetype] then
-                    all_syntax_regions[filetype] = {}
-                end
-
-                -- 批量获取该 URI 的所有源行
-                local uri_rows = {}
-                for _, entry in ipairs(entries) do
-                    table.insert(uri_rows, entry.range.start.line)
-                end
-                local source_lines =
-                    tools.GetUriLines(item_data.buffer_id, group_uri, uri_rows)
-
-                for _, entry in ipairs(entries) do
-                    local source_line = entry.range.start.line
-                    local original_line = source_lines[source_line] or ""
-                    local leading_spaces = 0
-                    if #original_line > 0 then
-                        local first_non_space = original_line:find("%S")
-                        if first_non_space then
-                            leading_spaces = first_non_space - 1
-                        else
-                            leading_spaces = #original_line
-                        end
-                    end
-
-                    local line_content = api.nvim_buf_get_lines(
-                        bufId,
-                        entry.lnum - 1,
-                        entry.lnum,
-                        true
-                    )[1] or ""
-                    table.insert(all_syntax_regions[filetype], {
-                        line = entry.lnum - 1,
-                        col_start = 3,
-                        col_end = #line_content,
-                        source_buf = item_data.buffer_id,
-                        source_line = source_line,
-                        source_col_offset = leading_spaces,
-                    })
-                end
-            end
-        end
-    end
-    self._subView:ApplySyntaxHighlight(all_syntax_regions)
+    self:_refreshDirectoryHighlight(bufId)
+    self:_refreshExtmarks(bufId)
+    self:_refreshSyntaxHighlight(bufId)
 
     -- 7. 调整窗口高度
     local total_lines = api.nvim_buf_line_count(bufId)
