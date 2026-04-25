@@ -20,17 +20,47 @@ local ICON_OPEN = "\u{25BC}" -- ▼
 local ICON_FOLDED = "\u{25B6}" -- ▶
 local ICON_BYTE_LEN = 3
 
+---@class LspUIVirtualScrollState
+---@field enabled boolean 是否启用虚拟滚动
+---@field threshold integer 触发虚拟滚动的文件数阈值
+---@field chunk_size integer 每次加载的文件数
+---@field load_more_threshold integer 距离底部多少行触发加载
+---@field loaded_file_count integer 已加载文件数（普通模式）
+---@field total_file_count integer 总文件数
+---@field uri_list string[] 排序后的全部 URI（普通模式）
+---@field uri_to_index table<string, integer> URI -> 索引的反向映射
+---@field is_loading boolean 是否正在加载（防止重入）
+---@field search_mode boolean 是否进入搜索过滤模式
+---@field matched_uri_list string[] 匹配的 URI 列表（搜索过滤模式）
+---@field loaded_match_count integer 已加载匹配数
+---@field total_match_count integer 总匹配数
+
+---@class LspUILineMapEntry
+---@field uri string
+---@field range LspUIRange? nil 表示文件标题行
+
+---@alias LspUILineMap table<integer, LspUILineMapEntry>
+
+---@class LspUICurrentItem
+---@field uri string
+---@field buffer_id integer
+---@field range LspUIRange?
+---@field is_file_header boolean? 当前是否停在文件标题行
+
 ---@class ClassController
 ---@field _lsp ClassLsp
 ---@field _mainView ClassMainView
 ---@field _subView ClassSubView
----@field _current_item {uri: string, buffer_id: integer, range: LspUIRange?}
+---@field _current_item LspUICurrentItem
 ---@field origin_win integer?
----@field _search_state table
----@field _virtual_scroll table
----@field _jump_history_state table
+---@field _search_state SearchState
+---@field _virtual_scroll LspUIVirtualScrollState
+---@field _jump_history_state JumpHistoryState
 ---@field _original_winbar string?
----@field _line_map table 行号到 URI 和 range 的映射表（性能优化：O(1) 查找）
+---@field _line_map LspUILineMap 行号到 URI 和 range 的映射表（性能优化：O(1) 查找）
+---@field _debounce_delay integer 防抖延迟（毫秒）
+---@field _debounce_timer integer? vim.fn.timer_start 返回的 timer id
+---@field _current_method_name string? 当前 LSP 方法名（用于 jump history 记录）
 local controller_singleton = nil
 
 local ClassController = {
@@ -82,8 +112,9 @@ function ClassController:IsActive()
 end
 
 --- 统计总文件数和总行数
----@param data table LSP 数据
----@return integer, integer 文件数，总行数（展开后）
+---@param data LspUIPositionWrap LSP 数据
+---@return integer file_count
+---@return integer total_lines 全部展开后的行数
 local function count_items(data)
     local file_count = 0
     local total_lines = 0
@@ -101,7 +132,7 @@ local function count_items(data)
 end
 
 --- 收集 data 的 URI 并按字母序排序（与 SubView 渲染顺序保持一致）
----@param data table
+---@param data table<string, any>
 ---@return string[]
 local function sort_uris(data)
     local uris = {}
@@ -209,6 +240,9 @@ end
 
 --- 完整渲染（小列表）
 ---@private
+---@param data LspUIPositionWrap
+---@param bufId integer
+---@return integer width, integer height
 function ClassController:_generateSubViewContentFull(data, bufId)
     -- 禁用虚拟滚动
     self._virtual_scroll.enabled = false
@@ -219,6 +253,10 @@ end
 
 --- 虚拟渲染（大列表，分批加载）
 ---@private
+---@param data LspUIPositionWrap
+---@param bufId integer
+---@param total_file_count integer
+---@return integer width, integer height
 function ClassController:_generateSubViewContentVirtual(
     data,
     bufId,
@@ -276,12 +314,21 @@ function ClassController:_generateSubViewContentVirtual(
     return width, height
 end
 
+--- @class LspUIPathExtmark
+--- @field line integer 0-indexed 行号
+--- @field text string 显示文本
+--- @field hl_group string 高亮组
+
 --- 生成内容数据（共用逻辑，被渲染和追加函数调用）
 ---@private
----@param data table LSP 数据
+---@param data LspUIPositionWrap LSP 数据
 ---@param start_line_offset integer 起始行偏移（用于计算行号）
----@param ordered_uris table|nil 可选的有序 URI 列表，如果提供则使用，否则自动排序
----@return string[], integer[], table[], table, integer 内容行、高亮行、extmarks、语法区域、最大宽度
+---@param ordered_uris string[]? 可选的有序 URI 列表，如果提供则使用，否则自动排序
+---@return string[] content 内容行
+---@return integer[] hl_lines 标题行 1-indexed 行号列表
+---@return LspUIPathExtmark[] extmarks 标题行末尾路径提示
+---@return table<string, LspUISyntaxRegion[]> syntax_regions 按 filetype 分组的代码行 syntax 区域
+---@return integer max_width 标题行的最大显示宽度
 function ClassController:_generateContentForData(
     data,
     start_line_offset,
@@ -414,9 +461,11 @@ end
 
 --- 渲染数据到 SubView（核心渲染逻辑，被完整渲染和虚拟渲染共用）
 ---@private
----@param data table LSP 数据
+---@param data LspUIPositionWrap LSP 数据
 ---@param bufId integer Buffer ID
----@param ordered_uris table|nil 可选的有序 URI 列表
+---@param ordered_uris string[]? 可选的有序 URI 列表
+---@return integer width
+---@return integer height
 function ClassController:_renderSubViewData(data, bufId, ordered_uris)
     -- 允许修改缓冲区
     api.nvim_set_option_value("modifiable", true, { buf = bufId })
@@ -466,7 +515,7 @@ end
 ---@param content string[] 当前批次生成的行（用于查 #line_content）
 ---@param start_line integer extmark 行号是绝对值，content 是相对的；用 start_line 做转换
 ---@param hl_lines integer[] 1-indexed 标题行号
----@param extmarks {line:integer, text:string, hl_group:string}[]
+---@param extmarks LspUIPathExtmark[]
 function ClassController:_applyGeneratedHighlights(
     bufId,
     content,
@@ -854,10 +903,12 @@ end
 
 --- 追加数据到 SubView（用于虚拟滚动动态加载）
 ---@private
----@param data table LSP 数据
+---@param data LspUIPositionWrap LSP 数据
 ---@param bufId integer Buffer ID
----@param start_line integer 起始行号
----@param ordered_uris table|nil 可选的有序 URI 列表
+---@param start_line integer 起始行号（0-indexed）
+---@param ordered_uris string[]? 可选的有序 URI 列表
+---@return integer width
+---@return integer line_count 本次追加的内容行数（不含 "load more" 提示）
 function ClassController:_appendSubViewData(
     data,
     bufId,
@@ -970,8 +1021,8 @@ function ClassController:_getCursorPosForUri(uri, range)
 end
 
 ---@private
----@param params table
----@return integer
+---@param params lsp.TextDocumentPositionParams
+---@return integer lnum SubView 中应停留的 1-indexed 行号
 function ClassController:_findPositionFromParams(params)
     -- 仅在 _line_map 里反查，避免在虚拟滚动模式下越过已加载的行号
     local param_uri = params.textDocument.uri
@@ -1014,11 +1065,13 @@ function ClassController:_findPositionFromParams(params)
 end
 
 -- 公开API开始
----@param method_name string
----@param buffer_id integer
----@param params table
----@param origin_win integer?
--- 修改 ClassController:Go 方法
+
+--- 发起一次 LSP 跳转/查询并打开 SubView 展示结果。
+--- 单结果直接跳转、多结果走双视图。
+---@param method_name string LSP 方法名（参考 ClassLsp.methods 的 key）
+---@param buffer_id integer 触发请求的 buffer
+---@param params lsp.TextDocumentPositionParams LSP 请求参数
+---@param origin_win integer? 触发窗口；省略时取当前窗口
 function ClassController:Go(method_name, buffer_id, params, origin_win)
     -- 检查现有视图状态
     local mainViewValid = self._mainView and self._mainView:Valid()
@@ -1212,6 +1265,7 @@ function ClassController:Go(method_name, buffer_id, params, origin_win)
     end)
 end
 
+--- 创建或更新 MainView/SubView，绑定关闭事件，设置 AutoClose
 function ClassController:RenderViews()
     -- 检查视图是否存在
     local mainViewValid = self._mainView and self._mainView:Valid()
@@ -1628,6 +1682,7 @@ function ClassController:_incrementalToggleFold(uri)
     end
 end
 
+--- 切换当前选中文件的折叠状态
 function ClassController:ActionToggleFold()
     self:_flushCursorUpdate()
 
@@ -1671,6 +1726,7 @@ function ClassController:_collectHeaderLines()
     return headers
 end
 
+--- 跳转到下一个文件标题
 function ClassController:ActionNextEntry()
     self:_flushCursorUpdate()
 
@@ -1700,6 +1756,7 @@ function ClassController:ActionNextEntry()
     self:_onCursorMoved()
 end
 
+--- 跳转到上一个文件标题
 function ClassController:ActionPrevEntry()
     self:_flushCursorUpdate()
 
@@ -1730,6 +1787,7 @@ function ClassController:ActionPrevEntry()
     self:_onCursorMoved()
 end
 
+--- 关闭 SubView/MainView，清理 hl 与防抖 timer
 function ClassController:ActionQuit()
     if self._debounce_timer then
         vim.fn.timer_stop(self._debounce_timer)
@@ -1751,6 +1809,7 @@ function ClassController:ActionQuit()
     self._subView:Destroy()
 end
 
+--- 切换 MainView 的显示/隐藏
 function ClassController:ActionToggleMainView()
     if not self._mainView:Valid() then
         local firstBuffer = self:_firstSortedBuffer()
@@ -1791,6 +1850,7 @@ function ClassController:ActionToggleMainView()
 
     -- 在函数末尾添加
 end
+--- 切换 SubView 的显示/隐藏
 function ClassController:ActionToggleSubView()
     if not self._subView:Valid() then
         -- 先完全重新生成内容
@@ -1893,12 +1953,14 @@ function ClassController:ActionFoldAll(fold)
     end
 end
 
+--- 焦点切到 MainView
 function ClassController:ActionEnterMainView()
     if self._mainView:Valid() then
         self._mainView:Focus()
     end
 end
 
+--- 焦点切回 SubView
 function ClassController:ActionBackToSubView()
     if self._subView:Valid() then
         self._subView:Focus()
@@ -2336,7 +2398,7 @@ end
 --- 为跳转历史窗口应用代码语法高亮
 ---@private
 ---@param buf integer 目标 buffer ID
----@param highlight_infos table[] 高亮信息数组
+---@param highlight_infos JumpHistoryHighlightInfo[] 高亮信息数组
 function ClassController:_applyHistoryCodeHighlights(buf, highlight_infos)
     if not highlight_infos or #highlight_infos == 0 then
         return
@@ -2421,7 +2483,7 @@ end
 --- 在完整 LSP 数据中搜索匹配的文件（用于虚拟滚动场景）
 ---@private
 ---@param pattern string 搜索模式
----@return table 匹配的 URI 列表（有序）
+---@return string[] matched_uris 匹配的 URI 列表（按字母序）
 function ClassController:_searchInAllData(pattern)
     local data = self._lsp:GetData()
     local matched_uris = {}
@@ -2468,9 +2530,10 @@ end
 
 --- 虚拟滚动 + 搜索过滤模式渲染
 ---@private
----@param data table LSP 数据
+---@param data LspUIPositionWrap LSP 数据
 ---@param bufId integer Buffer ID
----@return integer, integer 宽度和高度
+---@return integer width
+---@return integer height
 function ClassController:_generateSubViewContentSearchFiltered(data, bufId)
     local vs = self._virtual_scroll
     local matched_uris = vs.matched_uri_list

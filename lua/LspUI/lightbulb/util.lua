@@ -60,7 +60,7 @@ end
 
 -- this function will request all lsp clients
 --- @param buffer_id integer buffer's id
---- @param callback function callback is a function, has a param boolean
+--- @param callback fun(has_action: boolean) 是否有可用 code action 的回调
 function M.request(buffer_id, callback)
     -- this buffer id maybe invalid
     if not api.nvim_buf_is_valid(buffer_id) then
@@ -91,6 +91,10 @@ function M.request(buffer_id, callback)
     end, options)
 end
 
+--- 为指定 buffer 构造 lightbulb 的（可能防抖的）请求函数
+--- @param buffer_id integer
+--- @return fun() func 调用即触发一次 code_action 检查
+--- @return fun()? cleanup 防抖 timer 的清理函数；未启用防抖时为 nil
 local function debounce_func(buffer_id)
     local _rq_cb = function(result)
         M.clear_render(buffer_id)
@@ -113,9 +117,10 @@ local function debounce_func(buffer_id)
 end
 
 -- 存储每个 buffer 的清理函数
+--- @type table<integer, fun()>
 local buffer_cleanups = {}
 
--- auto command for lightbulb
+--- 注册全局 LspAttach 监听 + 每 buffer 的 CursorHold/InsertEnter/BufDelete autocmd
 function M.autocmd()
     local lightbulb_group =
         api.nvim_create_augroup(autogroup_name, { clear = true })
@@ -181,6 +186,7 @@ function M.autocmd()
     })
 end
 
+--- 反注册：清理所有 buffer 的防抖 timer，并删除 autogroup
 function M.un_autocmd()
     -- 清理所有 buffer 的防抖计时器
     for _, cleanup in pairs(buffer_cleanups) do

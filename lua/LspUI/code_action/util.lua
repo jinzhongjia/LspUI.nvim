@@ -4,7 +4,7 @@ local ClassView = require("LspUI.layer.view")
 local config = require("LspUI.config")
 local notify = require("LspUI.layer.notify")
 
---- @alias action_tuple { action: lsp.CodeAction|lsp.Command, client: vim.lsp.Client?, buffer_id: integer, callback: function? }
+--- @alias action_tuple LspUIActionTuple 兼容旧名（统一定义在 LspUI.layer.lsp）
 
 local M = {}
 
@@ -27,10 +27,10 @@ end
 
 -- get action tuples
 --- @param clients vim.lsp.Client[]
---- @param params table
+--- @param params lsp.CodeActionParams
 --- @param buffer_id integer
 --- @param is_visual boolean
---- @param callback fun(action_tuples:action_tuple[])
+--- @param callback fun(action_tuples: LspUIActionTuple[])
 function M.get_action_tuples(clients, params, buffer_id, is_visual, callback)
     local options = {
         is_visual = is_visual,

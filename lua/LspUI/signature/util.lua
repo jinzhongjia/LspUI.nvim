@@ -132,7 +132,7 @@ end
 
 -- 创建自动命令帮助函数
 --- @param events string|string[] 事件名称
---- @param callback function 回调函数
+--- @param callback fun(args: table) 回调函数（接收 autocmd 事件 args）
 --- @param desc string 描述
 local function create_autocmd(events, callback, desc)
     api.nvim_create_autocmd(events, {

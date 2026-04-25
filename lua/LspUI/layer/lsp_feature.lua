@@ -72,7 +72,7 @@ end
 --- 创建请求参数
 --- @param window_id integer 窗口 ID
 --- @param offset_encoding string 偏移编码
---- @return table 请求参数
+--- @return lsp.TextDocumentPositionParams params 请求参数（reference 时附带 context.includeDeclaration）
 function ClassLspFeature:MakeParams(window_id, offset_encoding)
     local params = vim.lsp.util.make_position_params(window_id, offset_encoding)
 
@@ -85,7 +85,7 @@ function ClassLspFeature:MakeParams(window_id, offset_encoding)
 end
 
 --- 执行功能
---- @param callback fun(LspUIPositionWrap?)|nil 回调函数
+--- @param callback fun(data: LspUIPositionWrap?)? 回调函数；提供时由调用方接管「无客户端」分支
 function ClassLspFeature:Run(callback)
     -- 添加防御性检查
     local options = config.options or {}

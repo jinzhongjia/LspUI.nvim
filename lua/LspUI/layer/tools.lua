@@ -159,8 +159,8 @@ end
 --- 智能判断是否需要添加到 jumplist
 --- @param target_buf integer 目标 buffer ID
 --- @param target_line integer 目标行号（1-based）
---- @param config table? 配置选项 {min_distance: integer, cross_file_only: boolean}
---- @return boolean 是否已添加到 jumplist
+--- @param config { min_distance: integer?, cross_file_only: boolean? }? 配置选项
+--- @return boolean recorded 是否已添加到 jumplist
 function M.smart_save_to_jumplist(target_buf, target_line, config)
     config = config or {}
     local min_distance = config.min_distance or 5
@@ -199,9 +199,10 @@ M.command_desc = function(desc)
 end
 
 --- 创建防抖函数，支持显式清理
---- @param func function 要防抖的函数
+--- @param func fun(...) 要防抖的函数
 --- @param delay integer 延迟毫秒数
---- @return function, function 返回防抖函数和清理函数
+--- @return fun(...) debounced 防抖包装后的函数
+--- @return fun() cleanup 显式清理 timer 的函数（模块卸载/buffer 删除时调用）
 function M.debounce(func, delay)
     local timer = nil
 
@@ -248,8 +249,9 @@ function M.version()
     return version
 end
 
--- execute once
---- @param callback function
+--- 把 callback 包装成只执行一次的函数（多次调用只生效首次）
+--- @param callback fun(...)
+--- @return fun(...) wrapper 调用任意次数仅首次会真正执行
 function M.exec_once(callback)
     local is_exec = false
     return function(...)
@@ -261,6 +263,9 @@ function M.exec_once(callback)
     end
 end
 
+--- 检测文件 filetype；先用 vim.filetype.match，失败时回退到扩展名映射
+--- @param file_path string 文件名（相对/绝对路径均可）
+--- @return string filetype 找不到时返回空串
 function M.detect_filetype(file_path)
     local filetype = vim.filetype.match({ filename = file_path }) or ""
 

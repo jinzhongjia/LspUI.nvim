@@ -64,7 +64,8 @@ end
 --- 更新搜索匹配并高亮
 ---@param bufnr integer
 ---@param state SearchState
----@param ignore_case boolean
+---@param ignore_case boolean 是否忽略大小写匹配
+---@return nil
 function M.update_matches(bufnr, state, ignore_case)
     if not api.nvim_buf_is_valid(bufnr) then
         return
@@ -170,7 +171,7 @@ end
 
 --- 获取搜索状态字符串
 ---@param state SearchState
----@param virtual_scroll_info table? 虚拟滚动信息 {loaded: number, total: number}
+---@param virtual_scroll_info { loaded: integer, total: integer }? 虚拟滚动场景下已加载/总匹配数
 ---@return string
 function M.get_status_line(state, virtual_scroll_info)
     if not state.enabled then
@@ -210,8 +211,8 @@ end
 --- 常用模式：. (任意字符) * (0或多个) + (1或多个) ? (可选) [] (字符类) 等
 ---@param bufnr integer
 ---@param state SearchState
----@param on_change function? 搜索模式变化时的回调
----@param on_exit function? 退出搜索时的回调
+---@param on_change fun(state: SearchState)? 搜索模式变化时的回调
+---@param on_exit fun(state: SearchState)? 退出搜索时的回调
 function M.enter_search_mode(bufnr, state, on_change, on_exit)
     if not api.nvim_buf_is_valid(bufnr) then
         return

@@ -4,7 +4,11 @@ local tools = require("LspUI.layer.tools")
 
 local M = {}
 
---- @type table<string, { run: function, args: string[]|function|nil }>
+--- @class LspUICommandEntry
+--- @field run fun(...) 命令执行函数；剩余参数会原封不动透传
+--- @field args (string[] | fun(arg_lead: string, cmd_line: string, cursor_pos: integer): string[]?)? 子命令的补全列表或动态补全函数
+
+--- @type table<string, LspUICommandEntry>
 local command_store = {}
 
 --- @type string[]|nil cached sorted command names
@@ -74,7 +78,7 @@ local function complete(arg_lead, cmd_line, cursor_pos)
     return {}
 end
 
---- Initialize the command module
+--- 注册 :LspUI 用户命令（带子命令补全）
 function M.init()
     api.nvim_create_user_command("LspUI", function(args)
         local fargs = args.fargs
@@ -110,10 +114,10 @@ function M.init()
     })
 end
 
---- Register a command
---- @param command_key string
---- @param run function
---- @param args string[]|function|nil
+--- 注册一个 :LspUI 子命令
+--- @param command_key string 子命令名（如 "hover" / "code_action"）
+--- @param run fun(...) 命令执行函数
+--- @param args (string[] | fun(arg_lead: string, cmd_line: string, cursor_pos: integer): string[]?)? 静态补全列表或动态补全函数
 function M.register_command(command_key, run, args)
     command_store[command_key] = { run = run, args = args }
     invalidate_cache()

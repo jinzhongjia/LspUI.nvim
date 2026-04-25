@@ -1,6 +1,8 @@
 local notify = require("LspUI.layer.notify")
 
 return {
+    --- 插件入口；接受用户传入的配置并 deep-merge 到默认配置上，然后初始化所有模块
+    --- @param user_config LspUI_config? 用户配置；省略时使用默认配置
     setup = function(user_config)
         if vim.fn.has("nvim-0.11") ~= 1 then
             return notify.Warn(

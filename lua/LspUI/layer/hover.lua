@@ -198,7 +198,7 @@ function ClassHover:NextRender(forward)
     end)
 end
 
---- @param key_bindings table
+--- @param key_bindings { next: string, prev: string, quit: string }
 function ClassHover:SetKeyBindings(key_bindings)
     if not self._view then
         return
@@ -249,7 +249,8 @@ function ClassHover:SetAutoCommands(buffer_id)
     )
 end
 
---- @param callback function
+--- 在锁定状态下执行 callback，期间 SetAutoCommands 注册的 CursorMoved 不会自动关闭 hover
+--- @param callback fun()
 function ClassHover:EnterWithLock(callback)
     self._enter_lock = true
     callback()
@@ -261,12 +262,14 @@ function ClassHover:IsValid()
     return self._view ~= nil and self._view:Valid()
 end
 
+--- 把焦点切到 hover 浮窗
 function ClassHover:Focus()
     if self:IsValid() then
         self._view:Focus()
     end
 end
 
+--- 关闭 hover 浮窗 + 清理 autocmd + 回收所有 hover_tuples 中未显示过的 buffer
 function ClassHover:Close()
     if self._autocmd_group then
         pcall(api.nvim_del_augroup_by_id, self._autocmd_group)
