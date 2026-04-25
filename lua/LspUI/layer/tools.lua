@@ -213,7 +213,7 @@ function M.debounce(func, delay)
             timer = nil
         end
 
-        timer = vim.loop.new_timer()
+        timer = uv.new_timer()
         if timer == nil then
             return
         end

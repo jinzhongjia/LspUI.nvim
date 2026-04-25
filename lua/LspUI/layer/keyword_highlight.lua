@@ -988,11 +988,39 @@ local LANGUAGE_KEYWORDS = {
     },
 }
 
+-- 把每种语言的 keywords/types/builtins 编译成单个 word -> hl_group 哈希表，
+-- 这样应用时只需对每行扫一遍 token，不再三轮 × N 个 keyword 全文 find。
+local LOOKUP_CACHE = {}
+
+local function get_lookup(lang)
+    local cached = LOOKUP_CACHE[lang]
+    if cached ~= nil then
+        return cached
+    end
+    local def = LANGUAGE_KEYWORDS[lang]
+    if not def then
+        LOOKUP_CACHE[lang] = false
+        return false
+    end
+    local map = {}
+    for _, k in ipairs(def.keywords or {}) do
+        map[k] = "@keyword"
+    end
+    for _, k in ipairs(def.types or {}) do
+        map[k] = "@type"
+    end
+    for _, k in ipairs(def.builtins or {}) do
+        map[k] = "@function.builtin"
+    end
+    LOOKUP_CACHE[lang] = map
+    return map
+end
+
 -- 应用关键字高亮到 buffer
 function M.apply(buf, lang, regions)
-    local keywords_def = LANGUAGE_KEYWORDS[lang]
-    if not keywords_def then
-        return false -- 不支持的语言
+    local lookup = get_lookup(lang)
+    if not lookup then
+        return false
     end
 
     local highlight_ns = api.nvim_create_namespace("LspUI_keyword_" .. lang)
@@ -1001,7 +1029,6 @@ function M.apply(buf, lang, regions)
         -- region 格式: {{line, col_start}, {line, col_end}}
         local start_row = region[1][1]
         local start_col = region[1][2]
-        local end_row = region[2][1]
         local end_col = region[2][2]
 
         -- 获取该行的文本
@@ -1013,77 +1040,22 @@ function M.apply(buf, lang, regions)
         )[1] or ""
         local text = line_text:sub(start_col + 1, end_col)
 
-        -- 高亮关键字
-        M._highlight_keywords(
-            buf,
-            highlight_ns,
-            start_row,
-            start_col,
-            text,
-            keywords_def.keywords,
-            "@keyword"
-        )
-
-        -- 高亮类型
-        M._highlight_keywords(
-            buf,
-            highlight_ns,
-            start_row,
-            start_col,
-            text,
-            keywords_def.types,
-            "@type"
-        )
-
-        -- 高亮内置函数
-        M._highlight_keywords(
-            buf,
-            highlight_ns,
-            start_row,
-            start_col,
-            text,
-            keywords_def.builtins,
-            "@function.builtin"
-        )
+        -- 一遍扫描 token，命中即高亮（标识符正则：[_%a][_%w]*）
+        for w_start, word, w_end in text:gmatch("()([_%a][_%w]*)()") do
+            local hl = lookup[word]
+            if hl then
+                vim.hl.range(
+                    buf,
+                    highlight_ns,
+                    hl,
+                    { start_row, start_col + w_start - 1 },
+                    { start_row, start_col + w_end - 1 }
+                )
+            end
+        end
     end
 
     return true
-end
-
--- 在文本中匹配并高亮关键字
-function M._highlight_keywords(
-    buf,
-    ns,
-    row,
-    col_offset,
-    text,
-    keywords,
-    hl_group
-)
-    for _, keyword in ipairs(keywords) do
-        -- 使用单词边界匹配
-        local pattern = "%f[%w_]" .. vim.pesc(keyword) .. "%f[^%w_]"
-        local start_pos = 1
-
-        while true do
-            local s, e = text:find(pattern, start_pos)
-            if not s then
-                break
-            end
-
-            -- 应用高亮
-            api.nvim_buf_add_highlight(
-                buf,
-                ns,
-                hl_group,
-                row,
-                col_offset + s - 1,
-                col_offset + e
-            )
-
-            start_pos = e + 1
-        end
-    end
 end
 
 -- 清除高亮

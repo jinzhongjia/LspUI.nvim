@@ -243,13 +243,12 @@ function M.apply_highlights(
         -- 应用高亮
         if target_start < target_end and target_start >= 0 then
             pcall(
-                api.nvim_buf_add_highlight,
+                vim.hl.range,
                 target_buf,
                 source_ns,
                 hl.hl_group,
-                target_line,
-                target_start,
-                target_end
+                { target_line, target_start },
+                { target_line, target_end }
             )
         end
     end

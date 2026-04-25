@@ -256,6 +256,68 @@ function ClassSubView:ApplySyntaxHighlight(code_regions)
     return self
 end
 
+--- 维护 _active_keyword_lines 与 buffer 行号一致：
+---   delta > 0 => 在 start_row 处插入 delta 行，所有 row >= start_row 的 entry +delta
+---   delta < 0 => 从 start_row 起删除 |delta| 行；落入 [start_row, start_row + |delta|) 的 entry 丢弃，
+---                 row >= start_row + |delta| 的 entry 加 delta（即上移）
+--- @param start_row integer 0-indexed 边界行
+--- @param delta integer 行数变化（正插入、负删除）
+--- @return ClassSubView
+function ClassSubView:ShiftKeywordLines(start_row, delta)
+    if delta == 0 or not self._active_keyword_lines then
+        return self
+    end
+    local del_end = delta < 0 and (start_row - delta) or nil
+    for lang, line_map in pairs(self._active_keyword_lines) do
+        local new_map = {}
+        for line in pairs(line_map) do
+            if line < start_row then
+                new_map[line] = true
+            elseif del_end and line < del_end then
+                -- 落入被删除区间，丢弃
+            else
+                new_map[line + delta] = true
+            end
+        end
+        self._active_keyword_lines[lang] = new_map
+    end
+    return self
+end
+
+--- 清掉指定行范围内的源高亮 + 各活跃语言的关键字回退 extmarks。
+--- 用于 collapse 之前清掉将被删除行上的 0 宽残留 extmark。
+--- @param source_ns integer source_highlight 命名空间 id
+--- @param start_row integer 0-indexed 起始（含）
+--- @param end_row integer 0-indexed 结束（不含）
+--- @return ClassSubView
+function ClassSubView:ClearSyntaxRange(source_ns, start_row, end_row)
+    if not self:BufValid() or start_row >= end_row then
+        return self
+    end
+    local bufid = self:GetBufID()
+    api.nvim_buf_clear_namespace(bufid, source_ns, start_row, end_row)
+    if self._active_syntax_languages then
+        for lang in pairs(self._active_syntax_languages) do
+            local kns = api.nvim_create_namespace("LspUI_keyword_" .. lang)
+            api.nvim_buf_clear_namespace(bufid, kns, start_row, end_row)
+        end
+    end
+    -- 同步 tracker：丢弃落入区间的 entry
+    if self._active_keyword_lines then
+        for lang, line_map in pairs(self._active_keyword_lines) do
+            for line in pairs(line_map) do
+                if line >= start_row and line < end_row then
+                    line_map[line] = nil
+                end
+            end
+            if vim.tbl_isempty(line_map) then
+                self._active_keyword_lines[lang] = nil
+            end
+        end
+    end
+    return self
+end
+
 -- 清除子视图的语法高亮
 --- @param languages? table<string, boolean> 要清除的语言列表，如果为nil则不清除
 --- @return ClassSubView

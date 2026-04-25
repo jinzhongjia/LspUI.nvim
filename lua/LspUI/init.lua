@@ -8,49 +8,43 @@ return {
             )
         end
 
-        vim.uv
-            .new_async(function()
-                local config = require("LspUI.config")
-                local command = require("LspUI.command")
-                local modules = require("LspUI.modules")
+        vim.schedule(function()
+            local config = require("LspUI.config")
+            local command = require("LspUI.command")
+            local modules = require("LspUI.modules")
 
-                config.setup(user_config)
+            config.setup(user_config)
 
-                vim.schedule(function()
-                    -- 初始化命令系统
-                    if command and command.init then
-                        command.init()
-                    else
+            -- 初始化命令系统
+            if command and command.init then
+                command.init()
+            else
+                notify.Error("LspUI: Command module initialization failed")
+            end
+
+            -- 初始化各个模块
+            for name, module in pairs(modules) do
+                if module and type(module.init) == "function" then
+                    local ok, err = pcall(module.init)
+                    if not ok then
                         notify.Error(
-                            "LspUI: Command module initialization failed"
+                            string.format(
+                                "Failed to initialize module %s: %s",
+                                name,
+                                err
+                            )
                         )
                     end
-
-                    -- 初始化各个模块
-                    for name, module in pairs(modules) do
-                        if module and type(module.init) == "function" then
-                            local ok, err = pcall(module.init)
-                            if not ok then
-                                notify.Error(
-                                    string.format(
-                                        "Failed to initialize module %s: %s",
-                                        name,
-                                        err
-                                    )
-                                )
-                            end
-                        else
-                            notify.Warn(
-                                string.format(
-                                    "Module %s is missing init method or is not a valid module",
-                                    name
-                                )
-                            )
-                        end
-                    end
-                end)
-            end)
-            :send()
+                else
+                    notify.Warn(
+                        string.format(
+                            "Module %s is missing init method or is not a valid module",
+                            name
+                        )
+                    )
+                end
+            end
+        end)
     end,
     api = vim.fn.has("nvim-0.11") == 1 and require("LspUI.api") or {},
 }
