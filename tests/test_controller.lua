@@ -233,6 +233,8 @@ T["controller"]["_incrementalToggleFold collapses correctly"] = function()
                 GetWinID = function() return nil end,
                 ClearSyntaxHighlight = function() end,
                 ApplySyntaxHighlight = function() end,
+                ShiftKeywordLines = function() end,
+                ClearSyntaxRange = function() end,
             }
 
             -- Collapse file A
@@ -323,6 +325,8 @@ T["controller"]["_incrementalToggleFold expands correctly"] = function()
                 GetWinID = function() return nil end,
                 ClearSyntaxHighlight = function() end,
                 ApplySyntaxHighlight = function() end,
+                ShiftKeywordLines = function() end,
+                ClearSyntaxRange = function() end,
             }
 
             -- Expand file A
@@ -418,6 +422,8 @@ T["controller"]["_incrementalToggleFold preserves lines above cursor"] = functio
                 GetWinID = function() return nil end,
                 ClearSyntaxHighlight = function() end,
                 ApplySyntaxHighlight = function() end,
+                ShiftKeywordLines = function() end,
+                ClearSyntaxRange = function() end,
             }
 
             -- Save lines above file B (lines 1-2)

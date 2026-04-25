@@ -273,10 +273,26 @@ function ClassHover:Close()
         self._autocmd_group = nil
     end
 
-    if self:IsValid() then
-        self._view:Destroy()
+    local active_buf
+    if self._view then
+        active_buf = self._view:GetBufID()
+        if self._view:Valid() then
+            self._view:Destroy()
+        end
         self._view = nil
     end
+
+    -- 回收多客户端场景下未显示过的 hover buffer（bufhidden=wipe 只对显示过的生效）
+    for _, tuple in ipairs(self._hover_tuples) do
+        if
+            tuple.buffer_id ~= active_buf
+            and api.nvim_buf_is_valid(tuple.buffer_id)
+        then
+            pcall(api.nvim_buf_delete, tuple.buffer_id, { force = true })
+        end
+    end
+    self._hover_tuples = {}
+    self._current_index = 1
 end
 
 return ClassHover

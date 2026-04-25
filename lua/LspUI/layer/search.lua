@@ -104,13 +104,12 @@ function M.update_matches(bufnr, state, ignore_case)
 
             -- 高亮匹配的文本
             if start_col and end_col then
-                api.nvim_buf_add_highlight(
+                vim.hl.range(
                     bufnr,
                     state.namespace,
                     "Search",
-                    lnum,
-                    start_col,
-                    end_col
+                    { lnum, start_col },
+                    { lnum, end_col }
                 )
             end
         end

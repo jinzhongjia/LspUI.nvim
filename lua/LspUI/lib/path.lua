@@ -60,6 +60,29 @@ function M.get_relative_path(full_path, cwd, is_windows)
     return nil
 end
 
+--- 与 `get_relative_path` 等价，但接受预归一化的 cwd，避免对每个文件重复归一化
+--- @param full_path string
+--- @param cwd_raw string 用来切片的原始 cwd（保留分隔符差异）
+--- @param cwd_norm string 已归一化的 cwd（含末尾 "/"）
+--- @param is_windows boolean?
+--- @return string?
+function M.get_relative_path_with_norm_cwd(
+    full_path,
+    cwd_raw,
+    cwd_norm,
+    is_windows
+)
+    local norm_full = M.normalize_path(full_path, is_windows)
+    if norm_full:sub(1, #cwd_norm) == cwd_norm then
+        local rel = full_path:sub(#cwd_raw + 1)
+        if rel:sub(1, 1) == "/" or rel:sub(1, 1) == "\\" then
+            rel = rel:sub(2)
+        end
+        return M.normalize_display_path(rel)
+    end
+    return nil
+end
+
 --- @param rel_path string
 --- @return string
 function M.format_relative_display(rel_path)
