@@ -107,7 +107,8 @@ end
 
 --- @param diagnostic vim.Diagnostic
 --- @param opts LspUI_FormatDiagnosticOpts?
---- @return string[], LspUI_DiagnosticHighlight[]
+--- @return string[] lines 渲染到 buffer 的文本行
+--- @return LspUI_DiagnosticHighlight[] highlights 行级高亮信息
 function M.format_diagnostic(diagnostic, opts)
     opts = opts or {}
     local lines = {}
@@ -187,9 +188,10 @@ function M.format_diagnostic(diagnostic, opts)
 end
 
 --- @param lines string[]
---- @param max_width_ratio number
+--- @param max_width_ratio number 占屏幕宽度的比例上限（如 0.6）
 --- @param screen_width integer
---- @return integer, integer
+--- @return integer width
+--- @return integer height
 function M.calculate_dimensions(lines, max_width_ratio, screen_width)
     local max_width = 0
     for _, line in ipairs(lines) do

@@ -21,6 +21,16 @@ ClassSubView.__index = ClassSubView
 --- @field end_col integer
 --- @field start lsp.Position
 --- @field finish lsp.Position
+--- @field selection_start lsp.Position? 名字符号的起始位置（用于精确跳转）
+--- @field selection_finish lsp.Position? 名字符号的结束位置
+
+--- @class LspUISyntaxRegion 子视图上一行代码的 syntax 区域定义
+--- @field line integer 0-indexed 子视图行号
+--- @field col_start integer 子视图行内起始列（0-indexed）
+--- @field col_end integer 子视图行内结束列（0-indexed exclusive）
+--- @field source_buf integer? 源 buffer ID（缺失时退化为 keyword fallback）
+--- @field source_line integer? 源文件中的 0-indexed 行号
+--- @field source_col_offset integer? 源行被 trim 掉的前导空格数
 
 --- @class LspUIPosition
 --- @field buffer_id integer
@@ -94,7 +104,7 @@ end
 --- 为子视图应用代码语法高亮（异步）
 --- 优先使用源文件的 Treesitter 高亮，fallback 到关键字匹配
 --- 只按需加载需要高亮的源文件，避免加载所有文件
---- @param code_regions table<string, {line:integer, col_start:integer, col_end:integer, source_buf:integer?, source_line:integer?, source_col_offset:integer?}[]>
+--- @param code_regions table<string, LspUISyntaxRegion[]> 按 filetype 分组的代码行 syntax 区域
 --- @return ClassSubView
 function ClassSubView:ApplySyntaxHighlight(code_regions)
     if not self:BufValid() then

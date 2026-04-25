@@ -588,7 +588,21 @@ ClassLsp.rename_feature = lsp.protocol.Methods.textDocument_rename
 -- stylua: ignore
 ClassLsp.prepare_rename_feature = lsp.protocol.Methods.textDocument_prepareRename
 
--- 获取支持代码操作的客户端
+--- @class LspUIActionTuple
+--- @field action lsp.CodeAction|lsp.Command 服务器返回的 action / 自定义 action
+--- @field client vim.lsp.Client? 来源的 LSP 客户端（注册/gitsigns 类型可能为 nil）
+--- @field buffer_id integer 触发请求的 buffer
+--- @field callback function? 自定义 action 的执行函数（注册/gitsigns 走这条路径）
+
+--- @class LspUIRequestCodeActionsOptions
+--- @field is_visual boolean? 是否处于 visual 模式
+--- @field skip_registered boolean? 跳过注册的 action
+--- @field skip_gitsigns boolean? 跳过 gitsigns 的 action
+--- @field skip_lsp boolean? 跳过 LSP 服务器的 action（仅返回注册和 gitsigns 的）
+
+--- 获取支持代码操作的客户端
+--- @param buffer_id integer
+--- @return vim.lsp.Client[]?
 function ClassLsp:GetCodeActionClients(buffer_id)
     local clients = lsp.get_clients({
         bufnr = buffer_id,
@@ -601,7 +615,12 @@ function ClassLsp:GetCodeActionClients(buffer_id)
     return clients
 end
 
--- 构建代码操作参数
+--- 构建代码操作参数
+--- @param buffer_id integer
+--- @param client { offset_encoding: string }? 客户端或仅含 offset_encoding 字段的对象，省略时按 utf-16
+--- @param is_visual_mode boolean? 强制按 visual 模式取范围（默认从 nvim_get_mode 推断）
+--- @return lsp.CodeActionParams params
+--- @return boolean is_visual
 function ClassLsp:MakeCodeActionParams(buffer_id, client, is_visual_mode)
     local mode = api.nvim_get_mode().mode
     local params
@@ -657,7 +676,13 @@ function ClassLsp:MakeCodeActionParams(buffer_id, client, is_visual_mode)
     return params, is_visual
 end
 
--- 获取Git签名操作
+--- 把 gitsigns 提供的 action 追加到 action_tuples 中
+--- @param action_tuples LspUIActionTuple[]
+--- @param buffer_id integer
+--- @param is_visual boolean
+--- @param uri string
+--- @param range lsp.Range
+--- @return LspUIActionTuple[]
 function ClassLsp:GetGitsignsActions(
     action_tuples,
     buffer_id,
@@ -705,7 +730,13 @@ function ClassLsp:GetGitsignsActions(
     return action_tuples
 end
 
--- 请求代码操作
+--- 请求代码操作
+--- @param buffer_id integer
+--- @param params lsp.CodeActionParams
+--- @param callback fun(action_tuples: LspUIActionTuple[])
+--- @param options LspUIRequestCodeActionsOptions?
+--- @return boolean ok 是否提交了请求；失败返回 false
+--- @return string? reason 失败原因
 function ClassLsp:RequestCodeActions(buffer_id, params, callback, options)
     options = options or {}
     local register = require("LspUI.code_action.register")
@@ -793,7 +824,10 @@ function ClassLsp:RequestCodeActions(buffer_id, params, callback, options)
     return true
 end
 
--- 执行代码操作
+--- 执行代码操作（按需 resolve 后 apply）
+--- @param action_tuple LspUIActionTuple
+--- @return boolean ok
+--- @return string? reason
 function ClassLsp:ExecCodeAction(action_tuple)
     local callback = action_tuple.callback
     if callback then
@@ -846,7 +880,11 @@ function ClassLsp:ExecCodeAction(action_tuple)
     return true
 end
 
--- 应用代码操作（内部方法）
+--- 应用代码操作（内部方法）
+--- @private
+--- @param action lsp.CodeAction|lsp.Command
+--- @param client vim.lsp.Client
+--- @param buffer_id integer
 function ClassLsp:_applyCodeAction(action, client, buffer_id)
     -- 应用 edit
     if action.edit then
@@ -861,7 +899,11 @@ function ClassLsp:_applyCodeAction(action, client, buffer_id)
     end
 end
 
--- 执行命令
+--- 执行 LSP 命令（优先 client.commands、再 lsp.commands、最后请求服务器）
+--- @param client vim.lsp.Client
+--- @param command lsp.Command
+--- @param buffer_id integer
+--- @param handler? fun(err, result, ctx, config) request 阶段使用的 handler
 function ClassLsp:ExecCommand(client, command, buffer_id, handler)
     local cmdname = command.command
     local func = client.commands[cmdname] or lsp.commands[cmdname]
@@ -896,7 +938,9 @@ function ClassLsp:ExecCommand(client, command, buffer_id, handler)
     client:request(self.exec_command_feature, params, handler, buffer_id)
 end
 
--- 获取支持重命名的客户端
+--- 获取支持重命名的客户端
+--- @param buffer_id integer
+--- @return vim.lsp.Client[]?
 function ClassLsp:GetRenameClients(buffer_id)
     local clients = lsp.get_clients({
         bufnr = buffer_id,
@@ -909,7 +953,10 @@ function ClassLsp:GetRenameClients(buffer_id)
     return clients
 end
 
--- 检查位置是否可以重命名
+--- 检查位置是否可以重命名
+--- @param buffer_id integer
+--- @param params lsp.TextDocumentPositionParams
+--- @param callback fun(can_rename: boolean, valid_clients: vim.lsp.Client[]?, error_msg: string?)
 function ClassLsp:CheckRenamePosition(buffer_id, params, callback)
     local clients = self:GetRenameClients(buffer_id)
     if not clients then
@@ -965,7 +1012,11 @@ function ClassLsp:CheckRenamePosition(buffer_id, params, callback)
     end
 end
 
--- 执行重命名操作
+--- 对每个 client 派发 rename 请求；handler 由各 client 自身的 rename handler 处理
+--- @param clients vim.lsp.Client[]
+--- @param buffer_id integer
+--- @param params lsp.RenameParams
+--- @return boolean ok 总是 true（保留向后兼容）
 function ClassLsp:ExecuteRename(clients, buffer_id, params)
     local count = #clients
     local completed = 0

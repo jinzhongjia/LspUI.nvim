@@ -39,7 +39,7 @@ local function clean_autocmds()
 end
 
 --- @param bufnr integer
---- @param severity_filter? table
+--- @param severity_filter? vim.diagnostic.SeverityFilter
 --- @return vim.Diagnostic[]
 local function get_all_diagnostics(bufnr, severity_filter)
     local diagnostics = vim.diagnostic.get(bufnr, {
@@ -48,11 +48,19 @@ local function get_all_diagnostics(bufnr, severity_filter)
     return diag_lib.sort_diagnostics(diagnostics)
 end
 
+--- @class LspUI_DiagnosticRenderOpts
+--- @field show_source boolean?
+--- @field show_code boolean?
+--- @field show_related_info boolean?
+--- @field max_width number 占屏幕宽度的比例上限（0..1）
+--- @field severity vim.diagnostic.SeverityFilter?
+
 --- @param diagnostic vim.Diagnostic
---- @param index integer
---- @param total integer
---- @param opts table
---- @return ClassView|nil, boolean|nil
+--- @param index integer 当前 diagnostic 在已排序列表中的 1-based 索引
+--- @param total integer 总数
+--- @param opts LspUI_DiagnosticRenderOpts
+--- @return ClassView? view 渲染失败返回 nil
+--- @return boolean? is_new view 是否新建（用于决定 Render 还是 ShowView）
 local function render_diagnostic(diagnostic, index, total, opts)
     local view, is_new = ensure_diagnostic_view()
     local buf_id = view:GetBufID()
@@ -131,8 +139,8 @@ local function render_diagnostic(diagnostic, index, total, opts)
     return view, is_new
 end
 
---- Get config options
---- @return table
+--- 把全局配置投影成 render_diagnostic 需要的 opts
+--- @return LspUI_DiagnosticRenderOpts
 local function get_opts()
     return {
         show_source = config.options.diagnostic.show_source,

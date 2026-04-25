@@ -10,7 +10,8 @@ local M = {}
 --- @field parameters LspUI_SignatureParameter[]?
 --- @field doc string?
 
---- @param help table?
+--- 把 LSP signatureHelp 响应转换为内部使用的 LspUI_SignatureInfo
+--- @param help lsp.SignatureHelp? LSP textDocument/signatureHelp 的响应
 --- @return LspUI_SignatureInfo?
 function M.build_signature_info(help)
     if not help or not help.signatures or #help.signatures == 0 then
