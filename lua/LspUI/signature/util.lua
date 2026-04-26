@@ -87,6 +87,11 @@ local function signature_handle()
             return
         end
 
+        -- 防止 BufDelete 触发同 tick 内 buffer 已 wipe 但 current_buf 未切换的窗口期
+        if not api.nvim_buf_is_valid(current_buffer) then
+            return
+        end
+
         -- 清除旧的渲染并设置新的
         M.clean_render(current_buffer)
         local current_window = api.nvim_get_current_win()

@@ -29,7 +29,7 @@ function M.sort_diagnostics(diagnostics)
         if a.col ~= b.col then
             return a.col < b.col
         end
-        return a.severity < b.severity
+        return (a.severity or 5) < (b.severity or 5)
     end)
     return sorted
 end

@@ -44,6 +44,15 @@ end
 -- choice action tuple
 --- @param action_tuple action_tuple
 local function choice_action_tuple(action_tuple)
+    -- menu 弹出期间源 buffer 可能被外部 wipe（git stash pop / :bwipe 等）
+    if
+        action_tuple.buffer_id
+        and not api.nvim_buf_is_valid(action_tuple.buffer_id)
+    then
+        notify.Warn("buffer was closed before code action could be applied")
+        return
+    end
+
     local success, err = ClassLsp:ExecCodeAction(action_tuple)
     if not success then
         notify.Warn(err)

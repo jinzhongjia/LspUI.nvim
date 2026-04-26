@@ -61,6 +61,8 @@ function M.get_relative_path(full_path, cwd, is_windows)
 end
 
 --- 与 `get_relative_path` 等价，但接受预归一化的 cwd，避免对每个文件重复归一化
+--- 调用方必须保证 `cwd_norm == M.normalize_path(cwd_raw, is_windows)`，
+--- 否则 `#cwd_raw` 与 `#cwd_norm` 长度差不再固定为 0/1，下面的 sub 切片会切到中间字符。
 --- @param full_path string
 --- @param cwd_raw string 用来切片的原始 cwd（保留分隔符差异）
 --- @param cwd_norm string 已归一化的 cwd（含末尾 "/"）

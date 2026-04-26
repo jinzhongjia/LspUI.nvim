@@ -75,6 +75,11 @@ function M.run()
 
     -- 获取 hover 信息
     hover_manager:GetHovers(clients, current_buffer, function(hover_tuples)
+        -- 异步回调期间 buffer 可能已被 wipe，避免在无效 buffer 上创建悬空 floating
+        if not api.nvim_buf_is_valid(current_buffer) then
+            return
+        end
+
         if vim.tbl_isempty(hover_tuples) then
             notify.Info("no hover!")
             return

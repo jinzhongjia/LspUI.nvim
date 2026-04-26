@@ -10,6 +10,7 @@ local tools = require("LspUI.layer.tools")
 ---@field _datas LspUIPositionWrap 存储LSP结果数据
 ---@field _method table 当前使用的LSP方法
 ---@field _origin_uri string 请求发起的URI
+---@field _current_request_id integer 单调递增的请求 id，用于丢弃晚到的陈旧响应
 local ClassLsp = {
     _client = nil,
     _datas = {},
@@ -17,6 +18,7 @@ local ClassLsp = {
     _method = nil,
     ---@diagnostic disable-next-line: assign-type-mismatch
     _origin_uri = nil,
+    _current_request_id = 0,
 }
 
 ClassLsp.__index = ClassLsp
@@ -156,10 +158,16 @@ function ClassLsp:Request(buffer_id, params, callback)
     self._origin_uri = vim.uri_from_bufnr(buffer_id)
     self._datas = {}
 
+    -- 单调递增的 request id：用户飞速连点导致两次请求并发时，
+    -- 后来的请求若先返回会 advance _current_request_id，前一次回调
+    -- 进入闭包时 id 不再匹配即被丢弃，避免陈旧数据覆盖新数据。
+    self._current_request_id = (self._current_request_id or 0) + 1
+    local request_id = self._current_request_id
+
     -- 检查是否是调用层次相关请求
     if self._method.prepare then
         -- 调用层次需要先准备调用层次项，然后再请求调用层次关系
-        self:_requestCallHierarchy(buffer_id, params, callback)
+        self:_requestCallHierarchy(buffer_id, params, callback, request_id)
     else
         -- 常规LSP请求
         lsp.buf_request_all(
@@ -167,6 +175,9 @@ function ClassLsp:Request(buffer_id, params, callback)
             self._method.method,
             params,
             function(results, _, _)
+                if request_id ~= self._current_request_id then
+                    return
+                end
                 if not api.nvim_buf_is_valid(buffer_id) then
                     return
                 end
@@ -207,13 +218,17 @@ end
 ---@param buffer_id integer 缓冲区ID
 ---@param params table LSP请求参数
 ---@param callback function 回调函数
-function ClassLsp:_requestCallHierarchy(buffer_id, params, callback)
+---@param request_id integer 由调用方 (Request) 分配的请求 id，用于过滤晚到的陈旧响应
+function ClassLsp:_requestCallHierarchy(buffer_id, params, callback, request_id)
     -- 第一步：准备调用层次项
     lsp.buf_request_all(
         buffer_id,
         self._method.prepare,
         params,
         function(prepare_results, _, _)
+            if request_id ~= self._current_request_id then
+                return
+            end
             if not api.nvim_buf_is_valid(buffer_id) then
                 return
             end
@@ -244,6 +259,9 @@ function ClassLsp:_requestCallHierarchy(buffer_id, params, callback)
                     self._method.method,
                     { item = hierarchy_item },
                     function(call_results, _, _)
+                        if request_id ~= self._current_request_id then
+                            return
+                        end
                         if
                             all_complete or not api.nvim_buf_is_valid(buffer_id)
                         then
@@ -861,6 +879,13 @@ function ClassLsp:ExecCodeAction(action_tuple)
                             err.message
                         )
                     )
+                    return
+                end
+                -- resolve 异步返回期间 buffer 可能已被 wipe
+                if
+                    action_tuple.buffer_id
+                    and not api.nvim_buf_is_valid(action_tuple.buffer_id)
+                then
                     return
                 end
                 -- 使用 resolved action 执行
