@@ -1,4 +1,4 @@
-*lspui.txt*	For Neovim >= 0.11.0	Last change: 2025 June 07
+*lspui.txt*	For Neovim >= 0.11.0	Last change: 2026 April 26
 
 ==============================================================================
 Table of Contents				*lspui-contents*
@@ -91,10 +91,13 @@ Full configuration with defaults: >lua
         enable = true,
         command_enable = true,
         auto_select = true,
+        fixed_width = false,
+        width = 30,
         key_binding = {
           exec = "<CR>",
           quit = "<ESC>",
         },
+        border = "rounded",
         transparency = 0,
       },
       
@@ -113,29 +116,37 @@ Full configuration with defaults: >lua
         gitsigns = true,
         key_binding = {
           exec = "<cr>",
-          prev = "k", 
+          prev = "k",
           next = "j",
           quit = "q",
         },
+        border = "rounded",
         transparency = 0,
       },
-      
+
       -- Diagnostic module
       diagnostic = {
         enable = true,
         command_enable = true,
+        border = "rounded",
         transparency = 0,
+        severity = nil,           -- nil for all severities
+        show_source = true,
+        show_code = true,
+        show_related_info = true,
+        max_width = 0.6,          -- 60% of screen width
       },
-      
+
       -- Hover module
       hover = {
         enable = true,
         command_enable = true,
         key_binding = {
           prev = "p",
-          next = "n", 
+          next = "n",
           quit = "q",
         },
+        border = "rounded",
         transparency = 0,
       },
       
@@ -224,9 +235,9 @@ Full configuration with defaults: >lua
         secondary = {
           jump = "o",
           jump_split = "sh",
-          jump_vsplit = "sv", 
+          jump_vsplit = "sv",
           jump_tab = "t",
-          toggle_fold = "<Cr>",
+          toggle_fold = "<CR>",
           next_entry = "J",
           prev_entry = "K",
           quit = "q",
@@ -236,6 +247,8 @@ Full configuration with defaults: >lua
           enter = "<leader>l",
         },
         transparency = 0,
+        main_border = "none",
+        secondary_border = "single",
       },
     })
 <
@@ -257,6 +270,8 @@ All commands are prefixed with `LspUI`:
 
 :LspUI diagnostic prev			Go to the previous diagnostic
 
+:LspUI diagnostic show			Show diagnostic float at the cursor
+
 :LspUI definition			Open the definition
 
 :LspUI type_definition			Open the type definition
@@ -274,6 +289,10 @@ All commands are prefixed with `LspUI`:
 :LspUI call_hierarchy incoming		Show incoming calls
 
 :LspUI call_hierarchy outgoing		Show outgoing calls
+
+Note: The `signature` module shows signature help inline when enabled
+(see |lspui-signature|); it does not register a `:LspUI signature`
+command.
 
 ==============================================================================
 6. API						*lspui-api*
@@ -307,14 +326,15 @@ Provides enhanced symbol renaming with a floating window interface.
 Configuration: >lua
     rename = {
       enable = true,           -- Enable the module
-      command_enable = true,   -- Enable :LspUI rename command  
+      command_enable = true,   -- Enable :LspUI rename command
       auto_select = true,      -- Auto-select text in rename window
+      fixed_width = false,     -- Whether the input box width is fixed
+      width = 30,              -- The fixed width of input box (only works when fixed_width is true)
       key_binding = {
         exec = "<CR>",         -- Execute rename
         quit = "<ESC>",        -- Cancel rename
       },
-      fixed_width = false,     -- Whether the input box width is fixed
-      width = 30,              -- The fixed width of input box (only works when fixed_width is true)
+      border = "rounded",      -- Border style: none/single/double/rounded/solid/shadow or string[]
       transparency = 0,        -- Window transparency
     }
 <
@@ -347,6 +367,7 @@ Configuration: >lua
         next = "j",            -- Next action
         quit = "q",            -- Quit menu
       },
+      border = "rounded",      -- Border style for the action menu
       transparency = 0,        -- Window transparency
     }
 <
@@ -359,7 +380,13 @@ Configuration: >lua
     diagnostic = {
       enable = true,           -- Enable the module
       command_enable = true,   -- Enable :LspUI diagnostic command
+      border = "rounded",      -- Border style for the diagnostic float
       transparency = 0,        -- Window transparency
+      severity = nil,          -- Filter by severity (see vim.diagnostic.severity); nil = all
+      show_source = true,      -- Show diagnostic source
+      show_code = true,        -- Show diagnostic code if available
+      show_related_info = true,-- Show related information
+      max_width = 0.6,         -- Max window width as fraction of editor width
     }
 <
 
@@ -376,6 +403,7 @@ Configuration: >lua
         next = "n",            -- Next hover
         quit = "q",            -- Close hover
       },
+      border = "rounded",      -- Border style for the hover window
       transparency = 0,        -- Window transparency
     }
 <
@@ -508,7 +536,10 @@ Virtual scrolling for large results can be tuned separately: >lua
 8. Keybindings					*lspui-keybindings*
 
 Position Keybindings~
-For definition, type_definition, declaration, reference, implementation:
+For definition, type_definition, declaration, reference, implementation
+(also call_hierarchy). The `pos_keybind` table also accepts
+`main_border` and `secondary_border` (default `"none"` and `"single"`)
+plus `transparency`, applied to the position windows.
 
 						*lspui-pos-keybind*
 Main View Keybindings: >

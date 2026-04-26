@@ -254,14 +254,15 @@ Navigation Commands:
 Diagnostic Commands:
 - LspUI diagnostic next - Go to the next diagnostic
 - LspUI diagnostic prev - Go to the previous diagnostic
+- LspUI diagnostic show - Show the diagnostic float at the cursor
 
 Call Hierarchy Commands:
-- LspUI call_hierarchy incoming_calls - Show incoming calls
-- LspUI call_hierarchy outgoing_calls - Show outgoing calls
+- LspUI call_hierarchy incoming - Show incoming calls
+- LspUI call_hierarchy outgoing - Show outgoing calls
 
 Utility Commands:
+- LspUI - Display the plugin version
 - LspUI inlay_hint - Toggle inlay hints on/off
-- LspUI signature - Show signature help
 - LspUI history - Open the interactive jump history viewer
 
 Keybinding example:
@@ -274,8 +275,8 @@ vim.keymap.set("n", "gt", "<cmd>LspUI type_definition<CR>")
 vim.keymap.set("n", "gi", "<cmd>LspUI implementation<CR>")
 vim.keymap.set("n", "<leader>rn", "<cmd>LspUI rename<CR>")
 vim.keymap.set("n", "<leader>ca", "<cmd>LspUI code_action<CR>")
-vim.keymap.set("n", "<leader>ci", "<cmd>LspUI call_hierarchy incoming_calls<CR>")
-vim.keymap.set("n", "<leader>co", "<cmd>LspUI call_hierarchy outgoing_calls<CR>")
+vim.keymap.set("n", "<leader>ci", "<cmd>LspUI call_hierarchy incoming<CR>")
+vim.keymap.set("n", "<leader>co", "<cmd>LspUI call_hierarchy outgoing<CR>")
 ```
 
 ## Screenshots
