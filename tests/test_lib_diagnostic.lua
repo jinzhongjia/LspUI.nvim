@@ -136,6 +136,29 @@ T["sort_diagnostics"]["sorts by severity when position is equal"] = function()
     h.eq(3, result[3])
 end
 
+T["sort_diagnostics"]["handles nil severity without erroring"] = function()
+    local result = child.lua([[
+        local diag = require("LspUI.lib.diagnostic")
+        local input = {
+            { lnum = 5, col = 10, severity = 2 },
+            { lnum = 5, col = 10 },
+            { lnum = 5, col = 10, severity = 1 },
+        }
+        local ok, sorted = pcall(diag.sort_diagnostics, input)
+        return {
+            ok = ok,
+            sev1 = sorted[1].severity,
+            sev2 = sorted[2].severity,
+            sev3_missing = sorted[3].severity == nil,
+        }
+    ]])
+    h.eq(true, result.ok)
+    h.eq(1, result.sev1)
+    h.eq(2, result.sev2)
+    -- nil severity 应排到末尾
+    h.eq(true, result.sev3_missing)
+end
+
 T["sort_diagnostics"]["does not modify original array"] = function()
     local result = child.lua([[
         local diag = require("LspUI.lib.diagnostic")

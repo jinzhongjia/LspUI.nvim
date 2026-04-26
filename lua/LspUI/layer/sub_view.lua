@@ -313,6 +313,8 @@ function ClassSubView:ClearSyntaxRange(source_ns, start_row, end_row)
         end
     end
     -- 同步 tracker：丢弃落入区间的 entry
+    -- 注：内层与外层都依赖 Lua "在 pairs() 期间将当前 key 置 nil" 是合法行为；
+    -- 不要改成"批量收集后插入新 key"，那会落到 pairs 的未定义行为分支
     if self._active_keyword_lines then
         for lang, line_map in pairs(self._active_keyword_lines) do
             for line in pairs(line_map) do

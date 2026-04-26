@@ -364,6 +364,24 @@ function M.autocmd(buffer_id)
         end,
         desc = tools.command_desc("diagnostic, refresh on change"),
     })
+
+    -- 当 buffer 被彻底 wipe 时，销毁悬空 floating，清理状态与 augroup，
+    -- 防止下次 nvim 复用同一个 bufnr 时回调到陈旧绑定
+    api.nvim_create_autocmd("BufWipeout", {
+        buffer = buffer_id,
+        group = group,
+        callback = function()
+            if diagnostic_view and diagnostic_view:Valid() then
+                diagnostic_view:Destroy()
+            end
+            diagnostic_view = nil
+            all_diagnostics = {}
+            current_buffer = 0
+            current_index = 0
+            clean_autocmds()
+        end,
+        desc = tools.command_desc("diagnostic, cleanup on BufWipeout"),
+    })
 end
 
 return M
