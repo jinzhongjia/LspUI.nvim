@@ -292,6 +292,42 @@ T["hover markdown"]["normalizes lsp markdown like neovim native"] = function()
     h.eq({ "doc line", "─────", "after" }, result)
 end
 
+T["hover markdown"]["render keeps filetype and restores eventignore"] = function()
+    local result = child.lua([[
+        require("LspUI.config").setup({})
+        local ClassHover = require("LspUI.layer.hover")
+
+        -- 用户原有的 eventignore 必须被原样还原
+        vim.o.eventignore = "CursorHold"
+
+        local buffer_id = vim.api.nvim_create_buf(false, true)
+        vim.api.nvim_buf_set_lines(buffer_id, 0, -1, true, {
+            "# doc",
+            "see [label](https://example.com) here",
+        })
+
+        local hover = ClassHover:New()
+        hover:Render({ buffer_id = buffer_id, width = 40, height = 2 }, 1, {})
+        local window_id = hover._view:GetWinID()
+
+        local out = {
+            eventignore = vim.o.eventignore,
+            filetype = vim.bo[buffer_id].filetype,
+            ts_active = vim.treesitter.highlighter.active[buffer_id] ~= nil,
+            conceallevel = vim.wo[window_id].conceallevel,
+            concealcursor = vim.wo[window_id].concealcursor,
+        }
+        hover:Close()
+        return out
+    ]])
+
+    h.eq("CursorHold", result.eventignore)
+    h.eq("markdown", result.filetype)
+    h.eq(true, result.ts_active)
+    h.eq(2, result.conceallevel)
+    h.eq("", result.concealcursor)
+end
+
 T["hover markdown"]["resolves url for every link form"] = function()
     local result = child.lua([[
         local ClassHover = require("LspUI.layer.hover")

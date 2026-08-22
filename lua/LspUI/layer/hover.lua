@@ -45,10 +45,17 @@ local function apply_treesitter_highlight(bufnr, winnr)
     vim.wo[winnr].concealcursor = ""
     vim.wo[winnr].foldenable = false
     vim.wo[winnr].smoothscroll = true
-    -- Disable legacy syntax to avoid loading syntax/markdown.vim chain
-    -- which may fail if dtd.vim is missing
-    vim.bo[bufnr].syntax = ""
-    vim.bo[bufnr].filetype = "markdown"
+    -- 设置 filetype 会触发 syntaxset 链去加载 syntax/markdown.vim（连带 html.vim 等），
+    -- 而 hover 完全靠 treesitter 高亮，这份开销纯属浪费：实测占单次渲染 95% 以上。
+    -- 临时把 Syntax 加进 eventignore，只跳过 legacy syntax 加载；
+    -- FileType 事件照常触发，render-markdown.nvim 之类依赖 ft 的集成不受影响。
+    local saved_eventignore = vim.o.eventignore
+    vim.o.eventignore = saved_eventignore == "" and "Syntax"
+        or (saved_eventignore .. ",Syntax")
+    pcall(function()
+        vim.bo[bufnr].filetype = "markdown"
+    end)
+    vim.o.eventignore = saved_eventignore
     -- Use treesitter only for highlighting
     pcall(vim.treesitter.start, bufnr)
 end
