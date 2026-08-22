@@ -107,6 +107,7 @@ require("LspUI").setup({
       prev = "p",
       next = "n",
       quit = "q",
+      open_url = "gx",
     },
     border = "rounded",
     transparency = 0,

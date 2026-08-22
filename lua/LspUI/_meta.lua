@@ -36,7 +36,7 @@
 --- @class LspUI_hover_config
 --- @field enable boolean? whether enable `hover` module
 --- @field command_enable boolean? whether enable command for `hover`
---- @field key_binding { prev: string?, next: string?, quit: string? }? keybind for `hover`
+--- @field key_binding { prev: string?, next: string?, quit: string?, open_url: string? }? keybind for `hover`, `open_url` opens the link under cursor (set to `""` to disable)
 --- @field border "none"|"single"|"double"|"rounded"|"solid"|"shadow"|string[]? border style for hover window
 --- @field transparency number? transparency for hover
 
