@@ -237,6 +237,26 @@ T["hover config"]["respects custom border"] = function()
     h.eq("single", result)
 end
 
+T["hover config"]["open_url defaults to gx"] = function()
+    local result = child.lua([[
+        local config = require("LspUI.config")
+        config.setup({})
+        return config.options.hover.key_binding.open_url
+    ]])
+    h.eq("gx", result)
+end
+
+T["hover config"]["respects custom open_url"] = function()
+    local result = child.lua([[
+        local config = require("LspUI.config")
+        config.setup({ hover = { key_binding = { open_url = "<cr>" } } })
+        return config.options.hover.key_binding
+    ]])
+    h.eq("<cr>", result.open_url)
+    -- 未覆盖的键仍保留默认值
+    h.eq("q", result.quit)
+end
+
 T["hover config"]["respects transparency setting"] = function()
     local result = child.lua([[
         local config = require("LspUI.config")
@@ -245,6 +265,89 @@ T["hover config"]["respects transparency setting"] = function()
         return config.options.hover.transparency
     ]])
     h.eq(20, result)
+end
+
+T["hover markdown"] = new_set()
+
+T["hover markdown"]["normalizes lsp markdown like neovim native"] = function()
+    local result = child.lua([[
+        local ClassHover = require("LspUI.layer.hover")
+        local input = vim.lsp.util.convert_input_to_markdown_lines({
+            kind = "markdown",
+            value = table.concat({
+                "",
+                "doc line",
+                "",
+                "",
+                "",
+                "---",
+                "",
+                "after",
+                "",
+                "",
+            }, "\r\n"),
+        })
+        return ClassHover.NormalizeMarkdown(input, 5)
+    ]])
+    h.eq({ "doc line", "─────", "after" }, result)
+end
+
+T["hover markdown"]["resolves url for every link form"] = function()
+    local result = child.lua([[
+        local ClassHover = require("LspUI.layer.hover")
+        local lines = {
+            "See [label](https://example.com/inline) here",
+            "Ref: [ref text][1] and [shortcut] end",
+            "Auto: <https://example.com/auto>",
+            "Bare: https://example.com/bare end",
+            "Mail: <foo@bar.com>",
+            "plain text without any link",
+            "",
+            "[1]: https://example.com/ref",
+            "[shortcut]: https://example.com/shortcut",
+        }
+        local buffer_id = vim.api.nvim_create_buf(false, true)
+        vim.api.nvim_buf_set_lines(buffer_id, 0, -1, true, lines)
+        vim.bo[buffer_id].filetype = "markdown"
+        local window_id = vim.api.nvim_open_win(buffer_id, true, {
+            relative = "editor",
+            row = 1,
+            col = 1,
+            width = 60,
+            height = 10,
+            style = "minimal",
+        })
+
+        -- { 行号, 0-based 列 }
+        local cursors = {
+            inline_label = { 1, 6 },
+            inline_url = { 1, 20 },
+            full_reference = { 2, 7 },
+            shortcut = { 2, 25 },
+            autolink = { 3, 10 },
+            bare = { 4, 10 },
+            email = { 5, 8 },
+            plain = { 6, 3 },
+        }
+        local resolved = {}
+        for name, pos in pairs(cursors) do
+            vim.api.nvim_win_set_cursor(window_id, { pos[1], pos[2] })
+            resolved[name] = ClassHover.ResolveUrlAtCursor(buffer_id, window_id)
+                or "none"
+        end
+
+        vim.api.nvim_win_close(window_id, true)
+        return resolved
+    ]])
+
+    h.eq("https://example.com/inline", result.inline_label)
+    h.eq("https://example.com/inline", result.inline_url)
+    h.eq("https://example.com/ref", result.full_reference)
+    h.eq("https://example.com/shortcut", result.shortcut)
+    h.eq("https://example.com/auto", result.autolink)
+    h.eq("https://example.com/bare", result.bare)
+    h.eq("mailto:foo@bar.com", result.email)
+    h.eq("none", result.plain)
 end
 
 return T

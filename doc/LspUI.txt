@@ -145,6 +145,7 @@ Full configuration with defaults: >lua
           prev = "p",
           next = "n",
           quit = "q",
+          open_url = "gx",
         },
         border = "rounded",
         transparency = 0,
@@ -402,6 +403,7 @@ Configuration: >lua
         prev = "p",            -- Previous hover
         next = "n",            -- Next hover
         quit = "q",            -- Close hover
+        open_url = "gx",       -- Open the link under the cursor ("" disables)
       },
       border = "rounded",      -- Border style for the hover window
       transparency = 0,        -- Window transparency

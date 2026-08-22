@@ -62,6 +62,7 @@ local default_hover_config = {
         prev = "p",
         next = "n",
         quit = "q",
+        open_url = "gx",
     },
     transparency = default_transparency,
     border = "rounded",
