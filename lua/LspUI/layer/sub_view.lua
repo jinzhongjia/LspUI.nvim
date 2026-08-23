@@ -126,7 +126,7 @@ function ClassSubView:ApplySyntaxHighlight(code_regions)
 
     -- 第一遍：处理所有条目，区分已加载和未加载
     local lang_keyword_regions = {} -- 未加载文件的关键字高亮
-    local pending_sources = {} -- 按源 buffer 分组的待处理条目
+    local pending_text = {} -- 源文件未加载、待用字符串 parser 高亮的条目
 
     for lang, entries in pairs(code_regions) do
         if lang and lang ~= "" then
@@ -168,21 +168,13 @@ function ClassSubView:ApplySyntaxHighlight(code_regions)
                                 end
                             end
                         else
-                            -- 源 buffer 未加载，记录下来稍后异步处理
-                            local source_buf = entry.source_buf
-                            if source_buf then
-                                if not pending_sources[source_buf] then
-                                    pending_sources[source_buf] =
-                                        { entries = {} }
-                                end
-                                table.insert(
-                                    pending_sources[source_buf].entries,
-                                    {
-                                        entry = entry,
-                                        lang = lang,
-                                    }
-                                )
-                            end
+                            -- 源 buffer 未加载：不 bufload（会触发 BufRead/
+                            -- FileType 链，连带 LSP attach 等），改为稍后用
+                            -- 字符串 parser 直接解析该行显示的文本
+                            table.insert(pending_text, {
+                                entry = entry,
+                                lang = lang,
+                            })
                         end
                     end
 
@@ -215,47 +207,31 @@ function ClassSubView:ApplySyntaxHighlight(code_regions)
         end
     end
 
-    -- 异步加载未加载的源文件并应用 Treesitter 高亮
-    if not vim.tbl_isempty(pending_sources) then
+    -- 首帧之后再为未加载的源文件补 Treesitter 高亮：
+    -- 用字符串 parser 解析子视图里已经显示的行文本，全程不加载源 buffer
+    if #pending_text > 0 then
         vim.schedule(function()
-            -- 再次检查 buffer 是否仍然有效
             if not api.nvim_buf_is_valid(bufid) then
                 return
             end
 
-            for source_buf, pack in pairs(pending_sources) do
-                if api.nvim_buf_is_valid(source_buf) then
-                    -- 异步加载源文件（仅执行一次）
-                    if not api.nvim_buf_is_loaded(source_buf) then
-                        pcall(vim.fn.bufload, source_buf)
-                    end
-
-                    if api.nvim_buf_is_loaded(source_buf) then
-                        for _, item in ipairs(pack.entries) do
-                            local entry = item.entry
-                            local lang = item.lang
-                            local source_offset = entry.source_col_offset or 0
-                            local line_map = self._active_keyword_lines[lang]
-                            if line_map and line_map[entry.line] then
-                                keyword_highlight.clear_line(
-                                    bufid,
-                                    lang,
-                                    entry.line
-                                )
-                                line_map[entry.line] = nil
-                                if vim.tbl_isempty(line_map) then
-                                    self._active_keyword_lines[lang] = nil
-                                end
-                            end
-                            source_highlight.apply_highlights(
-                                bufid,
-                                entry.line,
-                                entry.col_start,
-                                entry.col_end,
-                                source_buf,
-                                entry.source_line,
-                                source_offset
-                            )
+            for _, item in ipairs(pending_text) do
+                local entry = item.entry
+                local lang = item.lang
+                local applied = source_highlight.apply_text_highlights(
+                    bufid,
+                    entry.line,
+                    entry.col_start,
+                    entry.col_end,
+                    lang
+                )
+                if applied then
+                    local line_map = self._active_keyword_lines[lang]
+                    if line_map and line_map[entry.line] then
+                        keyword_highlight.clear_line(bufid, lang, entry.line)
+                        line_map[entry.line] = nil
+                        if vim.tbl_isempty(line_map) then
+                            self._active_keyword_lines[lang] = nil
                         end
                     end
                 end

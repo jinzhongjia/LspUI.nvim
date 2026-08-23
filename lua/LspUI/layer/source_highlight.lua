@@ -185,6 +185,160 @@ function M.extract_line_highlights(source_buf, source_line)
     return highlights
 end
 
+--- 基于纯文本提取 Treesitter 高亮（用于源文件未加载的场景）。
+--- 用 get_string_parser 解析单行代码，完全不需要 bufload 源文件，
+--- 因此不会触发 BufRead/FileType 自动命令链（LSP attach、gitsigns 等）。
+--- @param lang string treesitter 语言名（即 filetype）
+--- @param text string 单行代码文本
+--- @return table[] 高亮信息数组，每项为 {hl_group, start_col, end_col, priority}
+local text_cache = {}
+local text_cache_size = 0
+
+function M.extract_text_highlights(lang, text)
+    if lang == "" or text == "" then
+        return {}
+    end
+
+    local key = lang .. "\0" .. text
+    local cached = text_cache[key]
+    if cached then
+        return cached
+    end
+
+    local highlights = {}
+
+    local lang_ok = pcall(vim.treesitter.language.add, lang)
+    if not lang_ok then
+        return highlights
+    end
+    local query_ok, query = pcall(vim.treesitter.query.get, lang, "highlights")
+    if not query_ok or not query then
+        return highlights
+    end
+
+    local parser_ok, parser =
+        pcall(vim.treesitter.get_string_parser, text, lang)
+    if not parser_ok or not parser then
+        return highlights
+    end
+    local parse_ok, trees = pcall(parser.parse, parser, true)
+    if not parse_ok or not trees or #trees == 0 then
+        return highlights
+    end
+
+    for _, tree in ipairs(trees) do
+        local root = tree:root()
+        if root then
+            local iter_ok, iter =
+                pcall(query.iter_captures, query, root, text, 0, 1)
+            if iter_ok then
+                for id, node, metadata in iter do
+                    local range_ok, start_row, start_col, _, end_col =
+                        pcall(node.range, node)
+                    local capture_name = query.captures[id]
+                    if
+                        range_ok
+                        and capture_name
+                        and start_row == 0
+                        and start_col < end_col
+                    then
+                        local priority = 100
+                        if
+                            type(metadata) == "table"
+                            and type(metadata.priority) == "number"
+                        then
+                            priority = metadata.priority
+                        end
+                        table.insert(highlights, {
+                            hl_group = "@" .. capture_name,
+                            start_col = start_col,
+                            end_col = math.min(end_col, #text),
+                            priority = priority,
+                        })
+                    end
+                end
+            end
+        end
+    end
+
+    table.sort(highlights, function(a, b)
+        if a.priority ~= b.priority then
+            return a.priority < b.priority
+        end
+        return a.start_col < b.start_col
+    end)
+
+    -- 有界缓存：引用列表里大量重复的行（同一符号的多处引用）直接命中
+    if text_cache_size > 2000 then
+        text_cache = {}
+        text_cache_size = 0
+    end
+    text_cache[key] = highlights
+    text_cache_size = text_cache_size + 1
+
+    return highlights
+end
+
+--- 用字符串 parser 高亮目标 buffer 里的一段代码（源文件未加载时的替代路径）。
+--- 直接解析目标行 [col_start, col_end) 里显示的文本，无需源 buffer。
+--- @param target_buf integer
+--- @param target_line integer 0-indexed
+--- @param target_col_start integer 0-indexed 起始列
+--- @param target_col_end integer 结束位置（字符串长度语义，同 apply_highlights）
+--- @param lang string
+--- @return boolean 是否成功应用了 treesitter 高亮
+function M.apply_text_highlights(
+    target_buf,
+    target_line,
+    target_col_start,
+    target_col_end,
+    lang
+)
+    local line_ok, target_lines = pcall(
+        api.nvim_buf_get_lines,
+        target_buf,
+        target_line,
+        target_line + 1,
+        false
+    )
+    if not line_ok or not target_lines or not target_lines[1] then
+        return false
+    end
+    local line_text = target_lines[1]
+    local actual_end = math.min(target_col_end, #line_text)
+    if target_col_start >= actual_end then
+        return false
+    end
+
+    local text = line_text:sub(target_col_start + 1, actual_end)
+    local highlights = M.extract_text_highlights(lang, text)
+    if #highlights == 0 then
+        return false
+    end
+
+    for _, hl in ipairs(highlights) do
+        local col_start = target_col_start + hl.start_col
+        local col_end = math.min(target_col_start + hl.end_col, actual_end)
+        if col_start < col_end then
+            pcall(
+                api.nvim_buf_set_extmark,
+                target_buf,
+                source_ns,
+                target_line,
+                col_start,
+                {
+                    end_col = col_end,
+                    hl_group = hl.hl_group,
+                    priority = hl.priority + 10,
+                    strict = false,
+                }
+            )
+        end
+    end
+
+    return true
+end
+
 --- 应用提取的高亮到目标 buffer 的指定区域
 --- @param target_buf integer 目标 buffer ID
 --- @param target_line integer 目标行号（0-indexed）
