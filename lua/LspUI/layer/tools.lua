@@ -5,25 +5,46 @@ local M = {}
 
 local version = "v3"
 
+--- 从磁盘按需读取指定行（0-indexed），读到最大行号即停。
+--- 不经过 bufload：加载 buffer 会触发 BufReadPre/BufReadPost/FileType/Syntax
+--- 整条自动命令链（LSP attach、gitsigns 等），对"只为取几行文本"来说纯属浪费。
+--- @param file_path string
+--- @param sorted_rows integer[] 升序 0-indexed 行号
+--- @param lines table<integer, string> 输出表，按行号填充
+--- @return boolean ok 文件是否成功读取
+local function read_lines_from_disk(file_path, sorted_rows, lines)
+    local file = io.open(file_path, "r")
+    if not file then
+        return false
+    end
+
+    local want = {}
+    for _, row in ipairs(sorted_rows) do
+        want[row] = true
+    end
+    local max_row = sorted_rows[#sorted_rows]
+
+    local row = 0
+    for line in file:lines() do
+        if want[row] then
+            -- CRLF 文件去掉行尾 \r，对齐 buffer 读取的行为
+            lines[row] = (line:gsub("\r$", ""))
+        end
+        if row >= max_row then
+            break
+        end
+        row = row + 1
+    end
+    file:close()
+    return true
+end
+
 --- @param buffer_id integer
 --- @param uri lsp.URI
 --- @param rows integer[]
 --- @return string[]
 function M.GetUriLines(buffer_id, uri, rows)
     local lines = {}
-
-    -- 统一使用 bufload + nvim_buf_get_lines，避免手动文件 IO
-    if not api.nvim_buf_is_valid(buffer_id) then
-        return lines
-    end
-
-    -- 确保 buffer 已加载
-    if not api.nvim_buf_is_loaded(buffer_id) then
-        local ok = pcall(fn.bufload, buffer_id)
-        if not ok then
-            return lines
-        end
-    end
 
     if type(rows) ~= "table" or #rows == 0 then
         return lines
@@ -46,7 +67,24 @@ function M.GetUriLines(buffer_id, uri, rows)
 
     table.sort(sorted_rows)
 
-    -- 2. 将连续的行号合并为区间，避免一次性读取大跨度
+    -- 2. buffer 未加载时直接读磁盘，避免 bufload 触发整条自动命令链
+    local loaded = api.nvim_buf_is_valid(buffer_id)
+        and api.nvim_buf_is_loaded(buffer_id)
+    if not loaded then
+        local ok, file_path = pcall(vim.uri_to_fname, uri)
+        if ok and read_lines_from_disk(file_path, sorted_rows, lines) then
+            return lines
+        end
+        -- 磁盘读取失败（非 file:// URI 等）：退回 bufload 路径
+        if not api.nvim_buf_is_valid(buffer_id) then
+            return lines
+        end
+        if not pcall(fn.bufload, buffer_id) then
+            return lines
+        end
+    end
+
+    -- 3. 将连续的行号合并为区间，避免一次性读取大跨度
     local segments = {}
     local seg_start = sorted_rows[1]
     local seg_end = seg_start
@@ -63,7 +101,7 @@ function M.GetUriLines(buffer_id, uri, rows)
     end
     table.insert(segments, { seg_start, seg_end })
 
-    -- 3. 分段读取，避免跨越巨大范围
+    -- 4. 分段读取，避免跨越巨大范围
     for _, segment in ipairs(segments) do
         local start_row = segment[1]
         local end_row = segment[2]
@@ -266,7 +304,16 @@ end
 --- 检测文件 filetype；先用 vim.filetype.match，失败时回退到扩展名映射
 --- @param file_path string 文件名（相对/绝对路径均可）
 --- @return string filetype 找不到时返回空串
+-- detect_filetype 结果缓存：同一路径在一次渲染里会被反复查询，
+-- vim.filetype.match 单次 ~0.03ms，路径到 filetype 的映射不会变化
+local filetype_cache = {}
+
 function M.detect_filetype(file_path)
+    local cached = filetype_cache[file_path]
+    if cached ~= nil then
+        return cached
+    end
+
     local filetype = vim.filetype.match({ filename = file_path }) or ""
 
     if not filetype or filetype == "" then
@@ -283,6 +330,7 @@ function M.detect_filetype(file_path)
         filetype = ext_map[ext] or ""
     end
 
+    filetype_cache[file_path] = filetype
     return filetype
 end
 
