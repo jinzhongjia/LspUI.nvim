@@ -343,6 +343,156 @@ T["GetUriLines"]["returns lines for valid buffer"] = function()
     h.eq("line3", result.line2)
 end
 
+T["GetUriLines"]["reads unloaded buffer from disk without autocmds"] = function()
+    local result = child.lua([[
+        local tools = require("LspUI.layer.tools")
+        local path = vim.fn.tempname() .. ".lua"
+        local file = io.open(path, "w")
+        for i = 1, 50 do
+            file:write(("local line_%d = %d\n"):format(i, i))
+        end
+        file:close()
+
+        local fired = 0
+        vim.api.nvim_create_autocmd(
+            { "BufReadPre", "BufReadPost", "FileType", "Syntax" },
+            { callback = function() fired = fired + 1 end }
+        )
+
+        local buf = vim.fn.bufadd(path)
+        local uri = vim.uri_from_fname(path)
+        local lines = tools.GetUriLines(buf, uri, { 0, 9, 49 })
+
+        local out = {
+            line0 = lines[0],
+            line9 = lines[9],
+            line49 = lines[49],
+            loaded = vim.api.nvim_buf_is_loaded(buf),
+            fired = fired,
+        }
+        vim.fn.delete(path)
+        return out
+    ]])
+    h.eq("local line_1 = 1", result.line0)
+    h.eq("local line_10 = 10", result.line9)
+    h.eq("local line_50 = 50", result.line49)
+    -- 关键断言：buffer 未被加载、未触发任何 BufRead/FileType 链
+    h.eq(false, result.loaded)
+    h.eq(0, result.fired)
+end
+
+T["GetUriLines"]["loaded buffer returns unsaved modifications"] = function()
+    local result = child.lua([[
+        local tools = require("LspUI.layer.tools")
+        local path = vim.fn.tempname() .. ".lua"
+        local file = io.open(path, "w")
+        file:write("on disk\n")
+        file:close()
+
+        local buf = vim.fn.bufadd(path)
+        vim.fn.bufload(buf)
+        vim.api.nvim_buf_set_lines(buf, 0, 1, false, { "modified in memory" })
+
+        local lines = tools.GetUriLines(buf, vim.uri_from_fname(path), { 0 })
+        vim.fn.delete(path)
+        return lines[0]
+    ]])
+    h.eq("modified in memory", result)
+end
+
+T["GetUriLines"]["normalizes CRLF line endings"] = function()
+    local result = child.lua([[
+        local tools = require("LspUI.layer.tools")
+        local path = vim.fn.tempname() .. ".lua"
+        local file = io.open(path, "wb")
+        file:write("local a = 1\r\nlocal b = 2\r\n")
+        file:close()
+
+        local buf = vim.fn.bufadd(path)
+        local lines = tools.GetUriLines(buf, vim.uri_from_fname(path), { 1 })
+        local out = {
+            line = lines[1],
+            has_cr = lines[1] and lines[1]:find("\r") ~= nil,
+        }
+        vim.fn.delete(path)
+        return out
+    ]])
+    h.eq("local b = 2", result.line)
+    h.eq(false, result.has_cr)
+end
+
+T["GetUriLines"]["invalid buffer falls back to disk read"] = function()
+    local result = child.lua([[
+        local tools = require("LspUI.layer.tools")
+        local path = vim.fn.tempname() .. ".lua"
+        local file = io.open(path, "w")
+        file:write("first\nsecond\n")
+        file:close()
+
+        local lines = tools.GetUriLines(99999, vim.uri_from_fname(path), { 1 })
+        vim.fn.delete(path)
+        return lines[1]
+    ]])
+    h.eq("second", result)
+end
+
+T["GetUriLines"]["missing file returns empty result"] = function()
+    local result = child.lua([[
+        local tools = require("LspUI.layer.tools")
+        local path = vim.fn.tempname() .. "_missing.lua"
+        local lines =
+            tools.GetUriLines(99999, vim.uri_from_fname(path), { 0, 1 })
+        return { count = vim.tbl_count(lines) }
+    ]])
+    h.eq(0, result.count)
+end
+
+T["GetUriLines"]["dedupes and filters invalid rows"] = function()
+    local result = child.lua([[
+        local tools = require("LspUI.layer.tools")
+        local path = vim.fn.tempname() .. ".lua"
+        local file = io.open(path, "w")
+        file:write("a\nb\nc\n")
+        file:close()
+
+        local buf = vim.fn.bufadd(path)
+        local lines = tools.GetUriLines(
+            buf,
+            vim.uri_from_fname(path),
+            { 1, 1, -5, "bad", 100 }
+        )
+        local out = {
+            line1 = lines[1],
+            count = vim.tbl_count(lines),
+        }
+        vim.fn.delete(path)
+        return out
+    ]])
+    h.eq("b", result.line1)
+    -- 行 100 超出文件末尾、-5/"bad" 非法，只应得到行 1
+    h.eq(1, result.count)
+end
+
+T["detect_filetype"]["caches results consistently"] = function()
+    local result = child.lua([[
+        local tools = require("LspUI.layer.tools")
+        local first = tools.detect_filetype("/tmp/cache_probe.lua")
+        local second = tools.detect_filetype("/tmp/cache_probe.lua")
+        local unknown_first = tools.detect_filetype("/tmp/x.someunknownext")
+        local unknown_second = tools.detect_filetype("/tmp/x.someunknownext")
+        return {
+            first = first,
+            second = second,
+            unknown_first = unknown_first,
+            unknown_second = unknown_second,
+        }
+    ]])
+    h.eq("lua", result.first)
+    h.eq(result.first, result.second)
+    -- 空结果也要被缓存且保持一致
+    h.eq(result.unknown_first, result.unknown_second)
+end
+
 T["GetUriLines"]["handles empty rows array"] = function()
     local result = child.lua([[
         local tools = require("LspUI.layer.tools")
