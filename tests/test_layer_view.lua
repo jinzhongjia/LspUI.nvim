@@ -287,4 +287,72 @@ T["ClassView"]["Enter controls initial focus"] = function()
     h.eq(true, result.entered_view)
 end
 
+T["ClassMainView"] = new_set()
+
+T["ClassMainView"]["screen coverage"] = new_set({
+    parametrize = {
+        { 0, 3, false, 0, 19 },
+        { 1, 2, false, 0, 18 },
+        { 2, 0, false, 0, 18 },
+        { 0, 1, false, 1, 20 },
+        { 0, 1, true, 0, 19 },
+        { 0, 3, false, 2, 19 },
+    },
+})
+
+T["ClassMainView"]["screen coverage"]["covers the last editor row"] = function(
+    cmdheight,
+    laststatus,
+    split,
+    showtabline,
+    bottom
+)
+    child.lua(
+        [[
+        local cmdheight, laststatus, split, showtabline = ...
+        vim.o.lines, vim.o.columns = 20, 60
+        vim.o.cmdheight, vim.o.laststatus = cmdheight, laststatus
+        vim.o.showtabline = showtabline
+        vim.o.statusline = 'STATUS'
+        vim.api.nvim_buf_set_lines(0, 0, -1, false,
+            vim.fn['repeat']({string.rep('B', 60)}, 1000))
+        if split then vim.cmd('vsplit') end
+        local view = require('LspUI.layer.main_view'):New(true):Border('none')
+        vim.api.nvim_buf_set_lines(view:GetBufID(), 0, -1, false,
+            vim.fn['repeat']({string.rep('P', 60)}, 1000))
+        view:Render():Option('wrap', false)
+    ]],
+        { cmdheight, laststatus, split, showtabline }
+    )
+
+    local screen = child.get_screenshot().text
+    h.eq(string.rep("P", 60), table.concat(screen[bottom]))
+    if laststatus >= 2 or (laststatus == 1 and split) then
+        h.eq("STATUS", table.concat(screen[bottom + 1]):sub(1, 6))
+    end
+end
+
+T["ClassMainView"]["border stays above statusline after resizing"] = function()
+    child.lua([[
+        vim.o.lines, vim.o.columns = 20, 60
+        vim.o.cmdheight, vim.o.laststatus = 0, 3
+        vim.o.statusline = 'STATUS'
+        preview = require('LspUI.layer.main_view'):New(true):Border('rounded')
+        preview:Render()
+    ]])
+    local screen = child.get_screenshot().text
+    h.eq("╰", screen[19][1])
+    h.eq("╯", screen[19][60])
+    h.eq("STATUS", table.concat(screen[20]):sub(1, 6))
+
+    child.lua([[
+        vim.o.lines, vim.o.columns = 16, 50
+        preview:Resize()
+    ]])
+    screen = child.get_screenshot().text
+    h.eq("╰", screen[15][1])
+    h.eq("╯", screen[15][50])
+    h.eq("STATUS", table.concat(screen[16]):sub(1, 6))
+end
+
 return T

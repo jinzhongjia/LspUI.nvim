@@ -450,4 +450,48 @@ T["controller"]["_incrementalToggleFold preserves lines above cursor"] = functio
     h.eq(true, result.map_4_is_header)
 end
 
+T["controller"]["preview covers editor after refresh and toggle"] = function()
+    child.lua([[
+        require('LspUI.config').setup()
+        vim.o.lines, vim.o.columns = 20, 60
+        vim.o.cmdheight, vim.o.laststatus = 0, 3
+        vim.o.statusline = 'STATUS'
+        vim.api.nvim_buf_set_lines(0, 0, -1, false,
+            vim.fn['repeat']({string.rep('B', 60)}, 1000))
+        local buf = vim.api.nvim_create_buf(false, true)
+        vim.api.nvim_buf_set_name(buf, vim.fn.tempname() .. '.lua')
+        vim.bo[buf].filetype = 'lua'
+        vim.api.nvim_buf_set_lines(buf, 0, -1, false,
+            vim.fn['repeat']({string.rep('P', 60)}, 1000))
+        local uri = vim.uri_from_bufnr(buf)
+        local data = {
+            [uri] = { buffer_id = buf, fold = true, range = {} },
+        }
+        ctl = require('LspUI.layer.controller'):New()
+        ctl._lsp = {
+            GetData = function() return data end,
+            GetMethod = function() return { name = 'Definition' } end,
+        }
+        ctl:RenderViews()
+        ctl._mainView:Option('wrap', false)
+    ]])
+
+    local function expect_covered()
+        local screen = child.get_screenshot().text
+        h.eq(string.rep("P", 60), table.concat(screen[19]))
+        h.eq("STATUS", table.concat(screen[20]):sub(1, 6))
+    end
+    expect_covered()
+
+    child.lua([[ctl:RenderViews()]])
+    expect_covered()
+
+    child.lua([[
+        ctl:ActionToggleMainView()
+        ctl:ActionToggleMainView()
+        ctl._mainView:Option('wrap', false)
+    ]])
+    expect_covered()
+end
+
 return T

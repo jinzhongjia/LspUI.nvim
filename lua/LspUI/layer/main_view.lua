@@ -31,9 +31,7 @@ function ClassMainView:New(createBuf)
     obj._config.border = "rounded"
 
     -- 设置MainView大小为编辑器大小
-    local width = api.nvim_get_option_value("columns", {})
-    local height = api.nvim_get_option_value("lines", {}) - 2 -- 减去状态栏和命令行
-    obj:Size(width, height)
+    obj:Resize()
     obj:Pos(0, 0)
 
     return obj
@@ -43,9 +41,7 @@ end
 --- @return ClassMainView
 function ClassMainView:Render()
     -- 设置窗口大小为编辑器当前大小
-    local width = api.nvim_get_option_value("columns", {})
-    local height = api.nvim_get_option_value("lines", {}) - 2
-    self:Size(width, height)
+    self:Resize()
 
     -- 调用父类的Render方法
     ClassView.Render(self)
@@ -170,8 +166,39 @@ end
 --- 调整MainView大小以适应编辑器大小变化
 --- @return ClassMainView
 function ClassMainView:Resize()
+    local status = api.nvim_get_option_value("laststatus", {})
+    local status_height = (
+        status >= 2 or (status == 1 and vim.fn.winlayout()[1] ~= "leaf")
+    )
+            and 1
+        or 0
     local width = api.nvim_get_option_value("columns", {})
-    local height = api.nvim_get_option_value("lines", {}) - 2
+    -- 从 editor 第 0 行覆盖，包含 tabline；只保留底部实际显示的 UI。
+    local height = api.nvim_get_option_value("lines", {})
+        - api.nvim_get_option_value("cmdheight", {})
+        - status_height
+
+    -- Size 指定内容尺寸，边框占用的格子须从外部尺寸中扣除。
+    local border = self._config.border
+    if type(border) == "table" and #border > 0 then
+        for side = 2, 8, 2 do
+            local char = border[(side - 1) % #border + 1]
+            if type(char) == "table" then
+                char = char[1]
+            end
+            if char ~= "" then
+                if side == 2 or side == 6 then
+                    height = height - 1
+                else
+                    width = width - 1
+                end
+            end
+        end
+    elseif type(border) == "string" and border ~= "none" then
+        local border_size = border == "shadow" and 1 or 2
+        width = width - border_size
+        height = height - border_size
+    end
 
     self:Size(width, height)
     return self

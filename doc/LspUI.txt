@@ -542,6 +542,9 @@ For definition, type_definition, declaration, reference, implementation
 (also call_hierarchy). The `pos_keybind` table also accepts
 `main_border` and `secondary_border` (default `"none"` and `"single"`)
 plus `transparency`, applied to the position windows.
+The main preview covers the editor area, including the tabline, while leaving
+the visible bottom statusline and command-line area uncovered. Its content size
+accounts for `main_border`, `cmdheight`, and `laststatus` when opened or refreshed.
 
 						*lspui-pos-keybind*
 Main View Keybindings: >

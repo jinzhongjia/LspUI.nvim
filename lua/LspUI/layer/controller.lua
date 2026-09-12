@@ -1330,10 +1330,7 @@ function ClassController:RenderViews()
             self._mainView
                 :Border(config.options.pos_keybind.main_border)
                 :Relative("editor")
-                :Size(
-                    api.nvim_get_option_value("columns", {}) - 2,
-                    api.nvim_get_option_value("lines", {}) - 2
-                )
+                :Resize()
                 :Pos(0, 0)
                 :Winbl(config.options.pos_keybind.transparency)
         end)
@@ -1822,10 +1819,7 @@ function ClassController:ActionToggleMainView()
                 self._mainView
                     :Border(config.options.pos_keybind.main_border)
                     :Relative("editor")
-                    :Size(
-                        api.nvim_get_option_value("columns", {}) - 2,
-                        api.nvim_get_option_value("lines", {}) - 2
-                    )
+                    :Resize()
                     :Pos(0, 0)
                     :Winbl(config.options.pos_keybind.transparency)
             end)
