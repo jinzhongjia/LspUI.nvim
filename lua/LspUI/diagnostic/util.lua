@@ -325,6 +325,8 @@ function M.autocmd(buffer_id)
     local group = api.nvim_create_augroup(autocmd_group, { clear = true })
     local float_buffer = diagnostic_view:GetBufID()
     local win_id = diagnostic_view:GetWinID()
+    local source_win = api.nvim_get_current_win()
+    local cursor = api.nvim_win_get_cursor(source_win)
 
     api.nvim_create_autocmd("BufEnter", {
         group = group,
@@ -344,7 +346,16 @@ function M.autocmd(buffer_id)
     api.nvim_create_autocmd({ "CursorMoved", "CursorMovedI", "InsertEnter" }, {
         buffer = buffer_id,
         group = group,
-        callback = function()
+        callback = function(event)
+            -- The jump's delayed CursorMoved must not close its own float.
+            if event.event ~= "InsertEnter"
+                and api.nvim_get_current_win() == source_win
+            then
+                local position = api.nvim_win_get_cursor(source_win)
+                if position[1] == cursor[1] and position[2] == cursor[2] then
+                    return
+                end
+            end
             if diagnostic_view and diagnostic_view:GetWinID() == win_id then
                 diagnostic_view:Destroy()
             end
