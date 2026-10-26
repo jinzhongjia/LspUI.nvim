@@ -307,7 +307,12 @@ T["hover markdown"]["render keeps filetype and restores eventignore"] = function
         })
 
         local hover = ClassHover:New()
-        hover:Render({ buffer_id = buffer_id, width = 40, height = 2 }, 1, {})
+        hover:Render({
+            buffer_id = buffer_id,
+            width = 40,
+            height = 2,
+            client = { name = "test-server" },
+        }, 1, {})
         local window_id = hover._view:GetWinID()
 
         local out = {
@@ -384,6 +389,44 @@ T["hover markdown"]["resolves url for every link form"] = function()
     h.eq("https://example.com/bare", result.bare)
     h.eq("mailto:foo@bar.com", result.email)
     h.eq("none", result.plain)
+end
+
+T["hover markdown"]["short hovers keep server names visible across switches"] = function()
+    local result = child.lua([[
+        require("LspUI.config").setup({})
+        local hover = require("LspUI.layer.hover"):New()
+        local tuples = {}
+        for _, name in ipairs({ "zig-analyzer", "服务器-analyzer" }) do
+            local buf = vim.api.nvim_create_buf(false, true)
+            vim.api.nvim_buf_set_lines(buf, 0, -1, true, { "bool" })
+            tuples[#tuples + 1] = {
+                buffer_id = buf, width = 4, height = 1, client = { name = name },
+            }
+        end
+        hover._hover_tuples = tuples
+        hover:Render(tuples[1], #tuples)
+        local states = {}
+        local function capture()
+            local cfg = vim.api.nvim_win_get_config(hover._view:GetWinID())
+            states[#states + 1] = {
+                footer = cfg.footer[1][1],
+                fits = cfg.width >= vim.fn.strdisplaywidth(cfg.footer[1][1])
+                    and cfg.width >= vim.fn.strdisplaywidth(cfg.title[1][1]),
+            }
+        end
+        capture()
+        hover:NextRender(true)
+        capture()
+        hover:NextRender(false)
+        capture()
+        hover:Close()
+        return states
+    ]])
+    h.eq({
+        { footer = "zig-analyzer", fits = true },
+        { footer = "服务器-analyzer", fits = true },
+        { footer = "zig-analyzer", fits = true },
+    }, result)
 end
 
 return T

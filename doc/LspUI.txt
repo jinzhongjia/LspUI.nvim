@@ -394,6 +394,9 @@ Configuration: >lua
 						*lspui-hover*
 Hover Module~
 Enhanced hover information display.
+The bottom border shows the current LSP server name. The window reserves enough
+width for both the title and server name, up to the available editor width.
+Switching hover results also updates the server name.
 
 Configuration: >lua
     hover = {

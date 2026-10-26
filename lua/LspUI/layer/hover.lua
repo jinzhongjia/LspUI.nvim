@@ -328,6 +328,20 @@ function ClassHover:GetHovers(clients, buffer_id, callback)
     end
 end
 
+--- Reserve border-label space even when the hover body is very short.
+--- @param hover_tuple hover_tuple
+--- @param title string
+local function fit_width(hover_tuple, title)
+    local label_width = math.max(
+        fn.strdisplaywidth(title),
+        fn.strdisplaywidth(hover_tuple.client.name)
+    )
+    hover_tuple.width = math.min(
+        math.max(hover_tuple.width, label_width),
+        math.max(1, tools.get_max_width() - 2)
+    )
+end
+
 --- @param hover_tuple hover_tuple
 --- @param total integer
 --- @param options table|nil
@@ -337,10 +351,12 @@ function ClassHover:Render(hover_tuple, total, options)
     self._current_index = 1
 
     local title = total > 1 and string.format("hover[1/%d]", total) or "hover"
+    fit_width(hover_tuple, title)
 
     local view = ClassView:New(false)
         :SwitchBuffer(hover_tuple.buffer_id)
         :Title(title, "right")
+        :Footer(hover_tuple.client.name, "right")
         :Size(hover_tuple.width, hover_tuple.height)
         :Relative("cursor")
         :Border(config.options.hover.border)
@@ -356,13 +372,13 @@ function ClassHover:Render(hover_tuple, total, options)
         :Option("breakindent", true)
         :Winbl(options.transparency or 0)
 
+    self._view = view
     local winnr = view:GetWinID()
     if winnr then
         apply_treesitter_highlight(hover_tuple.buffer_id, winnr)
         self:FitHeight(hover_tuple)
     end
 
-    self._view = view
     return view
 end
 
@@ -399,17 +415,19 @@ function ClassHover:NextRender(forward)
     local hover_tuple = self._hover_tuples[self._current_index]
     self._view:SwitchBuffer(hover_tuple.buffer_id)
 
+    local title = string.format("hover[%d/%d]", self._current_index, total)
+    fit_width(hover_tuple, title)
+    self._view:Updates(function()
+        self._view:Size(hover_tuple.width, hover_tuple.height)
+        self._view:Title(title, "right")
+        self._view:Footer(hover_tuple.client.name, "right")
+    end)
+
     local winnr = self._view:GetWinID()
     if winnr then
         apply_treesitter_highlight(hover_tuple.buffer_id, winnr)
         self:FitHeight(hover_tuple)
     end
-
-    local title = string.format("hover[%d/%d]", self._current_index, total)
-    self._view:Updates(function()
-        self._view:Size(hover_tuple.width, hover_tuple.height)
-        self._view:Title(title, "right")
-    end)
 
     -- keymap 是 buffer 局部的，切换 buffer 后需要重新绑定
     if self._key_bindings then

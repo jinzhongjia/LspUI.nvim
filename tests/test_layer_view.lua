@@ -30,6 +30,39 @@ T["ClassView"]["New creates instance"] = function()
     h.eq(true, result.has_destroy)
 end
 
+T["ClassView"]["window configuration stays isolated between instances"] = function()
+    local result = child.lua([[
+        local ClassView = require("LspUI.layer.view")
+        local first = ClassView:New(true)
+            :Size(24, 2):Relative("editor"):Pos(1, 1)
+            :Border("rounded"):Footer("zig-analyzer", "right"):Render()
+        local second = ClassView:New(true)
+            :Size(8, 1):Relative("editor"):Pos(5, 1)
+            :Border("rounded"):Render()
+        first:Title("diagnostic", "right")
+        second:Size(10, 1)
+        local first_cfg = vim.api.nvim_win_get_config(first:GetWinID())
+        local second_cfg = vim.api.nvim_win_get_config(second:GetWinID())
+        local out = {
+            first_width = first_cfg.width,
+            first_footer = first_cfg.footer[1][1],
+            second_width = second_cfg.width,
+            second_footer = second_cfg.footer ~= nil,
+            second_title = second_cfg.title ~= nil,
+        }
+        first:Destroy()
+        second:Destroy()
+        return out
+    ]])
+    h.eq({
+        first_width = 24,
+        first_footer = "zig-analyzer",
+        second_width = 10,
+        second_footer = false,
+        second_title = false,
+    }, result)
+end
+
 T["ClassView"]["chain methods return self"] = function()
     local result = child.lua([[
         local ClassView = require("LspUI.layer.view")

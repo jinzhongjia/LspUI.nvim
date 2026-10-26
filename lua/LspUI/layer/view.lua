@@ -22,7 +22,7 @@ ClassView.__index = ClassView
 --- @param createBuf boolean
 --- @return ClassView
 function ClassView:New(createBuf)
-    local obj = {} -- 创建一个新的空表作为对象
+    local obj = { _config = {} }
     setmetatable(obj, self) -- 设置元表，使对象继承类的方法
     -- 初始化对象的属性
     if createBuf then
